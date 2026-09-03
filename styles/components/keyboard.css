@@ -1,0 +1,13 @@
+﻿/**
+ * ABD Keyboard Component Tokens
+ * Cascades from host theme tokens with standalone fallbacks
+ */
+:root {
+  --kbd-bg: var(--color-panel-bg, #0c1017);
+  --kbd-border: var(--color-panel-border, rgba(0, 195, 255, 0.25));
+  --kbd-active-bg: var(--color-accent, #00c3ff);
+  --kbd-led-color: var(--color-accent, #00c3ff);
+  --kbd-wheel-label-color: var(--color-text-muted, #7e9bb5);
+  --kbd-wheel-value-color: var(--color-accent, #00c3ff);
+  --kbd-font: var(--font-lcd, 'Courier New', monospace);
+}

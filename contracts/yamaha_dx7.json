@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "2.0",
+  "id": "yamaha_dx7",
+  "displayName": "Yamaha DX7 (Mark I)",
+  "description": "Legendary 6-Operator Digital FM Synthesizer with 32 Algorithms, 6 Operator Pitch/Amp Envelopes, and Characteristic 12-Bit DAC Sound",
+  "deviceType": "AUTOMATED_SYSEX",
+  "brand": "Yamaha",
+  "brandLogo": "brands/yamaha-logo.svg",
+  "modelImage": "models/yamaha-dx7.png",
+  "midiIdentification": {
+    "manufacturer": "Yamaha",
+    "manufacturerIdHex": "43",
+    "model": "DX7",
+    "modelIdHex": "09",
+    "sysexHeaderHex": "43 00 09",
+    "autoDetectSysEx": "F0 7E 7F 06 01 F7",
+    "portNameMatches": ["DX7", "DX-7", "TX7", "Yamaha DX7"]
+  },
+  "functions": [
+    {
+      "id": "fm_operator_matrix",
+      "name": "6-Operator FM Carrier/Modulator Matrix",
+      "blockType": "WaveShaper",
+      "suggestedStimulus": "LOG_SINE_SWEEP",
+      "routingGuide": {
+        "stimulusOutput": "MIDI Note On (Vel 100) -> Entrada MIDI DX7",
+        "responseInput": "Audio Output -> Entrada Audio 1 (L)",
+        "notes": "Modulación de frecuencia lineal entre operadores moduladores y portadoras según el algoritmo seleccionado."
+      },
+      "controls": [
+        { "index": 1, "name": "Algorithm Select", "type": "RotarySwitch", "controlMethod": "SYSEX", "sysexAddress": "40", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "Alg", "options": ["Alg 1", "Alg 2", "Alg 5", "Alg 16", "Alg 32 (All Carriers)"] },
+        { "index": 2, "name": "Op 1 Output Level", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "10", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.99, "unit": "0-99" },
+        { "index": 3, "name": "Op 2 Output Level", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "11", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.75, "unit": "0-99" }
+      ]
+    },
+    {
+      "id": "operator_envelope",
+      "name": "4-Rate / 4-Level Operator Envelope",
+      "blockType": "TimeDynamic",
+      "suggestedStimulus": "GATE_PULSE",
+      "captureMode": "ADAPTIVE_ENVELOPE",
+      "routingGuide": {
+        "stimulusOutput": "MIDI Note On -> Entrada MIDI DX7",
+        "responseInput": "Audio Output -> Entrada Audio 1 (L)",
+        "notes": "Generador de envolvente FM de 4 tasas (R1-R4) y 4 niveles (L1-L4)."
+      },
+      "controls": [
+        { "index": 1, "name": "Rate 1 (Attack)", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "00", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.95, "unit": "0-99" },
+        { "index": 2, "name": "Rate 2 (Decay 1)", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "01", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-99" },
+        { "index": 3, "name": "Level 3 (Sustain)", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "06", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-99" },
+        { "index": 4, "name": "Rate 4 (Release)", "type": "Slider", "controlMethod": "SYSEX", "sysexAddress": "03", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-99" }
+      ]
+    }
+  ]
+}

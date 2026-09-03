@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "2.0",
+  "id": "boss_ds1_distortion",
+  "displayName": "BOSS DS-1 Distortion (Analogue Pedal)",
+  "description": "Classic Analogue Hard-Clipping Distortion Pedal",
+  "deviceType": "ANALOGUE_PEDAL",
+  "brand": "Boss",
+  "brandLogo": "brands/boss-logo.svg",
+  "modelImage": "models/boss-ds1.webp",
+  "midiIdentification": {
+    "manufacturer": "Roland/Boss",
+    "model": "DS-1",
+    "autoDetectSysEx": ""
+  },
+  "functions": [
+    {
+      "id": "distortion",
+      "name": "Hard-Clipping Distortion & Tone Filter",
+      "blockType": "WaveShaper",
+      "suggestedStimulus": "MULTILEVEL_RAMP",
+      "routingGuide": {
+        "stimulusOutput": "Salida Audio 1 (L) -> INPUT Pedal (Jack 1/4\")",
+        "responseInput": "OUTPUT Pedal (Jack 1/4\") -> Entrada Audio 1 (L)",
+        "notes": "Asegúrese de activar el footswitch (LED CHECK encendido) y usar nivel de línea adecuado."
+      },
+      "controls": [
+        { "index": 1, "name": "TONE Potentiometer", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "0-10" },
+        { "index": 2, "name": "LEVEL Potentiometer", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "0-10" },
+        { "index": 3, "name": "DIST Potentiometer", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "0-10" }
+      ]
+    }
+  ]
+}

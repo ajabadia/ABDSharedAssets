@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "2.0",
+  "id": "roland_aira_bitrazer",
+  "displayName": "Roland AIRA Bitrazer Modular (SysEx)",
+  "description": "Bit & Sample Rate Crusher with 24-bit 96 kHz Audio Interface",
+  "deviceType": "AUTOMATED_SYSEX",
+  "brand": "Roland",
+  "brandLogo": "brands/roland-logo.svg",
+  "modelImage": "models/roland-bitrazer.webp",
+  "midiIdentification": {
+    "manufacturer": "Roland",
+    "manufacturerIdHex": "41",
+    "model": "Bitrazer",
+    "modelIdHex": "15",
+    "sysexHeaderHex": "41 10 00 00 00 15",
+    "autoDetectSysEx": "F0 7E 10 06 01 F7",
+    "portNameMatches": ["BITRAZER", "Bitrazer", "AIRA"]
+  },
+  "functions": [
+    {
+      "id": "bitcrush_main",
+      "name": "Bit & Sample Rate Crusher",
+      "blockType": "WaveShaper",
+      "suggestedStimulus": "LOG_SINE_SWEEP",
+      "routingGuide": {
+        "stimulusOutput": "Salida Audio 1 (L) -> Hardware Input L",
+        "responseInput": "Hardware Output L -> Entrada Audio 1 (L)",
+        "notes": "Conectar vía USB Audio/MIDI (96kHz 24-bit) o audio analógico mini-jack."
+      },
+      "controls": [
+        { "index": 1, "name": "Sample Rate (GRF 1)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 01", "cc": 11, "min": 0.0, "max": 1.0, "default": 0.8, "unit": "kHz" },
+        { "index": 2, "name": "Bit Depth (GRF 2)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 02", "cc": 12, "min": 0.0, "max": 1.0, "default": 0.8, "unit": "Bits" },
+        { "index": 3, "name": "Filter Cutoff (GRF 3)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 03", "cc": 13, "min": 0.0, "max": 1.0, "default": 1.0, "unit": "Hz" },
+        { "index": 4, "name": "Resonance (GRF 4)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 04", "cc": 14, "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Q" },
+        { "index": 5, "name": "Dry/Wet (GRF 5)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 05", "cc": 15, "min": 0.0, "max": 1.0, "default": 1.0, "unit": "%" },
+        { "index": 6, "name": "Master Volume (GRF 6)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 06", "cc": 16, "min": 0.0, "max": 1.0, "default": 0.75, "unit": "dB" }
+      ]
+    }
+  ]
+}

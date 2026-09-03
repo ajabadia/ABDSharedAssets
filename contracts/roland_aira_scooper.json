@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "2.0",
+  "id": "roland_aira_scooper",
+  "displayName": "Roland AIRA Scooper Modular (SysEx)",
+  "description": "Scatter & Looper Modular Processor",
+  "deviceType": "AUTOMATED_SYSEX",
+  "brand": "Roland",
+  "brandLogo": "brands/roland-logo.svg",
+  "modelImage": "models/roland-scooper.webp",
+  "midiIdentification": {
+    "manufacturer": "Roland",
+    "manufacturerIdHex": "41",
+    "model": "Scooper",
+    "modelIdHex": "18",
+    "sysexHeaderHex": "41 10 00 00 00 18",
+    "autoDetectSysEx": "F0 7E 10 06 01 F7",
+    "portNameMatches": ["SCOOPER", "Scooper", "AIRA"]
+  },
+  "functions": [
+    {
+      "id": "scatter_main",
+      "name": "Scatter & Granular Looper",
+      "blockType": "WaveShaper",
+      "suggestedStimulus": "LOG_SINE_SWEEP",
+      "routingGuide": {
+        "stimulusOutput": "Salida Audio 1 (L) -> Hardware Input L",
+        "responseInput": "Hardware Output L -> Entrada Audio 1 (L)",
+        "notes": "Muestreo del algoritmo de scatter y granulador granular."
+      },
+      "controls": [
+        { "index": 1, "name": "Scatter Type (GRF 1)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 01", "cc": 11, "min": 0.0, "max": 1.0, "default": 0.2, "unit": "Type" },
+        { "index": 2, "name": "Scatter Depth (GRF 2)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 02", "cc": 12, "min": 0.0, "max": 1.0, "default": 0.5, "unit": "%" },
+        { "index": 3, "name": "Pitch Shift (GRF 3)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 03", "cc": 13, "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Semi" },
+        { "index": 4, "name": "Filter Cutoff (GRF 4)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 04", "cc": 14, "min": 0.0, "max": 1.0, "default": 1.0, "unit": "Hz" },
+        { "index": 5, "name": "Dry/Wet (GRF 5)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 05", "cc": 15, "min": 0.0, "max": 1.0, "default": 1.0, "unit": "%" },
+        { "index": 6, "name": "Master Level (GRF 6)", "type": "Knob", "controlMethod": "SYSEX", "sysexAddress": "10 00 00 06", "cc": 16, "min": 0.0, "max": 1.0, "default": 0.75, "unit": "dB" }
+      ]
+    }
+  ]
+}

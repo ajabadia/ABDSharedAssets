@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "2.0",
+  "id": "behringer_pro800",
+  "displayName": "Behringer PRO-800",
+  "description": "8-Voice Polyphonic Analog Synthesizer (Prophet-600 reproduction with Curtis CEM3320 VCF clone)",
+  "deviceType": "AUTOMATED_MIDI_CC",
+  "brand": "Behringer",
+  "brandLogo": "brands/behringer-logo.svg",
+  "modelImage": "models/behringer-pro800.png",
+  "midiIdentification": {
+    "manufacturer": "Behringer",
+    "manufacturerIdHex": "00 20 32",
+    "model": "PRO-800",
+    "modelIdHex": "2C",
+    "sysexHeaderHex": "00 20 32 00 01 24",
+    "autoDetectSysEx": "F0 7E 7F 06 01 F7",
+    "portNameMatches": ["PRO-800", "PRO 800", "PRO800", "Behringer PRO-800", "Pro-800"]
+  },
+  "functions": [
+    {
+      "id": "curtis_cem3320_vcf",
+      "name": "Curtis CEM3320 24dB/oct 4-Pole Low-Pass VCF",
+      "blockType": "SpectrumFilter",
+      "suggestedStimulus": "LOG_SINE_SWEEP",
+      "routingGuide": {
+        "stimulusOutput": "MIDI Note On (C3) o Entrada de Audio",
+        "responseInput": "Audio Line Out -> Entrada Audio 1 (L)",
+        "notes": "Filtro analógico clásico de 4 polos con respuesta pronunciada y auto-oscilación resonante pura."
+      },
+      "controls": [
+        { "index": 1, "name": "Filter Cutoff", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 19, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.65, "unit": "0-127" },
+        { "index": 2, "name": "Resonance", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 21, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.35, "unit": "0-127" },
+        { "index": 3, "name": "Filter Envelope Amount", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 20, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "0-127" }
+      ]
+    },
+    {
+      "id": "filter_adsr_envelope",
+      "name": "Analog Filter ADSR Envelope",
+      "blockType": "TimeDynamic",
+      "suggestedStimulus": "GATE_PULSE",
+      "captureMode": "ADAPTIVE_ENVELOPE",
+      "routingGuide": {
+        "stimulusOutput": "MIDI Note On -> Entrada MIDI PRO-800",
+        "responseInput": "Audio Line Out -> Entrada Audio 1 (L)",
+        "notes": "Generador de envolvente de filtro dedicado analógico."
+      },
+      "controls": [
+        { "index": 1, "name": "Filter Attack", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 22, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.1, "unit": "0-127" },
+        { "index": 2, "name": "Filter Decay", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 23, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-127" },
+        { "index": 3, "name": "Filter Sustain", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 24, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.6, "unit": "0-127" },
+        { "index": 4, "name": "Filter Release", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 25, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-127" }
+      ]
+    }
+  ]
+}

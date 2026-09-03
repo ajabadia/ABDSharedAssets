@@ -1,0 +1,13 @@
+﻿/* Roland Juno-106 Multi-Color Heritage Theme */
+[data-theme="juno"], body.skin-juno {
+  --color-bg-base: #121418;
+  --color-panel-bg: #1b1e24;
+  --color-panel-surface: #242932;
+  --color-panel-surface-elevated: #303744;
+  --color-panel-border: rgba(255, 255, 255, 0.15);
+  --color-accent: #ff2d55;
+  --color-accent-rgb: 255, 45, 85;
+  --color-accent-hover: #ff5477;
+  --color-lcd-bg: #12161c;
+  --color-lcd-text: #30d158;
+}

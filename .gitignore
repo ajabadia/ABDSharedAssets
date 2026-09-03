@@ -1,0 +1,17 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# macOS metadata
+__MACOSX/
+
+# Temporary / downloaded assets
+temp/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

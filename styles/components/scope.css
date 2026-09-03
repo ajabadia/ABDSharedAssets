@@ -1,0 +1,17 @@
+﻿/**
+ * ABD Scope Component Tokens
+ * Cascades from host theme tokens with standalone fallbacks
+ */
+:root {
+  --scope-bg: var(--color-panel-bg, #090d14);
+  --scope-surface: var(--color-panel-surface, #101622);
+  --scope-border: var(--color-panel-border, rgba(0, 195, 255, 0.2));
+  --scope-border-strong: var(--color-panel-border-strong, rgba(0, 195, 255, 0.45));
+  --scope-trace-l: var(--color-accent, #00c3ff);
+  --scope-trace-r: #ff007f;
+  --scope-spectrum: var(--color-accent, #00e676);
+  --scope-grid: rgba(255, 255, 255, 0.07);
+  --scope-text-main: var(--color-text-main, #e8f4fc);
+  --scope-text-muted: var(--color-text-muted, #6f8a9e);
+  --scope-font: var(--font-lcd, 'Courier New', monospace);
+}

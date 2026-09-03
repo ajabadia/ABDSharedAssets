@@ -1,0 +1,57 @@
+﻿/**
+ * ABD Unified Design Tokens
+ * =========================
+ * Single source of truth for all ABDSynths plugins, WebUIs, and standalone tools.
+ * Inherited across ABDMS2000, ABDCZ101, ABDEep, ABDJUNiO601, ABDAudioLab, ABDScope, ABDMIDIKeyb.
+ */
+
+:root {
+  /* Surface & Backgrounds */
+  --color-bg-base: #0a0e14;
+  --color-panel-bg: #0f1620;
+  --color-panel-surface: #151f2e;
+  --color-panel-surface-elevated: #1c2a3d;
+  --color-panel-border: rgba(0, 195, 255, 0.2);
+  --color-panel-border-strong: rgba(0, 195, 255, 0.45);
+
+  /* Primary Accent & States */
+  --color-accent: #00c3ff;
+  --color-accent-rgb: 0, 195, 255;
+  --color-accent-hover: #38d3ff;
+  --color-accent-active: #0099cc;
+  --color-accent-dim: rgba(0, 195, 255, 0.15);
+
+  /* Typography */
+  --color-text-main: #f0f7ff;
+  --color-text-muted: #7e9bb5;
+  --color-text-dim: #4a637a;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-lcd: 'Courier New', 'Roboto Mono', monospace;
+
+  /* Telemetry, LCD & Indicators */
+  --color-lcd-bg: #102216;
+  --color-lcd-text: #44ff77;
+  --color-lcd-border: rgba(68, 255, 119, 0.3);
+  --color-led-active: #ff3344;
+  --color-led-glow: rgba(255, 51, 68, 0.6);
+  --color-warning: #ffaa00;
+  --color-danger: #ff3344;
+  --color-success: #00e676;
+
+  /* Radii & Geometry */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-panel: 4px;
+  --radius-chassis: 6px;
+
+  /* Shadows & Elevations */
+  --shadow-elevation-1: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-elevation-2: 0 8px 24px rgba(0, 0, 0, 0.65);
+  --shadow-elevation-3: 0 16px 36px rgba(0, 0, 0, 0.85);
+  --shadow-inner-bevel: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+
+  /* Scrollbars */
+  --color-scrollbar-thumb: #1e3a54;
+  --color-scrollbar-track: #080e14;
+}

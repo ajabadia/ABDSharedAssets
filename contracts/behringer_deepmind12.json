@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "2.0",
+  "id": "behringer_deepmind12",
+  "displayName": "Behringer DeepMind 12 / 12D",
+  "description": "12-Voice Analog Polysynth with 2 DCOs, switchable 2/4-pole Resonant Low-Pass VCF, HPF with Bass Boost, and 3 ADSR Envelopes",
+  "deviceType": "AUTOMATED_MIDI_CC",
+  "brand": "Behringer",
+  "brandLogo": "brands/behringer-logo.svg",
+  "modelImage": "models/behringer-deepmind12.png",
+  "midiIdentification": {
+    "manufacturer": "Behringer",
+    "manufacturerIdHex": "00 20 32",
+    "model": "DeepMind 12",
+    "modelIdHex": "20",
+    "sysexHeaderHex": "00 20 32 20",
+    "autoDetectSysEx": "F0 7E 7F 06 01 F7",
+    "portNameMatches": ["DeepMind 12", "DeepMind12", "DEEPMIND 12D", "DEEPMIND12D", "DM12", "DM12D", "DeepMind"]
+  },
+  "functions": [
+    {
+      "id": "analog_vcf_filter",
+      "name": "Analog 2-Pole / 4-Pole Resonant Low-Pass VCF",
+      "blockType": "SpectrumFilter",
+      "suggestedStimulus": "LOG_SINE_SWEEP",
+      "routingGuide": {
+        "stimulusOutput": "Salida Audio 1 (L) -> Audio In (o MIDI Note On C3)",
+        "responseInput": "Stereo Out (L/R) -> Entradas Audio 1 y 2",
+        "notes": "Filtro analógico de estado variable discreto con modos conmutables 12dB (2-Pole) y 24dB (4-Pole) y realce de graves."
+      },
+      "controls": [
+        { "index": 1, "name": "VCF Cutoff Frequency", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 74, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.65, "unit": "Hz" },
+        { "index": 2, "name": "VCF Resonance (Q)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 71, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.3, "unit": "0-128" },
+        { "index": 3, "name": "VCF Slope (2-Pole / 4-Pole)", "type": "RotarySwitch", "controlMethod": "MIDI_CC", "ccNumber": 80, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 1.0, "unit": "Slope", "options": ["2-Pole (12dB/oct)", "4-Pole (24dB/oct)"] },
+        { "index": 4, "name": "VCF Bass Boost", "type": "RotarySwitch", "controlMethod": "MIDI_CC", "ccNumber": 81, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "Boost", "options": ["Off", "On"] }
+      ]
+    },
+    {
+      "id": "vcf_adsr_envelope",
+      "name": "VCF Filter ADSR Envelope Generator",
+      "blockType": "TimeDynamic",
+      "suggestedStimulus": "GATE_PULSE",
+      "captureMode": "ADAPTIVE_ENVELOPE",
+      "routingGuide": {
+        "stimulusOutput": "MIDI Note On -> Entrada MIDI DeepMind",
+        "responseInput": "Audio Out -> Entrada Audio 1 (L)",
+        "notes": "Generador de envolvente analógica rápida con curvas de respuesta configurables."
+      },
+      "controls": [
+        { "index": 1, "name": "Attack Time (A)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 26, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.1, "unit": "ms" },
+        { "index": 2, "name": "Decay Time (D)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 27, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "ms" },
+        { "index": 3, "name": "Sustain Level (S)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 28, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-128" },
+        { "index": 4, "name": "Release Time (R)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 29, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "ms" }
+      ]
+    }
+  ]
+}

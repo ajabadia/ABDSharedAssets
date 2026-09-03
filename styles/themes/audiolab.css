@@ -1,0 +1,13 @@
+﻿/* ABDAudioLab Scientific Dark / Nordic Theme */
+[data-theme="audiolab"], body.skin-audiolab {
+  --color-bg-base: #070a0e;
+  --color-panel-bg: #0b1118;
+  --color-panel-surface: #121a24;
+  --color-panel-surface-elevated: #1a2636;
+  --color-panel-border: rgba(0, 230, 118, 0.25);
+  --color-accent: #00e676;
+  --color-accent-rgb: 0, 230, 118;
+  --color-accent-hover: #33eb91;
+  --color-lcd-bg: #09140e;
+  --color-lcd-text: #00e676;
+}
