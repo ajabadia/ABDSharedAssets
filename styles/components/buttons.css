@@ -1,0 +1,19 @@
+/* ABD Buttons - Unified button system */
+.btn{font-family:var(--font-sans);font-weight:bold;text-transform:uppercase;border-radius:var(--radius-sm);cursor:pointer;transition:all var(--transition-fast);border:1px solid var(--color-panel-border-strong);background:var(--color-panel-surface-elevated);color:var(--color-text-muted);padding:5px 12px;font-size:var(--text-md);display:inline-flex;align-items:center;justify-content:center;line-height:1.2;user-select:none}
+.btn:hover{background:var(--color-accent);border-color:var(--color-accent);color:#000}
+.btn-xs{font-size:var(--text-2xs);padding:2px 4px}
+.btn-sm{font-size:var(--text-xs);padding:3px 8px}
+.btn-outline{background:transparent;border-color:var(--color-accent);color:var(--color-accent)}
+.btn-outline:hover{background:var(--color-accent-dim)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--color-text-dim)}
+.btn-ghost:hover{background:var(--color-panel-surface-elevated);color:var(--color-text-muted)}
+.btn-solid{background:var(--color-accent);border-color:var(--color-accent);color:#000}
+.btn-glow{background:var(--color-accent-dim);border:1px solid var(--color-accent);border-radius:var(--radius-md);color:var(--color-accent);font-weight:bold;padding:10px 20px;cursor:pointer;transition:all var(--transition-normal);box-shadow:0 0 15px rgba(var(--color-accent-rgb),0.1)}
+.btn-glow:hover{background:var(--color-accent);color:#000;box-shadow:0 0 25px rgba(var(--color-accent-rgb),0.4)}
+.btn-toggle{background:rgba(255,255,255,0.05);border:1px solid var(--color-panel-border);border-radius:var(--radius-md);color:var(--color-text-muted);font-weight:600;font-size:var(--text-md);padding:8px 12px;cursor:pointer;transition:all var(--transition-normal);width:100%}
+.btn-toggle:hover{border-color:var(--color-accent);color:var(--color-text-main)}
+.btn-toggle.active,.btn.active{background:var(--color-accent-dim);border-color:var(--color-accent);color:var(--color-accent);box-shadow:0 0 8px var(--color-accent-dim)}
+.led-btn{background:var(--color-panel-surface-elevated);border:1px solid var(--color-panel-border-strong);border-radius:var(--radius-sm);color:var(--color-text-muted);font-size:var(--text-sm);font-weight:bold;text-transform:uppercase;padding:8px 4px;cursor:pointer;transition:all var(--transition-fast);text-align:center}
+.led-btn.active{background:var(--color-accent-dim);border-color:var(--color-accent);color:var(--color-accent);box-shadow:0 0 10px var(--color-accent-dim)}
+.btn-danger{border-color:var(--color-danger);color:var(--color-danger)}
+.btn-danger:hover{background:var(--color-danger);color:#fff}

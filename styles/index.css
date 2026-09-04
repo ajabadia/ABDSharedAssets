@@ -1,6 +1,23 @@
-﻿/**
+/**
  * ABD Unified Styles Bundle
- * Import this in any synth or tool to load global tokens, all themes, and component bindings.
+ * =========================
+ * Import this file in any synth or tool to load everything at once.
+ *
+ * For selective imports:
+ *   tokens.css                -- design tokens only
+ *   themes/<name>.css         -- one theme
+ *   components/panels.css     -- chassis, panels, modules
+ *   components/buttons.css    -- btn, btn-glow, btn-toggle, led-btn
+ *   components/controls.css   -- sliders, selects, inputs
+ *   components/navbar.css     -- top navigation bar
+ *   components/lcd.css        -- LCD display panels
+ *   components/scope.css      -- oscilloscope display
+ *   components/keyboard.css   -- piano keyboard
+ *
+ * Structure:
+ *   tokens.css          -- 120+ design tokens
+ *   themes/*.css        -- per-instrument themes (5 available)
+ *   components/*.css    -- reusable UI components (7 files)
  */
 @import './tokens.css';
 @import './themes/ms2000.css';
@@ -8,5 +25,11 @@
 @import './themes/deepmind.css';
 @import './themes/juno.css';
 @import './themes/audiolab.css';
+@import './themes/audiolab-light.css';
+@import './components/panels.css';
+@import './components/buttons.css';
+@import './components/controls.css';
+@import './components/navbar.css';
+@import './components/lcd.css';
 @import './components/scope.css';
 @import './components/keyboard.css';

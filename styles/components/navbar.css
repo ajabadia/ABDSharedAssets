@@ -1,0 +1,8 @@
+/* ABD Navbar - Top navigation bar with backdrop blur */
+.navbar{display:flex;align-items:center;justify-content:space-between;height:var(--navbar-height);background:rgba(16,21,30,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--color-panel-border);box-shadow:0 4px 18px rgba(0,0,0,0.6);padding:0 var(--space-4);flex-shrink:0;z-index:var(--z-navbar)}
+.nav-left{display:flex;align-items:center;gap:var(--space-4)}
+.nav-right{display:flex;align-items:center;gap:var(--space-3)}
+.brand-title{font-weight:700;font-size:15px;letter-spacing:0.5px;color:var(--color-accent)}
+.mode-selector{display:flex;background:var(--color-bg-base);padding:2px;border-radius:6px;border:1px solid var(--color-panel-border)}
+.mode-tab{padding:4px 14px;font-size:11px;font-weight:600;border-radius:4px;color:var(--color-text-muted);transition:all var(--transition-normal);background:transparent;border:none;cursor:pointer}
+.mode-tab.active{background:var(--color-accent);color:#000;box-shadow:0 0 10px rgba(var(--color-accent-rgb),0.4)}

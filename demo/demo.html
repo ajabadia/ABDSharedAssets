@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABDSharedAssets — Component Demo</title>
+
+<!-- === LOAD ABD SHARED STYLES (relative from demo/ to styles/) === -->
+<link rel="stylesheet" href="../styles/tokens.css">
+<link rel="stylesheet" href="../styles/themes/ms2000.css">
+<link rel="stylesheet" href="../styles/themes/cz101.css">
+<link rel="stylesheet" href="../styles/themes/deepmind.css">
+<link rel="stylesheet" href="../styles/themes/juno.css">
+<link rel="stylesheet" href="../styles/themes/audiolab.css">
+<link rel="stylesheet" href="../styles/components/panels.css">
+<link rel="stylesheet" href="../styles/components/buttons.css">
+<link rel="stylesheet" href="../styles/components/controls.css">
+<link rel="stylesheet" href="../styles/components/navbar.css">
+<link rel="stylesheet" href="../styles/components/lcd.css">
+
+<style>
+/* === DEMO-ONLY STYLES (not shipped) === */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--color-bg-base, #060910);
+  color: var(--color-text-muted, #c8d6e5);
+  font-family: var(--font-sans, 'Inter', -apple-system, sans-serif);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+.demo-topbar {
+  position: sticky; top: 0; z-index: 999;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  background: rgba(10,14,20,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-panel-border, rgba(0,195,255,0.15));
+}
+.demo-topbar h1 {
+  font-size: 13px; font-weight: 700;
+  color: var(--color-accent, #00c3ff);
+  margin-right: 20px; white-space: nowrap;
+}
+.demo-theme-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--color-panel-border, rgba(255,255,255,0.12));
+  border-radius: 4px; background: transparent;
+  color: var(--color-text-muted, #7e9bb5);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  text-transform: uppercase;
+}
+.demo-theme-btn:hover {
+  border-color: var(--color-accent, #00c3ff);
+  color: var(--color-accent, #00c3ff);
+}
+.demo-theme-btn.active {
+  background: var(--color-accent, #00c3ff);
+  border-color: var(--color-accent, #00c3ff);
+  color: #000;
+}
+.demo-section {
+  max-width: 1100px; margin: 0 auto; padding: 30px 24px;
+}
+.demo-section h2 {
+  font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 2px;
+  color: var(--color-accent, #00c3ff);
+  margin-bottom: 16px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-panel-border, rgba(0,195,255,0.2));
+}
+.demo-section p.note {
+  font-size: 11px; color: var(--color-text-dim, #4a637a);
+  margin-bottom: 20px; font-style: italic;
+}
+.demo-row {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  align-items: flex-start; margin-bottom: 16px;
+}
+.demo-label {
+  font-size: 10px; color: var(--color-text-dim, #4a637a);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+}
+.demo-box {
+  background: var(--color-panel-bg, #0f1620);
+  border: 1px solid var(--color-panel-border, rgba(0,195,255,0.2));
+  border-radius: var(--radius-md, 4px);
+  padding: 16px; flex: 1; min-width: 280px;
+}
+.divider {
+  height: 1px;
+  background: var(--color-panel-border-dim, rgba(255,255,255,0.06));
+  margin: 10px 0 30px 0;
+}
+</style>
+</head>
+<body data-theme="ms2000">
+
+<!-- Theme Switcher -->
+<div class="demo-topbar">
+  <h1>ABD Component Demo</h1>
+  <button class="demo-theme-btn active" data-set-theme="ms2000">MS2000</button>
+  <button class="demo-theme-btn" data-set-theme="cz101">CZ-101</button>
+  <button class="demo-theme-btn" data-set-theme="deepmind">DeepMind</button>
+  <button class="demo-theme-btn" data-set-theme="juno">Juno</button>
+  <button class="demo-theme-btn" data-set-theme="audiolab">AudioLab</button>
+</div>
+
+<!-- ===== 1. TOKENS ===== -->
+<div class="demo-section">
+<h2>1. Tokens — Surfaces &amp; Colors</h2>
+<p class="note">Raw design tokens from tokens.css, overridden by each theme via data-theme on body.</p>
+<div class="demo-row">
+<div class="demo-box" style="background: var(--color-bg-base);"><div class="demo-label">--color-bg-base</div><span style="color: var(--color-text-main);">Base canvas</span></div>
+<div class="demo-box" style="background: var(--color-panel-bg);"><div class="demo-label">--color-panel-bg</div><span style="color: var(--color-text-main);">Panel background</span></div>
+<div class="demo-box" style="background: var(--color-panel-surface);"><div class="demo-label">--color-panel-surface</div><span style="color: var(--color-text-main);">Nested surface</span></div>
+<div class="demo-box" style="background: var(--color-panel-surface-elevated);"><div class="demo-label">--color-panel-surface-elevated</div><span style="color: var(--color-text-main);">Elevated / tooltip</span></div>
+</div>
+<div class="demo-row">
+<div class="demo-box"><div class="demo-label">Text Levels</div>
+<div style="color: var(--color-text-main); font-size: 13px; margin-bottom: 4px;">--color-text-main Primary</div>
+<div style="color: var(--color-text-muted); font-size: 11px; margin-bottom: 4px;">--color-text-muted Secondary</div>
+<div style="color: var(--color-text-dim); font-size: 11px;">--color-text-dim Dim</div></div>
+<div class="demo-box"><div class="demo-label">Accent States</div>
+<div style="display: flex; gap: 8px; align-items: center;">
+<div style="width: 40px; height: 40px; border-radius: 6px; background: var(--color-accent);"></div>
+<div style="width: 40px; height: 40px; border-radius: 6px; background: var(--color-accent-hover);"></div>
+<div style="width: 40px; height: 40px; border-radius: 6px; background: var(--color-accent-active);"></div>
+<div style="width: 40px; height: 40px; border-radius: 6px; background: var(--color-accent-dim); border: 1px solid var(--color-panel-border);"></div>
+</div>
+<div style="display: flex; gap: 8px; margin-top: 6px;">
+<span style="font-size: 9px; color: var(--color-text-dim); width: 40px;">accent</span>
+<span style="font-size: 9px; color: var(--color-text-dim); width: 40px;">hover</span>
+<span style="font-size: 9px; color: var(--color-text-dim); width: 40px;">active</span>
+<span style="font-size: 9px; color: var(--color-text-dim); width: 40px;">dim</span>
+</div></div>
+</div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 2. PANELS ===== -->
+<div class="demo-section">
+<h2>2. Panels &amp; Layout</h2>
+<p class="note">Chassis, panels, modules, module headers.</p>
+<div class="chassis" style="max-width: 900px;"><div class="panel">
+<div class="module-header">MODULE HEADER Default (accent)</div>
+<div class="panel-row">
+<div class="module"><div class="module-header module-header--muted">Module (muted)</div>
+<div style="padding: 10px; color: var(--color-text-muted); font-size: 11px;">This is a .module inside a .panel-row.</div></div>
+<div class="module"><div class="module-header module-header--accent">Module (accent)</div>
+<div style="padding: 10px; color: var(--color-text-muted); font-size: 11px;">Second module, same width.</div></div>
+</div>
+<div class="panel-divider"></div>
+<div class="panel-elevated"><div class="demo-label">.panel-elevated</div>
+<div style="color: var(--color-text-muted); font-size: 11px;">Elevated card: popovers, tooltips, modals.</div></div>
+</div></div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 3. NAVBAR ===== -->
+<div class="demo-section">
+<h2>3. Navbar</h2>
+<p class="note">Top navigation bar with backdrop blur.</p>
+<div class="navbar" style="position: static; border-radius: 6px; margin-bottom: 12px;">
+<div class="nav-left"><span class="brand-title">ABD MS2000</span>
+<div class="mode-selector"><button class="mode-tab active">OSC</button><button class="mode-tab">FILTER</button><button class="mode-tab">MOD</button><button class="mode-tab">FX</button></div></div>
+<div class="nav-right"><span style="font-size: 11px; color: var(--color-text-muted);">Preset: Init Sound</span></div>
+</div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 4. LCD ===== -->
+<div class="demo-section">
+<h2>4. LCD Display</h2>
+<p class="note">LCD panel displays with phosphor glow.</p>
+<div class="demo-row">
+<div class="lcd-container" style="width: 320px;"><div class="lcd-main"><div class="lcd-line-1">Cutoff: 64</div><div class="lcd-line-2">Resonance: 32</div></div></div>
+<div style="display: flex; gap: 8px;"><button class="lcd-nav-btn">&lt; Prev</button><button class="lcd-nav-btn">Next &gt;</button></div>
+</div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 5. BUTTONS ===== -->
+<div class="demo-section">
+<h2>5. Buttons</h2>
+<p class="note">Unified button system.</p>
+<div class="demo-row">
+<div class="demo-box"><div class="demo-label">Base Buttons</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<button class="btn">Default</button><button class="btn btn-xs">XS</button><button class="btn btn-sm">Small</button>
+<button class="btn btn-solid">Solid</button><button class="btn btn-outline">Outline</button><button class="btn btn-ghost">Ghost</button>
+</div></div>
+<div class="demo-box"><div class="demo-label">Active / Danger / Glow</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<button class="btn active">Active</button><button class="btn btn-danger">Danger</button>
+<button class="btn btn-glow">Glow</button><button class="led-btn active">LED</button>
+</div></div>
+</div>
+<div class="demo-row">
+<div class="demo-box"><div class="demo-label">Toggle Buttons</div>
+<div style="display: flex; gap: 8px;">
+<button class="btn-toggle active">LFO 1</button><button class="btn-toggle">LFO 2</button><button class="btn-toggle">LFO 3</button>
+</div></div>
+<div class="demo-box"><div class="demo-label">LED Grid</div>
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+<button class="led-btn active">1</button><button class="led-btn">2</button><button class="led-btn active">3</button><button class="led-btn">4</button>
+<button class="led-btn">5</button><button class="led-btn active">6</button><button class="led-btn">7</button><button class="led-btn active">8</button>
+</div></div>
+</div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 6. CONTROLS ===== -->
+<div class="demo-section">
+<h2>6. Controls</h2>
+<p class="note">Range sliders, selects, parameter values.</p>
+<div class="demo-row">
+<div class="demo-box" style="min-width: 300px;"><div class="demo-label">Range Sliders</div>
+<div style="margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 11px; color: var(--color-text-muted);">Cutoff</span><span class="param-val">64</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="64"></div>
+<div style="margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 11px; color: var(--color-text-muted);">Resonance</span><span class="param-val">32</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="32"></div>
+<div><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 11px; color: var(--color-text-muted);">Attack</span><span class="param-val">96</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="96"></div></div>
+<div class="demo-box" style="min-width: 200px;"><div class="demo-label">Select</div>
+<select class="abd-select" style="width: 100%; margin-bottom: 12px;">
+<option>Sawtooth</option><option>Square</option><option>Sine</option><option>Triangle</option></select>
+<div class="demo-label">Filter Type</div>
+<select class="abd-select" style="width: 100%;"><option>Low Pass</option><option>High Pass</option><option>Band Pass</option></select></div>
+</div></div>
+<div class="demo-section"><div class="divider"></div></div>
+
+<!-- ===== 7. REALISTIC PANEL ===== -->
+<div class="demo-section">
+<h2>7. Complete Panel</h2>
+<p class="note">A realistic synthesizer module using all components together.</p>
+<div class="chassis" style="max-width: 800px;"><div class="panel">
+<div class="panel-row" style="gap: 16px;">
+<div class="module" style="flex: 2;"><div class="module-header">OSCILLATOR</div>
+<div style="display: flex; gap: 12px; align-items: center; padding: 8px;">
+<div style="flex: 1;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 10px; color: var(--color-text-muted);">WAVE</span><span class="param-val">Saw</span></div>
+<select class="abd-select" style="width: 100%;"><option selected>Sawtooth</option><option>Square</option><option>Sine</option></select></div>
+<div style="flex: 1;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 10px; color: var(--color-text-muted);">TUNE</span><span class="param-val">0</span></div>
+<input type="range" class="abd-slider" min="-24" max="24" value="0"></div>
+<div style="flex: 1;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 10px; color: var(--color-text-muted);">LEVEL</span><span class="param-val">100</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="100"></div></div>
+<div style="display: flex; gap: 6px; padding: 4px 8px 8px 8px;"><button class="btn btn-xs active">ON</button><button class="btn btn-xs">OFF</button><button class="btn btn-xs btn-outline">RING</button></div></div>
+<div class="module" style="flex: 1;"><div class="module-header module-header--muted">DISPLAY</div>
+<div class="lcd-container" style="margin: 8px;"><div class="lcd-main"><div class="lcd-line-1">Init Sound</div><div class="lcd-line-2">OSC: Saw / 0st</div></div></div></div>
+</div>
+<div class="panel-divider"></div>
+<div class="panel-row" style="gap: 16px;">
+<div class="module"><div class="module-header">FILTER</div>
+<div style="padding: 8px;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 10px; color: var(--color-text-muted);">CUTOFF</span><span class="param-val">80</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="80"></div></div>
+<div class="module"><div class="module-header">AMP</div>
+<div style="padding: 8px;"><div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 10px; color: var(--color-text-muted);">LEVEL</span><span class="param-val">100</span></div>
+<input type="range" class="abd-slider" min="0" max="127" value="100"></div></div>
+<div class="module" style="flex: 0 0 200px;"><div class="module-header">SEQ</div>
+<div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 8px;">
+<button class="led-btn active" style="padding: 6px 0; font-size: 9px;">1</button><button class="led-btn" style="padding: 6px 0; font-size: 9px;">2</button>
+<button class="led-btn active" style="padding: 6px 0; font-size: 9px;">3</button><button class="led-btn" style="padding: 6px 0; font-size: 9px;">4</button>
+<button class="led-btn" style="padding: 6px 0; font-size: 9px;">5</button><button class="led-btn active" style="padding: 6px 0; font-size: 9px;">6</button>
+<button class="led-btn" style="padding: 6px 0; font-size: 9px;">7</button><button class="led-btn active" style="padding: 6px 0; font-size: 9px;">8</button>
+</div></div>
+</div></div></div></div>
+<div style="height: 60px;"></div>
+
+<script>
+document.querySelectorAll('[data-set-theme]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-set-theme]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.body.setAttribute('data-theme', btn.getAttribute('data-set-theme'));
+  });
+});
+</script>
+</body></html>

@@ -20,7 +20,7 @@
     {
       "id": "scatter_main",
       "name": "Scatter & Granular Looper",
-      "blockType": "WaveShaper",
+      "blockType": "SpectrumFilter",
       "suggestedStimulus": "LOG_SINE_SWEEP",
       "routingGuide": {
         "stimulusOutput": "Salida Audio 1 (L) -> Hardware Input L",

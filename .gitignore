@@ -15,3 +15,5 @@ temp/
 *.swp
 *.swo
 *~
+# Reference copies (not part of the shared library)
+_review/

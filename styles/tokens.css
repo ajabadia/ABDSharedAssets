@@ -3,55 +3,150 @@
  * =========================
  * Single source of truth for all ABDSynths plugins, WebUIs, and standalone tools.
  * Inherited across ABDMS2000, ABDCZ101, ABDEep, ABDJUNiO601, ABDAudioLab, ABDScope, ABDMIDIKeyb.
+ *
+ * Sections:
+ *   1. Surfaces & Backgrounds  (4 depth levels)
+ *   2. Borders                  (3 strength levels)
+ *   3. Accent & Interactive States
+ *   4. Typography               (colors + 8 size scale)
+ *   5. Spacing                  (11-step scale)
+ *   6. Transitions & Animation
+ *   7. LCD, LEDs & Indicators
+ *   8. Radii & Geometry
+ *   9. Shadows & Elevations     (4 levels)
+ *  10. Scrollbars               (thumb, track, hover, active)
+ *  11. Z-Index Scale
+ *  12. Layout Constants
  */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  /* Surface & Backgrounds */
-  --color-bg-base: #0a0e14;
-  --color-panel-bg: #0f1620;
-  --color-panel-surface: #151f2e;
-  --color-panel-surface-elevated: #1c2a3d;
-  --color-panel-border: rgba(0, 195, 255, 0.2);
-  --color-panel-border-strong: rgba(0, 195, 255, 0.45);
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     1. Surfaces & Backgrounds (4 depth levels)
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-bg-base:             #0a0e14;   /* Canvas, deepest background */
+  --color-panel-bg:            #0f1620;   /* Cards, panels, sidebars */
+  --color-panel-surface:       #151f2e;   /* Nested panels, module bodies */
+  --color-panel-surface-elevated: #1c2a3d; /* Modals, popovers, tooltips */
 
-  /* Primary Accent & States */
-  --color-accent: #00c3ff;
-  --color-accent-rgb: 0, 195, 255;
-  --color-accent-hover: #38d3ff;
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     2. Borders (3 strength levels)
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-panel-border:        rgba(0, 195, 255, 0.2);   /* Default subtle border */
+  --color-panel-border-strong: rgba(0, 195, 255, 0.45);  /* Focused / emphasized */
+  --color-panel-border-dim:    rgba(0, 195, 255, 0.1);   /* Barely-visible separators */
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     3. Accent & Interactive States
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-accent:        #00c3ff;
+  --color-accent-rgb:    0, 195, 255;
+  --color-accent-hover:  #38d3ff;
   --color-accent-active: #0099cc;
-  --color-accent-dim: rgba(0, 195, 255, 0.15);
+  --color-accent-dim:    rgba(0, 195, 255, 0.15);
 
-  /* Typography */
-  --color-text-main: #f0f7ff;
-  --color-text-muted: #7e9bb5;
-  --color-text-dim: #4a637a;
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     4. Typography â€” Colors (3 emphasis levels)
+        Text sizes are defined further down.
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-text-main:   #f0f7ff;  /* Primary headings, active labels */
+  --color-text-muted:  #7e9bb5;  /* Body text, descriptions */
+  --color-text-dim:    #4a637a;  /* Secondary info, placeholders */
+
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-lcd: 'Courier New', 'Roboto Mono', monospace;
+  --font-lcd:  'Courier New', 'Roboto Mono', monospace;
 
-  /* Telemetry, LCD & Indicators */
-  --color-lcd-bg: #102216;
-  --color-lcd-text: #44ff77;
+  /* â”€â”€â”€ Text Size Scale (8 levels) â”€â”€â”€ */
+  --text-2xs:  7px;   /* Tiny labels, badge text */
+  --text-xs:   8px;   /* Small labels, btn-xs */
+  --text-sm:   9px;   /* Detail text, select options */
+  --text-md:   10px;  /* Buttons, module headers */
+  --text-base: 11px;  /* Nav items, panel titles */
+  --text-lg:   12px;  /* Emphasized body, inputs */
+  --text-xl:   13px;  /* Section titles, LCD readouts */
+  --text-2xl:  18px;  /* Large displays, close buttons */
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     5. Spacing (11-step scale)
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --space-1:  2px;
+  --space-2:  4px;
+  --space-3:  6px;
+  --space-4:  8px;
+  --space-5:  10px;
+  --space-6:  12px;
+  --space-8:  16px;
+  --space-10: 20px;
+  --space-12: 24px;
+  --space-15: 30px;
+  --space-20: 40px;
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     6. Transitions & Animation
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --transition-fast:   0.15s ease;
+  --transition-normal: 0.2s  ease;
+  --transition-slow:   0.35s ease;
+  --transition-spring: 0.3s  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     7. LCD, LEDs & Indicators
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-lcd-bg:     #102216;
+  --color-lcd-text:   #44ff77;
   --color-lcd-border: rgba(68, 255, 119, 0.3);
-  --color-led-active: #ff3344;
-  --color-led-glow: rgba(255, 51, 68, 0.6);
-  --color-warning: #ffaa00;
-  --color-danger: #ff3344;
-  --color-success: #00e676;
 
-  /* Radii & Geometry */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
-  --radius-panel: 4px;
+  --color-led-active: #ff3344;
+  --color-led-glow:   rgba(255, 51, 68, 0.6);
+
+  --color-warning:  #ffaa00;
+  --color-danger:   #ff3344;
+  --color-success:  #00e676;
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     8. Radii & Geometry
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --radius-sm:      2px;
+  --radius-md:      4px;
+  --radius-lg:      8px;
+  --radius-panel:   4px;
   --radius-chassis: 6px;
 
-  /* Shadows & Elevations */
-  --shadow-elevation-1: 0 2px 6px rgba(0, 0, 0, 0.5);
-  --shadow-elevation-2: 0 8px 24px rgba(0, 0, 0, 0.65);
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     9. Shadows & Elevations (4 levels)
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --shadow-elevation-1: 0  2px  6px rgba(0, 0, 0, 0.5);
+  --shadow-elevation-2: 0  8px 24px rgba(0, 0, 0, 0.65);
   --shadow-elevation-3: 0 16px 36px rgba(0, 0, 0, 0.85);
-  --shadow-inner-bevel: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --shadow-inset-bevel: inset 0 1px 1px rgba(255, 255, 255, 0.1);
 
-  /* Scrollbars */
-  --color-scrollbar-thumb: #1e3a54;
-  --color-scrollbar-track: #080e14;
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     10. Scrollbars
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --color-scrollbar-thumb:        #1e3a54;
+  --color-scrollbar-thumb-hover:  #2a5080;
+  --color-scrollbar-thumb-active: #3570a8;
+  --color-scrollbar-track:        #080e14;
+  --scrollbar-width:              8px;
+  --scrollbar-thumb-radius:       4px;
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     11. Z-Index Scale
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --z-base:     1;
+  --z-panel:    10;
+  --z-navbar:   30;
+  --z-dropdown: 50;
+  --z-modal:    100;
+  --z-overlay:  500;
+  --z-toast:    900;
+
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     12. Layout Constants
+     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --navbar-height:       44px;
+  --module-header-height: 28px;
+  --panel-gap:           var(--space-4);
 }
+
