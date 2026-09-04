@@ -1,23 +1,38 @@
-/* ABDAudioLab -- Clean Light / Precision Lab Theme */
+﻿/* ABDAudioLab -- Clean Light / Precision Lab Theme ("Técnica Refinada") */
 [data-theme="audiolab-light"], [data-theme="light"], body.skin-audiolab-light {
-  --color-bg-base:                #f0f2f5;
+  --color-bg-base:                #f8f9fa;
   --color-panel-bg:               #ffffff;
   --color-panel-surface:          #f8fafc;
   --color-panel-surface-elevated: #ffffff;
   --color-panel-border:           rgba(15, 23, 42, 0.12);
   --color-panel-border-strong:    rgba(15, 23, 42, 0.28);
   --color-panel-border-dim:       rgba(15, 23, 42, 0.06);
-  --color-accent:                 #00b85c;
-  --color-accent-rgb:             0, 184, 92;
-  --color-accent-hover:           #00e676;
-  --color-accent-active:          #00994d;
-  --color-accent-dim:             rgba(0, 184, 92, 0.12);
-  --color-text-main:              #0f172a;
-  --color-text-muted:             #475569;
+
+  /* Semantic Accents (Sonarworks / Audio Precision) */
+  --color-accent:                 #00a86b;
+  --color-accent-rgb:             0, 168, 107;
+  --color-accent-hover:           #008f5a;
+  --color-accent-active:          #007a4d;
+  --color-accent-dim:             rgba(0, 168, 107, 0.12);
+
+  --color-success:                #00a86b;
+  --color-success-rgb:            0, 168, 107;
+  --color-warning:                #e65100;
+  --color-warning-rgb:            230, 81, 0;
+  --color-danger:                 #d32f2f;
+  --color-danger-rgb:             211, 47, 47;
+
+  /* Typography */
+  --color-text-main:              #1a1d20;
+  --color-text-muted:             #6c757d;
   --color-text-dim:               #94a3b8;
+
+  /* LCD / Telemetry */
   --color-lcd-bg:                 #e2e8f0;
-  --color-lcd-text:               #0f172a;
+  --color-lcd-text:               #1a1d20;
   --color-lcd-border:             rgba(15, 23, 42, 0.18);
+
+  /* Scrollbars (6px pill) */
   --color-scrollbar-thumb:        #cbd5e1;
   --color-scrollbar-thumb-hover:  #94a3b8;
   --color-scrollbar-thumb-active: #64748b;
