@@ -21,9 +21,16 @@ D:desarrollosABDSynthsABDSharedAssets+-- brands/       <- Logotipos vectoriales 
 +-- icons/        <- Iconografia vectorial monocromatica (currentColor)
 +-- contracts/    <- Contratos JSON de especificacion de hardware
 +-- styles/       <- Sistema de diseno, tokens CSS globales, temas y componentes
++-- components/   <- Modulos JS reutilizables (wheel.js, ...)
++-- assets/       <- Assets binarios compartidos (bender.png, ...)
 +-- demo/         <- Demo interactiva para QA visual de componentes
 +-- docs/         <- Guias oficiales de integracion, estilos e iconografia
 ```
+
+Los `@import` de `wheel.js`/`wheels.css`/`kbd-buttons.css` y `assets/bender.png`
+se publican via `package.json` (exports `./components/*`, `./styles/*`, `./assets/*`,
+field `files` incluye `components`, `styles`, `assets`), de modo que funcionan tanto
+con la junction NTFS como instalando el paquete npm por nombre.
 
 ---
 
@@ -41,7 +48,7 @@ Colores (4 bg, 3 bordes, accent + estados, 3 text), tipografia (8 tamanos), espa
 | Juno | Tricolor | themes/juno.css |
 | AudioLab | Green / dark | themes/audiolab.css |
 
-### Componentes (7 archivos)
+### Componentes (10 archivos)
 | Componente | Archivo | Contenido |
 |---|---|---|
 | Panels | components/panels.css | .chassis, .panel, .module, .module-header |
@@ -51,6 +58,15 @@ Colores (4 bg, 3 bordes, accent + estados, 3 text), tipografia (8 tamanos), espa
 | LCD | components/lcd.css | .lcd-container, .lcd-line-1, .lcd-nav-btn |
 | Scope | components/scope.css | ABDScope display (especifico) |
 | Keyboard | components/keyboard.css | Piano keyboard (especifico) |
+| Wheels | components/wheels.css | Ruedas PITCH/MOD filmstrip (reutilizable, .kbd-wheel-wrapper) |
+| Keyboard Buttons | components/kbd-buttons.css | Botones octava, PANIC, sustain, sostenuto, soft (reutilizable) |
+| Wheel JS | components/wheel.js | Clase Wheel + factory createWheel (sprite filmstrip 101 frames) |
+
+### Modulos JS reutilizables
+
+| Modulo | Export | Descripcion |
+|---|---|---|
+| components/wheel.js | `Wheel`, `createWheel(opts)` | Rueda filmstrip (bender.png u otro sprite). opts: `type` ('pitch'/'mod'), `spriteUrl`, `frameWidth/Height`, `totalFrames`, `initialFrame`, `minValue/maxValue`, `onChange(val)`, `container`, `label`, `valueFormatter`. `renderInto(el)`, `destroy()`. |
 
 ---
 
@@ -63,7 +79,36 @@ Colores (4 bg, 3 bordes, accent + estados, 3 text), tipografia (8 tamanos), espa
 @import './shared/components/panels.css';
 @import './shared/components/buttons.css';
 @import './shared/components/lcd.css';
+@import './shared/components/wheels.css';
+@import './shared/components/kbd-buttons.css';
 ```
+
+```js
+// Rueda filmstrip compartida (ABDSharedCode/MidiKeyboard la consume asi)
+import { createWheel } from '@abdsynths/shared/components/wheel.js';
+
+const pitch = createWheel({
+  type: 'pitch',
+  container: document.getElementById('pitch-wheel-container'),
+  onChange: (val) => console.log(val)
+});
+pitch.renderInto();
+// pitch.destroy() al desmontar
+```
+
+### Como paquete npm `@abdsynths/shared` (vía preferida con bundler/Vite)
+
+```cmd
+npm install @abdsynths/shared@file:..\ABDSharedAssets
+```
+
+```js
+import '@abdsynths/shared/styles/index.css';   // bundle completo
+```
+
+Cascada de 3 niveles: importa los tokens compartidos primero y carga tus overrides host
+(`themes.css`, `--synth-*`, `--kbd-*`...) después — el look actual del proyecto se conserva.
+Ver `demo/proto/` (prototipo Vite) y `docs/INTEGRATION_GUIDE.md` §5 bis.
 
 ---
 
@@ -79,3 +124,8 @@ Colores (4 bg, 3 bordes, accent + estados, 3 text), tipografia (8 tamanos), espa
 
 Para visualizar los componentes, abre demo/demo.html en un navegador.
 Incluye selector de temas interactivo y todos los componentes documentados.
+
+Prototipo Vite (importa `@abdsynths/shared` por nombre + cascada host MS2000):
+```cmd
+npm run demo        # sirve demo/proto en http://localhost:5199
+```

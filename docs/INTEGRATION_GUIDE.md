@@ -92,11 +92,39 @@ document.documentElement.setAttribute('data-theme', 'cz101');
 
 ---
 
+## 5 bis. Estilos como paquete npm (`@abdsynths/shared`) — vía preferida
+
+A partir de septiembre 2026, `styles/` se exporta también como paquete npm `@abdsynths/shared`
+(`package.json` con `exports` → `./styles/*`). Es la forma recomendada para proyectos que ya tienen
+bundler (Vite) o quieren importar el CSS **por nombre**. Las junctions/quotes del punto 4 siguen
+funcionando para proyectos raw-ESM sin bundler.
+
+**Instalar** (proyecto consumidor):
+```cmd
+npm install @abdsynths/shared@file:..\ABDSharedAssets
+```
+
+**Importar por nombre** (funciona con Vite):
+```js
+import '@abdsynths/shared/styles/index.css';   // bundle completo (tokens + tema + componentes)
+// o por partes:
+import '@abdsynths/shared/styles/tokens.css';
+import '@abdsynths/shared/styles/themes/ms2000.css';
+```
+
+**Cascada de 3 niveles (host MS2000 intacto):** los tokens compartidos se importan primero y los
+overrides del proyecto se cargan después (sus `themes.css`, `--synth-*`, `--kbd-*`, etc.). En
+ABDMS2000 esto se hace con `WebUI/src/styles/shared-cascade.css` + un plugin Vite que lo inyecta
+como primer stylesheet; `themes.css` del host gana la cascada. Ver demo en `demo/proto/`.
+
+---
+
 ## 6. Checklist de Integracion
 
-- Junction shared/ -> ABDSharedAssets/styles/ creado
+- Junction shared/ -> ABDSharedAssets/styles/ creado **o** `@abdsynths/shared` en package.json (vía preferida con bundler)
 - tokens.css importado
 - Tema seleccionado aplicado (data-theme o @import)
 - Componentes importados (panels.css, buttons.css, etc.)
-- QA visual con demo/demo.html como referencia
+- QA visual con demo/demo.html y demo/proto/ (prototipo Vite) como referencia
+- Cascada host verificada: los overrides del proyecto ganan a los tokens compartidos
 - Verificar que _review/ NO esta en el proyecto

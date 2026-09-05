@@ -41,7 +41,9 @@ Todos los archivos en `ABDSharedAssets/icons/` deben cumplir este estándar geom
 
 ## 3. Formas de Uso en WebUI / CSS
 
-### Método A: SVG Inline (Recomendado para interactividad y hover)
+Los iconos se consumen desde `ABDSharedAssets/icons/` (fuente única); cada aplicación/componente importa **solo los iconos que usa**. Para componentes web reutilizables se recomienda el **Método C** (módulo generado); los métodos A/B quedan para usos puntuales en hosts (nunca copiar SVG a mano dentro del código de un módulo).
+
+### Método A: SVG Inline (interactividad y hover)
 Permite que el icono herede los estados `:hover` y `:active` del botón de forma nativa sin CSS adicional:
 
 ```html
@@ -72,6 +74,10 @@ Ideal para botones con icono exclusivo o pseudo-elementos:
 }
 ```
 
+### Método C: Módulo de iconos generado (recomendado para componentes WebUI)
+
+El componente genera un pequeño módulo que incrusta el markup canónico de **los iconos que usa** (p. ej. ABDScope: `WebUI/src/icons.js` con `camera`, `close`, `freeze`) y lo mantiene sincronizado con un **test de paridad** contra estos ficheros (p. ej. `WebUI/tests/icons.test.js`, que compara contenido normalizando BOM/CRLF). El modo embed (binary data) queda autocontenido: el módulo se genera en desarrollo y nunca lee disco en runtime.
+
 ---
 
 ## 4. Catálogo de Iconos Disponibles
@@ -91,5 +97,5 @@ Ideal para botones con icono exclusivo o pseudo-elementos:
 
 1. Diseñar o exportar el icono en una cuadrícula de **24x24 px**.
 2. Limpiar estilos embebidos (eliminar atributos `style="..."`, `class="..."`, colores fijos `#000` o `#fff`).
-3. Asegurar `stroke="currentColor"` y `fill="none"`.
-4. Guardar en `D:\desarrollos\ABDSynths\ABDSharedAssets\icons/[nombre-en-ingles].svg` en kebab-case.
+3. Asegurar `stroke="currentColor"` y `fill="none"`.4. Guardar en `D:\desarrollos\ABDSynths\ABDSharedAssets\icons/[nombre-en-ingles].svg` en kebab-case.
+5. Actualizar los módulos de iconos de los consumidores afectados (p. ej. `WebUI/src/icons.js` del scope) copiando el markup canónico, y mantener sus tests de paridad en verde.

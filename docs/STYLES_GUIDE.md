@@ -82,6 +82,8 @@ Para aplicar un tema, anade data-theme o clase skin-* en el elemento contenedor:
 
 Cada tema overridea: 4 bg, 3 bordes, accent+hover+active+dim, 3 text, LCD, 3 scrollbar.
 
+Nota (2026-09-05): los modulos (scope, keyboard) ya NO embeben paletas por tema en su CSS; conservan solo fallbacks canonicos en `:root`. El color por tema llega por esta cascada de temas + el adaptador del componente (`styles/components/scope.css`, `keyboard.css`), que el host debe cargar DESPUES del css del modulo para que el mapeo gane por orden de fuente.
+
 ---
 
 ## 4. Componentes Compartidos (styles/components/)
@@ -152,19 +154,23 @@ Cada tema overridea: 4 bg, 3 bordes, accent+hover+active+dim, 3 text, LCD, 3 scr
 @import './shared/components/buttons.css';
 :root { --color-accent: #ff6600; --color-accent-dim: rgba(255,102,0,0.15); }
 
----
+---## 6. Adaptadores de Componente (scope.css, keyboard.css)
 
-## 6. Contrato para Componentes Reutilizables
+Cada modulo (ABDScope, MidiKeyboard) tiene su CSS canonico (layout + fallbacks) y un adaptador en `styles/components/` que mapea SU token set completo a los tokens del host con fallback:
 
-Todo componente compartido debe definir sus variables internas consumiendo los tokens globales con fallback:
+- `scope.css` — 16 tokens `--scope-*` mapeados a `--color-*`/`--font-*` donde existe equivalente; look propio (trace-r, spectrum, grid, header-bg) como constantes; alias `--scope-font-lcd: var(--scope-font, ...)`.
+- `keyboard.css` — 21 tokens `--kbd-*` de color/fuente (teclas 3D ivory/white/black, FX colors, wheel, font). Estado runtime por tecla (`--kbd-pressure`, `--kbd-velocity`, `--kbd-pb-offset`, `--kbd-dirt-*`, `--kbd-mw-pressure`) NO es themable y no pertenece al adaptador.
 
-:root {
-  --scope-bg: var(--color-panel-bg, #090d14);
-  --scope-border: var(--color-panel-border, rgba(0,195,255,0.2));
-}
+Reglas del contrato:
+1. El adaptador cubre el token set REAL del modulo (nada de subconjuntos).
+2. Los fallbacks del adaptador reflejan los defaults canonicos del modulo (paridad standalone == cascada sin tokens).
+3. El adaptador se carga DESPUES del css del modulo (gana por orden de fuente en `:root`).
+4. Los hosts pueden overridear cualquier `--scope-*`/`--kbd-*` en su propia cascada.
+5. ABDSharedAssets solo aloja activos con >=2 consumidores.
 
 ---
 
 ## 7. Demo
 
 Para visualizar todos los componentes, abre demo/demo.html en un navegador.
+
