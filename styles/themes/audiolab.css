@@ -1,5 +1,5 @@
 ﻿/* ABDAudioLab -- Scientific Dark / Nordic Theme */
-[data-theme="audiolab"], body.skin-audiolab {
+[data-theme="audiolab"], [data-theme="dark"], body.skin-audiolab, body.theme-dark, body.theme-audiolab {
   --color-bg-base:             #070a0e;
   --color-panel-bg:            #0b1118;
   --color-panel-surface:       #121a24;

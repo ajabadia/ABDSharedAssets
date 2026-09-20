@@ -1,5 +1,5 @@
 ﻿/* ABDAudioLab -- Clean Light / Precision Lab Theme ("Técnica Refinada") */
-[data-theme="audiolab-light"], [data-theme="light"], body.skin-audiolab-light {
+[data-theme="audiolab-light"], [data-theme="light"], body.skin-audiolab-light, body.theme-light, body.theme-audiolab-light {
   --color-bg-base:                #f8f9fa;
   --color-panel-bg:               #ffffff;
   --color-panel-surface:          #f8fafc;

@@ -10,6 +10,7 @@
  *   components/buttons.css    -- btn, btn-glow, btn-toggle, led-btn
  *   components/controls.css   -- sliders, selects, inputs
  *   components/navbar.css     -- top navigation bar
+ *   components/backgrounds.css -- fondo de lienzo tintable por tema
  *   components/lcd.css        -- LCD display panels
  *   components/scope.css      -- oscilloscope display
  *   components/keyboard.css   -- piano keyboard
@@ -29,7 +30,10 @@
 @import './components/panels.css';
 @import './components/buttons.css';
 @import './components/controls.css';
+@import './components/widgets.css';   /* knob, slider, toggle (JS control family) */
+@import './components/skins-junio.css';  /* junio filmstrip skin assets */
 @import './components/navbar.css';
+@import './components/backgrounds.css';  /* fondo tintable por tema (bg_neutral) */
 @import './components/lcd.css';
 @import './components/scope.css';
 @import './components/keyboard.css';

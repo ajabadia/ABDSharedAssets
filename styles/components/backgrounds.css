@@ -1,0 +1,67 @@
+/**
+ * Fondos de lienzo tintables por tema
+ * ===================================
+ *
+ * El fondo genérico de la suite (`bg_neutral.png`, gris medio-acromático,
+ * luminancia 63-178 con media ~106) NO lleva el color encima: el color lo pone
+ * el TEMA y la textura lo modula. Así un mismo PNG se ve antracita, rojo
+ * intenso, azul eléctrico, tierra o gris claro según `--abd-bg-tint`.
+ *
+ * Ficheros: `bg_neutral.png` (2.8 MB) es el MASTER bit-exacto; `bg_neutral.webp`
+ * (1.9 MB) es el que se sirve — WebP SIN perdida, pixel-exacto respecto al PNG.
+ * La version con perdida se descarto con metricas: en el degradado suave inferior
+ * el grano se cuantiza en mesetas (banding) a cualquier calidad, incluida q100.
+ *
+ * Uso en un synthe:
+ *
+ *   <body class="abd-theme-bg"> ... </body>
+ *
+ * Y en el bloque del tema (o inline) se tinta sin tocar el asset:
+ *
+ *   [data-theme="antracita"] { --abd-bg-tint: #1a1d21; }
+ *   [data-theme="rojo"]      { --abd-bg-tint: #b3121f; }
+ *
+ * Mezcla: `soft-light` a propósito. El PNG es gris MEDIO (media ~106/255):
+ * con `multiply` todo tema oscuro se hundiría a negro y un tema claro no
+ * existiría; con `luminosity` la luminancia del gris congelaría la del tema.
+ * `soft-light` conserva el tono y la luminancia del tema y deja que la textura
+ * module. Un tema que quiera más textura puede subir contraste con
+ * `--abd-bg-blend: overlay` o usar `--abd-bg-image` con otro PNG/WebP (ojo:
+ * una URL sobrescrita se resuelve relativa al CSS que la SOBRESCRIBE, no a
+ * esta hoja — el patrón de skins-junio).
+ *
+ * Peso: el PNG es 2.8 MB (1672x941, 24-bit). Si algún día pesa en el bundle,
+ * su conversión a WebP/JPEG sería otro fichero con OTRO nombre canónico — este
+ * es el máster.
+ */
+
+:root {
+  /* Asset por defecto de la suite. Una URL sobrescrita por un tema se resuelve
+     relativa a SU css (ver arriba). */
+  --abd-bg-image: url('../../assets/backgrounds/bg_neutral.webp');
+
+  /* El tinte: por defecto el color base del tema activo; cada tema lo fija. */
+  --abd-bg-tint: var(--color-bg-base, #11161d);
+
+  /* Modo de mezcla textura↔tinte; `soft-light` es el neutro de la suite. */
+  --abd-bg-blend: soft-light;
+}
+
+.abd-theme-bg {
+  background-color: var(--abd-bg-tint);
+  background-image: var(--abd-bg-image);
+  background-blend-mode: var(--abd-bg-blend);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Re-resolucion del tinte en el elemento tematizado: si la pagina pone el
+   data-theme en <body> (demo) en vez de en <html> (MS2000), el tinte por
+   defecto de :root se resolvio en <html> con el color base oscuro. Con esta
+   regla, el elemento tematizado re-resuelve el tinte con SU color base, asi
+   el fondo tintable sigue al tema en las dos convenciones. */
+[data-theme] {
+  --abd-bg-tint: var(--color-bg-base, #11161d);
+}
+

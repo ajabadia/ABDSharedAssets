@@ -19,7 +19,8 @@
  *  12. Layout Constants
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Font loading is the HOST's business (offline WebView2 builds must not pull
+   remote CSS): declare the stack locally instead of @import-ing Google Fonts. */
 
 :root {
   /* =========================================================================
@@ -29,6 +30,7 @@
   --color-panel-bg:            #0f1620;   /* Cards, panels, sidebars */
   --color-panel-surface:       #151f2e;   /* Nested panels, module bodies */
   --color-panel-surface-elevated: #1c2a3d; /* Modals, popovers, tooltips */
+  --color-bg-elev:            #161b22;   /* Widget-internal elevated bg (widgets.css) */
 
   /* =========================================================================
      2. Borders (3 strength levels)
@@ -36,6 +38,7 @@
   --color-panel-border:        rgba(0, 195, 255, 0.2);   /* Default subtle border */
   --color-panel-border-strong: rgba(0, 195, 255, 0.45);  /* Focused / emphasized */
   --color-panel-border-dim:    rgba(0, 195, 255, 0.1);   /* Barely-visible separators */
+  --color-border:              #2c3542;   /* Widget-internal grid/divider line (widgets.css) */
 
   /* =========================================================================
      3. Accent & Interactive States
@@ -174,4 +177,78 @@
   --navbar-height:       44px;
   --module-header-height: 28px;
   --panel-gap:           var(--space-4);
+}
+
+
+/* =========================================================================
+   TEMA CLARO — [data-theme="light"]  (disenado 2026-09-20)
+   =========================================================================
+   Misma familia azul que el tema oscuro, adaptada a superficies claras.
+   Activacion: atributo data-theme="light" en <html> (convencion MS2000)
+   o en <body> (convencion del demo) — el bloque aplica donde este el
+   atributo y hereda hacia abajo.
+
+   Solo define COLOR y SOMBRAS: tamanos, espaciados, fuentes, radios,
+   transiciones y z-index son de tema y se heredan del :root — el test de
+   contrato (tests/tokens.test.js) vigila ambas direcciones.
+
+   Ratios WCAG medidos sobre panel-bg/surface: text-main 15.7-16.5,
+   text-muted 6.9-7.3, accent 5.4-5.7 como texto y 5.7 el blanco sobre
+   accent; text-dim 3.9-4.1 (marcadores); estados 4.0-4.9. LCD SIN CAMBIO:
+   es autoiluminado como el hardware (verde sobre oscuro, 12.5).
+
+   El fondo tintable (.abd-theme-bg) NO necesita nada aqui: su tinte por
+   defecto es var(--color-bg-base) y backgrounds.css re-resuelve el tinte
+   en el elemento tematizado ([data-theme]).
+   ========================================================================= */
+
+[data-theme="light"] {
+  /* 1. Superficies (la profundidad se invierte: elevado = mas claro) */
+  --color-bg-base:               #e8ecf1;
+  --color-panel-bg:              #f7f9fc;
+  --color-panel-surface:         #ffffff;
+  --color-panel-surface-elevated: #ffffff;
+  --color-bg-elev:               #ffffff;
+
+  /* 2. Bordes (misma familia azul, alpha pensada para claro) */
+  --color-panel-border:        rgba(0, 96, 170, 0.28);
+  --color-panel-border-strong: rgba(0, 96, 170, 0.55);
+  --color-panel-border-dim:    rgba(0, 96, 170, 0.14);
+  --color-border:              #c6d2de;
+
+  /* 3. Acento (azul profundo: 5.4-5.7 como texto; hover >= 3.9) */
+  --color-accent:        #0069b8;
+  --color-accent-rgb:    0, 105, 184;
+  --color-accent-hover:  #0080dc;
+  --color-accent-active: #00528f;
+  --color-accent-dim:    rgba(0, 105, 184, 0.12);
+
+  /* 4. Texto (3 niveles de enfasis) */
+  --color-text-main:   #14202b;
+  --color-text-muted:  #47586a;
+  --color-text-dim:    #6d7f90;
+
+  /* 7. LCD (autoiluminado: identico al oscuro), LEDs y estados */
+  --color-lcd-bg:     #102216;
+  --color-lcd-text:   #44ff77;
+  --color-lcd-border: rgba(68, 255, 119, 0.3);
+
+  --color-led-active: #d92638;
+  --color-led-glow:   rgba(217, 38, 56, 0.45);
+
+  --color-warning:  #b26a00;
+  --color-danger:   #d92638;
+  --color-success:  #0a8f4c;
+
+  /* 9. Sombras (mas suaves que en oscuro) */
+  --shadow-elevation-1: 0  2px  6px rgba(22, 40, 60, 0.14);
+  --shadow-elevation-2: 0  8px 24px rgba(22, 40, 60, 0.18);
+  --shadow-elevation-3: 0 16px 36px rgba(22, 40, 60, 0.22);
+  --shadow-inset-bevel: inset 0 1px 1px rgba(255, 255, 255, 0.65);
+
+  /* 10. Scrollbars: mismas referencias, resueltas con los valores claros */
+  --color-scrollbar-thumb:        var(--color-panel-surface);
+  --color-scrollbar-thumb-hover:  var(--color-accent);
+  --color-scrollbar-thumb-active: var(--color-accent);
+  --color-scrollbar-track:        var(--color-bg-base);
 }
