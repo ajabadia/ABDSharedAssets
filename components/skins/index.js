@@ -32,7 +32,7 @@
 
 const registry = new Map();
 
-/** @brief Tag a control instance with its kind ('knob' | 'slider' | 'toggle' | 'select'). */
+/** @brief Tag a control instance with its kind ('knob' | 'slider' | 'toggle' | 'select' | 'segmented'). */
 export const CONTROL_KIND = Symbol('abd.control.kind');
 
 /** @brief Register a skin under a name. Overwriting is allowed on purpose. */
@@ -93,11 +93,17 @@ registerSkin('vector', {
                 <circle class="abd-knob__track" cx="25" cy="25" r="20.5"></circle>
                 <circle class="abd-knob__arc" cx="25" cy="25" r="20.5"
                         transform="rotate(135 25 25)"></circle>
+                <circle class="abd-knob__mod-halo" cx="25" cy="25" r="20.5"
+                        transform="rotate(135 25 25)"></circle>
+                <circle class="abd-knob__mod-ring" cx="25" cy="25" r="20.5"
+                        transform="rotate(135 25 25)"></circle>
                 <line class="abd-knob__pointer" x1="25" y1="25" x2="25" y2="12"></line>
             </svg>`;
 
         const arc = root.querySelector('.abd-knob__arc');
         const pointer = root.querySelector('.abd-knob__pointer');
+        const modHalo = root.querySelector('.abd-knob__mod-halo');
+        const modRing = root.querySelector('.abd-knob__mod-ring');
         const circumference = 2 * Math.PI * 20.5;
 
         // Only 270/360 of the circle is the interactive sweep.
@@ -116,6 +122,32 @@ registerSkin('vector', {
                 arc.style.strokeDashoffset = `${circumference - len}`;
                 pointer.style.transform = `rotate(${start + v * sweep}deg)`;
                 pointer.style.transformOrigin = '25px 25px';
+
+                // Modulation ring: from the VALUE's angle to the MODULATED one,
+                // signed (a bidirectional LFO sweeps backwards). Same arc the
+                // native LookAndFeel strokes; halo first, ring on top.
+                const mod = typeof control.getModulation === 'function'
+                    ? control.getModulation() : 0;
+                const from = v * sweep;
+                const to = Math.min(1, Math.max(-1, mod)) * sweep;
+
+                if (Math.abs(to) < 1.0e-3)
+                {
+                    modHalo.style.display = 'none';
+                    modRing.style.display = 'none';
+                }
+                else
+                {
+                    const begin = Math.min(from, from + to);
+                    const span = Math.abs(to);
+
+                    for (const el of [modHalo, modRing])
+                    {
+                        el.style.display = '';
+                        el.style.strokeDasharray = `${(span / 360) * circumference} ${circumference}`;
+                        el.style.strokeDashoffset = `${circumference - (begin / 360) * circumference}`;
+                    }
+                }
             },
             destroy () {},
         };
@@ -145,6 +177,15 @@ registerSkin('vector', {
 
         return { root: control.wrapper, update () {}, destroy () {} };
     },
+
+    segmented (host, control)
+    {
+        // Default look: flat segments styled by widgets.css — tag only, like
+        // the select: the control builds its own DOM, the skin only names it.
+        control.wrapper.classList.add('abd-skin--vector');
+
+        return { root: control.wrapper, update () {}, destroy () {} };
+    },
 });
 
 /* ── ms2000: Korg-flavoured vector (extracted from ABDMS2000 rotaryKnob) ───── */
@@ -162,6 +203,10 @@ registerSkin('ms2000', {
                  aria-hidden="true">
                 <circle cx="25" cy="25" r="23" class="abd-ms2000-knob__rim"/>
                 <circle cx="25" cy="25" r="19" class="abd-ms2000-knob__cap"/>
+                <circle cx="25" cy="25" r="21.5" class="abd-ms2000-knob__mod-halo"
+                        transform="rotate(135 25 25)"/>
+                <circle cx="25" cy="25" r="21.5" class="abd-ms2000-knob__mod-ring"
+                        transform="rotate(135 25 25)"/>
                 <g class="abd-ms2000-knob__indicator-group">
                     <rect x="24" y="8" width="2" height="9" rx="1"
                           class="abd-ms2000-knob__tick"/>
@@ -170,6 +215,9 @@ registerSkin('ms2000', {
             </svg>`;
 
         const group = root.querySelector('.abd-ms2000-knob__indicator-group');
+        const modHalo = root.querySelector('.abd-ms2000-knob__mod-halo');
+        const modRing = root.querySelector('.abd-ms2000-knob__mod-ring');
+        const ringCircumference = 2 * Math.PI * 21.5;
 
         host.appendChild(root);
 
@@ -181,6 +229,30 @@ registerSkin('ms2000', {
 
                 group.style.transform = `rotate(${-135 + v * 270}deg)`;
                 group.style.transformOrigin = '25px 25px';
+
+                // Same signed arc as the vector skin, on its own outer radius.
+                const mod = typeof control.getModulation === 'function'
+                    ? control.getModulation() : 0;
+                const from = v * 270;
+                const to = Math.min(1, Math.max(-1, mod)) * 270;
+
+                if (Math.abs(to) < 1.0e-3)
+                {
+                    modHalo.style.display = 'none';
+                    modRing.style.display = 'none';
+                }
+                else
+                {
+                    const begin = Math.min(from, from + to);
+                    const span = Math.abs(to);
+
+                    for (const el of [modHalo, modRing])
+                    {
+                        el.style.display = '';
+                        el.style.strokeDasharray = `${(span / 360) * ringCircumference} ${ringCircumference}`;
+                        el.style.strokeDashoffset = `${ringCircumference - (begin / 360) * ringCircumference}`;
+                    }
+                }
             },
             destroy () {},
         };
@@ -197,6 +269,14 @@ registerSkin('ms2000', {
     {
         // Token variant of the list (same mechanic, MS2000 typography).
         control.field.classList.add('abd-select__field--ms2000');
+
+        return { root: control.wrapper, update () {}, destroy () {} };
+    },
+
+    segmented (host, control)
+    {
+        // Token variant of the segment row (same mechanic, MS2000 typography).
+        control.wrapper.classList.add('abd-segmented--ms2000');
 
         return { root: control.wrapper, update () {}, destroy () {} };
     },

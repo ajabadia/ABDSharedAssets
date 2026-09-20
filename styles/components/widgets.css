@@ -53,6 +53,19 @@
 /* dasharray/offset are set inline by knob.js from the value */
 .abd-knob__arc { stroke: var(--color-accent, #00c3ff); }
 
+/* Modulation ring (telemetry): double stroke like the native LookAndFeel —
+   wide translucent halo under a thin solid arc. Colour is the theme's
+   --color-mod-ring, falling back to the accent. */
+.abd-knob__mod-halo,
+.abd-knob__mod-ring {
+    fill: none;
+    stroke: var(--color-mod-ring, var(--color-accent, #00c3ff));
+    stroke-linecap: round;
+}
+
+.abd-knob__mod-halo { stroke-width: 8; opacity: 0.4; }
+.abd-knob__mod-ring { stroke-width: 3; }
+
 .abd-knob__pointer {
     stroke: var(--color-text-main, #f0f7ff);
     stroke-width: 4;
@@ -447,4 +460,120 @@
   color: var(--color-accent, #00c3ff);
   border-color: var(--color-accent, #00c3ff);
   background: var(--color-accent-dim, rgb(0 195 255 / 15%));
+}
+.abd-theme-switcher--select {
+  appearance: none;
+  font: inherit;
+  font-size: var(--text-2xs, 7px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim, #4a637a);
+  background: var(--color-panel, transparent);
+  border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+  border-radius: var(--radius-md, 4px);
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: var(--transition-fast, 0.15s ease);
+}
+
+.abd-theme-switcher--select:hover {
+  color: var(--color-text-main, #f0f7ff);
+  border-color: var(--color-panel-border-strong, rgb(0 195 255 / 45%));
+}
+
+.abd-theme-switcher--select:focus-visible {
+  outline: 1px solid var(--color-accent, #00c3ff);
+  outline-offset: 1px;
+}
+
+.abd-theme-switcher--select option {
+  background: var(--color-panel, #0a0e14);
+  color: var(--color-text-main, #f0f7ff);
+}
+/* ── Segmented ───────────────────────────────────────────────────────────── */
+
+/* The Select compact sibling: every option is its own button in one flat
+   row. A radiogroup is the semantics (roving tabindex, arrows); the look is
+   flat segments sharing one border with the active one filled by the accent.
+   Segments share the row (flex: 1 1 0), so N options fill the caller cell —
+   long labels truncate and keep their full text in the title. */
+
+.abd-segmented {
+    max-width: 100%;
+}
+
+.abd-segmented--labelled {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1, 2px);
+    user-select: none;
+}
+
+.abd-segmented__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.abd-segmented__group {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+}
+
+.abd-segmented__segment {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 4px var(--space-1, 2px);
+    font: inherit;
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    background: var(--color-panel-surface, #141d2b);
+    border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+    margin-left: -1px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: var(--transition-fast, 0.15s ease);
+}
+
+.abd-segmented__segment:first-child {
+    margin-left: 0;
+    border-top-left-radius: var(--radius-sm, 3px);
+    border-bottom-left-radius: var(--radius-sm, 3px);
+}
+
+.abd-segmented__segment:last-child {
+    border-top-right-radius: var(--radius-sm, 3px);
+    border-bottom-right-radius: var(--radius-sm, 3px);
+}
+
+.abd-segmented__segment:hover {
+    color: var(--color-text-main, #f0f7ff);
+}
+
+.abd-segmented__segment.is-active {
+    color: var(--color-panel, #0a0e14);
+    background: var(--color-accent, #00c3ff);
+    border-color: var(--color-accent, #00c3ff);
+}
+
+.abd-segmented__segment:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.abd-segmented__segment:focus-visible {
+    outline: 1px solid var(--color-accent, #00c3ff);
+    outline-offset: 1px;
+    z-index: 1;
 }
