@@ -49,6 +49,10 @@
   --color-accent-active: #0099cc;
   --color-accent-dim:    rgba(0, 195, 255, 0.15);
 
+  /* Modulation ring (telemetry): how a mod route sums onto a parameter.
+     Native twin: ThemeManager modulationRing. */
+  --color-mod-ring:      var(--color-accent);
+
   /* =========================================================================
      4. Typography — Colors (3 emphasis levels)
         Text sizes are defined further down.
@@ -222,6 +226,10 @@
   --color-accent-hover:  #0080dc;
   --color-accent-active: #00528f;
   --color-accent-dim:    rgba(0, 105, 184, 0.12);
+
+  /* Anillo de modulacion: mas profundo que el accent claro, para leerse sobre
+     superficie clara (mismo rol que modulationRing en el tema nativo). */
+  --color-mod-ring:      #6b21a8;
 
   /* 4. Texto (3 niveles de enfasis) */
   --color-text-main:   #14202b;

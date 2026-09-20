@@ -29,6 +29,12 @@ const START_ANGLE = -135;
  *   step        keyboard step, default 0.01.
  *   onChange    (normalised) => void, fires on user edits (not on setValue).
  *   onDragStart / onDragEnd  for host gesture bridging.
+ *
+ * MODULATION RING (telemetry-driven, real-time only): setModulation(normalised)
+ * asks the skin to paint a ring from the value's angle to the modulated angle —
+ * how a mod matrix sums onto the parameter (the native LookAndFeel draws the
+ * same arc). It never fires onChange and never touches the value: telemetry is
+ * paint, not state. clearModulation() removes it.
  */
 export class Knob
 {
@@ -56,6 +62,7 @@ export class Knob
 
         this.value = clamp01(this.options.value);
         this.dragDetach = null;
+        this.modAmount = 0;   // signed, normalised against the parameter range
         this[CONTROL_KIND] = 'knob';
 
         this.buildDom();
@@ -108,6 +115,30 @@ export class Knob
             onStep: (direction) => clamp01(this.value + direction * this.options.step),
         });
     }
+
+    /**
+     * @brief Modulation amount for the ring: SIGNED normalised offset relative
+     * to the parameter's range — native semantics ((mod - rangeStart) /
+     * rangeLength), negative with bidirectional LFOs. Updates the skin only.
+     * NaN/undefined mean "no data this frame" and clear rather than poison.
+     */
+    setModulation (modAmount)
+    {
+        const amount = Number(modAmount);
+
+        this.modAmount = Number.isFinite(amount) ? Math.min(1, Math.max(-1, amount)) : 0;
+        this.render();
+    }
+
+    /** @brief No modulation this frame: ring off. */
+    clearModulation ()
+    {
+        this.modAmount = 0;
+        this.render();
+    }
+
+    /** @brief Current modulation amount, for skins and tests. */
+    getModulation () { return this.modAmount; }
 
     /** @brief Push the current value into the skin + aria. Skins re-read getValue. */
     render ()
