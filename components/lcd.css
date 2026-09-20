@@ -1,0 +1,72 @@
+/*
+ * LcdPanel — estilos compartidos (tematizados por tokens, nunca por colores).
+ * La pantalla es AUTOILUMINADA: como en tokens.css, el LCD no cambia con el
+ * tema (los colores van en variables que los temas no redefinen).
+ */
+
+.abd-lcd {
+  background: var(--color-lcd-bg, #102216);
+  color: var(--color-lcd-text, #44ff77);
+  border: 1px solid var(--color-lcd-border, rgb(68 255 119 / 30%));
+  border-radius: var(--radius-sm, 3px);
+  padding: var(--space-2, 4px) var(--space-3, 8px);
+  font-family: var(--font-lcd, 'Courier New', monospace);
+  font-size: var(--text-xl, 13px);
+  line-height: 1.45;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.abd-lcd__line {
+  white-space: pre;      /* los espacios del corte son parte del dibujo */
+  overflow: hidden;
+  min-height: 1.45em;
+}
+
+/* --- panel completo (pantalla + D-pad) --- */
+
+.abd-lcd-panel__screen {
+  display: flex;
+}
+
+/* La pantalla es flex-item: crece con el ancho del synth (sin encogerse al
+   contenido, que daria un presupuesto de caracteres ridículo). */
+.abd-lcd-panel__screen .abd-lcd {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.abd-lcd-panel__pad {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: var(--space-1, 2px);
+  margin-top: var(--space-2, 4px);
+}
+
+.abd-lcd-panel__btn {
+  appearance: none;
+  font: inherit;
+  font-size: var(--text-2xs, 7px);
+  letter-spacing: 0.1em;
+  padding: 3px 10px;
+  border-radius: var(--radius-md, 4px);
+  cursor: pointer;
+  color: var(--color-text-dim, #4a637a);
+  background: transparent;
+  border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+  transition: var(--transition-fast, 0.15s ease);
+  touch-action: none; /* el hold-repeat es dueno del gesto */
+}
+
+.abd-lcd-panel__btn:hover {
+  color: var(--color-text-main, #f0f7ff);
+  border-color: var(--color-panel-border-strong, rgb(0 195 255 / 45%));
+}
+
+.abd-lcd-panel__btn:active {
+  color: var(--color-accent, #00c3ff);
+  border-color: var(--color-accent, #00c3ff);
+  background: var(--color-accent-dim, rgb(0 195 255 / 15%));
+}
