@@ -24,9 +24,40 @@
         "notes": "Filtro paso bajo analógico virtual de 4 polos con resonancia autoscilante."
       },
       "controls": [
-        { "index": 1, "name": "Cutoff Frequency", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Resonance Amount", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Q" }
-      ]
+        {
+          "index": 1,
+          "name": "Cutoff Frequency",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Resonance Amount",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "Q"
+        }
+      ],
+      "measurementRecipe": {
+        "recipeType": "DIRECT_AUDIO_IN",
+        "description": "Entrada directa de audio loopback hacia submódulo de filtro 24dB con saturación no-lineal desactivada",
+        "setupActions": [
+          {
+            "description": "Reset resonance to unity Q",
+            "method": "MIDI_CC",
+            "cc": 12,
+            "value": 0.0,
+            "settlingDelayMs": 20
+          }
+        ],
+        "excitationNotes": [],
+        "postSettlingDelayMs": 50
+      }
     },
     {
       "id": "filter_18db",
@@ -39,8 +70,24 @@
         "notes": "Filtro estilo TB-303 con pendiente ácida de 3 polos."
       },
       "controls": [
-        { "index": 1, "name": "Cutoff Frequency", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Resonance Amount", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Q" }
+        {
+          "index": 1,
+          "name": "Cutoff Frequency",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Resonance Amount",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "Q"
+        }
       ]
     },
     {
@@ -54,8 +101,24 @@
         "notes": "Filtro paso alto de 2 polos para corte de graves y limpieza espectral."
       },
       "controls": [
-        { "index": 1, "name": "Cutoff Frequency", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "Hz" },
-        { "index": 2, "name": "Resonance Amount", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Q" }
+        {
+          "index": 1,
+          "name": "Cutoff Frequency",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.2,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Resonance Amount",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "Q"
+        }
       ]
     },
     {
@@ -69,8 +132,24 @@
         "notes": "Filtro paso banda con resonancia central sintonizable."
       },
       "controls": [
-        { "index": 1, "name": "Center Frequency", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Bandwidth (Q)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "Q" }
+        {
+          "index": 1,
+          "name": "Center Frequency",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Bandwidth (Q)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "Q"
+        }
       ]
     },
     {
@@ -84,8 +163,24 @@
         "notes": "Filtro resonador de formantes vocales (A-E-I-O-U)."
       },
       "controls": [
-        { "index": 1, "name": "Vowel Morph", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Morph" },
-        { "index": 2, "name": "Formant Shift", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Semi" }
+        {
+          "index": 1,
+          "name": "Vowel Morph",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Morph"
+        },
+        {
+          "index": 2,
+          "name": "Formant Shift",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Semi"
+        }
       ]
     },
     {
@@ -99,9 +194,33 @@
         "notes": "Filtro multimodo continuo (LPF -> BPF -> HPF -> Notch)."
       },
       "controls": [
-        { "index": 1, "name": "Cutoff Frequency", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Mode Morph", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Mode" },
-        { "index": 3, "name": "Resonance (Q)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "Q" }
+        {
+          "index": 1,
+          "name": "Cutoff Frequency",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Mode Morph",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "Mode"
+        },
+        {
+          "index": 3,
+          "name": "Resonance (Q)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "Q"
+        }
       ]
     },
     {
@@ -115,8 +234,24 @@
         "notes": "Emulación no lineal de válvula termoiónica triodo/péntodo."
       },
       "controls": [
-        { "index": 1, "name": "Drive Gain", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "dB" },
-        { "index": 2, "name": "Bias / Warmth", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Drive Gain",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Bias / Warmth",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -130,8 +265,24 @@
         "notes": "Saturación asimétrica cálida con respuesta armónica de 2º orden."
       },
       "controls": [
-        { "index": 1, "name": "Drive Level", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "dB" },
-        { "index": 2, "name": "Tone / Tilt", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" }
+        {
+          "index": 1,
+          "name": "Drive Level",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Tone / Tilt",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        }
       ]
     },
     {
@@ -145,8 +296,24 @@
         "notes": "Recorte abrupto por diodos opuestos con compresión extrema."
       },
       "controls": [
-        { "index": 1, "name": "Gain / Distortion", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.6, "unit": "dB" },
-        { "index": 2, "name": "Clip Threshold", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "V" }
+        {
+          "index": 1,
+          "name": "Gain / Distortion",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.6,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Clip Threshold",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "V"
+        }
       ]
     },
     {
@@ -160,8 +327,24 @@
         "notes": "Reducción de resolución de bits (1-16 bits) y submuestreo analógico."
       },
       "controls": [
-        { "index": 1, "name": "Bit Depth", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.8, "unit": "Bits" },
-        { "index": 2, "name": "Sample Rate Decimate", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.9, "unit": "kHz" }
+        {
+          "index": 1,
+          "name": "Bit Depth",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "unit": "Bits"
+        },
+        {
+          "index": 2,
+          "name": "Sample Rate Decimate",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.9,
+          "unit": "kHz"
+        }
       ]
     },
     {
@@ -175,8 +358,24 @@
         "notes": "Fuzz clásico de transistores de germanio con caída de polarización térmica."
       },
       "controls": [
-        { "index": 1, "name": "Fuzz Intensity", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "%" },
-        { "index": 2, "name": "Bias Voltage", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "V" }
+        {
+          "index": 1,
+          "name": "Fuzz Intensity",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "unit": "%"
+        },
+        {
+          "index": 2,
+          "name": "Bias Voltage",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "V"
+        }
       ]
     },
     {
@@ -190,10 +389,42 @@
         "notes": "Generador de envolvente de 4 etapas analógico virtual."
       },
       "controls": [
-        { "index": 1, "name": "Attack Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "ms" },
-        { "index": 2, "name": "Decay Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "ms" },
-        { "index": 3, "name": "Sustain Level", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "Level" },
-        { "index": 4, "name": "Release Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "ms" }
+        {
+          "index": 1,
+          "name": "Attack Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.2,
+          "unit": "ms"
+        },
+        {
+          "index": 2,
+          "name": "Decay Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "ms"
+        },
+        {
+          "index": 3,
+          "name": "Sustain Level",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "unit": "Level"
+        },
+        {
+          "index": 4,
+          "name": "Release Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "ms"
+        }
       ]
     },
     {
@@ -207,8 +438,24 @@
         "notes": "Generador de envolventes de percusión y transitorios rápidos."
       },
       "controls": [
-        { "index": 1, "name": "Attack Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.1, "unit": "ms" },
-        { "index": 2, "name": "Release Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "ms" }
+        {
+          "index": 1,
+          "name": "Attack Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.1,
+          "unit": "ms"
+        },
+        {
+          "index": 2,
+          "name": "Release Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "ms"
+        }
       ]
     },
     {
@@ -222,8 +469,24 @@
         "notes": "LFO con formas Sinusoidal, Triangular, Cuadrada, Diente de Sierra y Random S&H."
       },
       "controls": [
-        { "index": 1, "name": "LFO Rate / Speed", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Waveform Select", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Wave" }
+        {
+          "index": 1,
+          "name": "LFO Rate / Speed",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Waveform Select",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "Wave"
+        }
       ]
     },
     {
@@ -237,9 +500,33 @@
         "notes": "Dos LFOs independientes con modulación cruzada de frecuencia y fase."
       },
       "controls": [
-        { "index": 1, "name": "LFO 1 Rate", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "Hz" },
-        { "index": 2, "name": "LFO 2 Rate", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "Hz" },
-        { "index": 3, "name": "Cross Mod Depth", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "%" }
+        {
+          "index": 1,
+          "name": "LFO 1 Rate",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "LFO 2 Rate",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "unit": "Hz"
+        },
+        {
+          "index": 3,
+          "name": "Cross Mod Depth",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.2,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -253,8 +540,24 @@
         "notes": "Línea de retardo corta para efectos de slapback y comb filter."
       },
       "controls": [
-        { "index": 1, "name": "Delay Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "ms" },
-        { "index": 2, "name": "Feedback", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Delay Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "ms"
+        },
+        {
+          "index": 2,
+          "name": "Feedback",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -268,9 +571,33 @@
         "notes": "Eco de cinta analógica con amortiguación de agudos y modulación mecánica."
       },
       "controls": [
-        { "index": 1, "name": "Tape Speed / Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "ms" },
-        { "index": 2, "name": "Feedback Repeats", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "%" },
-        { "index": 3, "name": "Tape Age / Damping", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "Hz" }
+        {
+          "index": 1,
+          "name": "Tape Speed / Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "ms"
+        },
+        {
+          "index": 2,
+          "name": "Feedback Repeats",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "%"
+        },
+        {
+          "index": 3,
+          "name": "Tape Age / Damping",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "Hz"
+        }
       ]
     },
     {
@@ -284,9 +611,33 @@
         "notes": "Chorus espacial estilo Juno BBD con modulación analógica cuadraturada."
       },
       "controls": [
-        { "index": 1, "name": "Chorus Rate", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "Hz" },
-        { "index": 2, "name": "Chorus Depth", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.6, "unit": "ms" },
-        { "index": 3, "name": "Dry/Wet Mix", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Chorus Rate",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Chorus Depth",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.6,
+          "unit": "ms"
+        },
+        {
+          "index": 3,
+          "name": "Dry/Wet Mix",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -300,9 +651,33 @@
         "notes": "Flanger resonador BBD con peine espectral dinámico."
       },
       "controls": [
-        { "index": 1, "name": "Speed", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "Hz" },
-        { "index": 2, "name": "Manual Delay", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "ms" },
-        { "index": 3, "name": "Regeneration (Resonance)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Speed",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.2,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Manual Delay",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "ms"
+        },
+        {
+          "index": 3,
+          "name": "Regeneration (Resonance)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -316,9 +691,33 @@
         "notes": "Desfasador de 4 etapas todo-paso (all-pass filters) en cascada."
       },
       "controls": [
-        { "index": 1, "name": "LFO Speed", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "Hz" },
-        { "index": 2, "name": "Sweep Range", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "%" },
-        { "index": 3, "name": "Feedback", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "%" }
+        {
+          "index": 1,
+          "name": "LFO Speed",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Sweep Range",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "unit": "%"
+        },
+        {
+          "index": 3,
+          "name": "Feedback",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -332,8 +731,24 @@
         "notes": "Multiplicador de 4 cuadrantes para sonoridades metálicas e inarmónicas."
       },
       "controls": [
-        { "index": 1, "name": "Internal Carrier Freq", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "Hz" },
-        { "index": 2, "name": "Modulation Mix", "type": "Knob", "min": 0.0, "max": 1.0, "default": 1.0, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Internal Carrier Freq",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Modulation Mix",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -347,10 +762,42 @@
         "notes": "Compresor de dinámica feed-forward con control de codo (knee)."
       },
       "controls": [
-        { "index": 1, "name": "Threshold", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "dB" },
-        { "index": 2, "name": "Ratio", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": ":1" },
-        { "index": 3, "name": "Attack Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "ms" },
-        { "index": 4, "name": "Release Time", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "ms" }
+        {
+          "index": 1,
+          "name": "Threshold",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Ratio",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": ":1"
+        },
+        {
+          "index": 3,
+          "name": "Attack Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.2,
+          "unit": "ms"
+        },
+        {
+          "index": 4,
+          "name": "Release Time",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4,
+          "unit": "ms"
+        }
       ]
     },
     {
@@ -364,8 +811,24 @@
         "notes": "Generador de ruido Blanco, Rosa (1/f) y Marrón (Brownian)."
       },
       "controls": [
-        { "index": 1, "name": "Noise Color Morph", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Color" },
-        { "index": 2, "name": "Output Level", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.8, "unit": "dB" }
+        {
+          "index": 1,
+          "name": "Noise Color Morph",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Color"
+        },
+        {
+          "index": 2,
+          "name": "Output Level",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "unit": "dB"
+        }
       ]
     },
     {
@@ -379,8 +842,24 @@
         "notes": "Muestreo y retención analógico para voltajes y texturas aleatorias acompasadas."
       },
       "controls": [
-        { "index": 1, "name": "Clock Rate", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "Glide / Slew", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "ms" }
+        {
+          "index": 1,
+          "name": "Clock Rate",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Hz"
+        },
+        {
+          "index": 2,
+          "name": "Glide / Slew",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "ms"
+        }
       ]
     },
     {
@@ -394,8 +873,24 @@
         "notes": "Limitador de velocidad de pendiente para transiciones suaves de voltaje y audio."
       },
       "controls": [
-        { "index": 1, "name": "Rise Time (Slew Up)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "ms" },
-        { "index": 2, "name": "Fall Time (Slew Down)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.3, "unit": "ms" }
+        {
+          "index": 1,
+          "name": "Rise Time (Slew Up)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "ms"
+        },
+        {
+          "index": 2,
+          "name": "Fall Time (Slew Down)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3,
+          "unit": "ms"
+        }
       ]
     },
     {
@@ -409,8 +904,24 @@
         "notes": "Amplificador controlado por voltaje con conmutación lineal/exponencial."
       },
       "controls": [
-        { "index": 1, "name": "Gain / Initial Level", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.8, "unit": "dB" },
-        { "index": 2, "name": "Response Curve (Lin/Exp)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Curve" }
+        {
+          "index": 1,
+          "name": "Gain / Initial Level",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Response Curve (Lin/Exp)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Curve"
+        }
       ]
     },
     {
@@ -424,8 +935,24 @@
         "notes": "Sumador analógico de 4 canales acoplado en continua."
       },
       "controls": [
-        { "index": 1, "name": "Channel 1 Gain", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.8, "unit": "dB" },
-        { "index": 2, "name": "Master Output Trim", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.8, "unit": "dB" }
+        {
+          "index": 1,
+          "name": "Channel 1 Gain",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "unit": "dB"
+        },
+        {
+          "index": 2,
+          "name": "Master Output Trim",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "unit": "dB"
+        }
       ]
     },
     {
@@ -439,8 +966,24 @@
         "notes": "Panorama estéreo con ley de potencia constante (-3dB al centro)."
       },
       "controls": [
-        { "index": 1, "name": "Pan Position (L-R)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Pan" },
-        { "index": 2, "name": "Auto-Pan LFO Depth", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Pan Position (L-R)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Pan"
+        },
+        {
+          "index": 2,
+          "name": "Auto-Pan LFO Depth",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -454,7 +997,15 @@
         "notes": "Inversor y atenuador bipolar (+1.0 a -1.0x)."
       },
       "controls": [
-        { "index": 1, "name": "Scale / Inversion (-1 to +1)", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Gain" }
+        {
+          "index": 1,
+          "name": "Scale / Inversion (-1 to +1)",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Gain"
+        }
       ]
     },
     {
@@ -468,8 +1019,24 @@
         "notes": "Transpositor de octavas con seguimiento de tono analógico."
       },
       "controls": [
-        { "index": 1, "name": "Interval Transpose", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Semi" },
-        { "index": 2, "name": "Direct / Shifted Mix", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "%" }
+        {
+          "index": 1,
+          "name": "Interval Transpose",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Semi"
+        },
+        {
+          "index": 2,
+          "name": "Direct / Shifted Mix",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "%"
+        }
       ]
     },
     {
@@ -483,8 +1050,24 @@
         "notes": "Generador de distorsión armónica por polinomios de Chebyshev de orden superior."
       },
       "controls": [
-        { "index": 1, "name": "Polynomial Order / Drive", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Drive" },
-        { "index": 2, "name": "Even/Odd Harmonic Balance", "type": "Knob", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Balance" }
+        {
+          "index": 1,
+          "name": "Polynomial Order / Drive",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Drive"
+        },
+        {
+          "index": 2,
+          "name": "Even/Odd Harmonic Balance",
+          "type": "Knob",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "unit": "Balance"
+        }
       ]
     }
   ]

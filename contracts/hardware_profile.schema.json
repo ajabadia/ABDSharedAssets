@@ -1,0 +1,496 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://abdaudiolab.com/schemas/hardware_profile.schema.json",
+  "title": "HardwareProfileContract",
+  "description": "Esquema de validación estricto para perfiles declarativos de hardware en ABDAudioLab.",
+  "type": "object",
+  "required": [
+    "id",
+    "displayName"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": [
+        "1.0",
+        "2.0"
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "aliases": {
+      "type": "array",
+      "description": "Identificadores alternativos históricos o de otros subsistemas (p. ej. kebab-case de ABDBankManager). El id canónico es el campo `id`; los consumidores que reciban un alias deben resolverlo al canónico antes de persistir datos nuevos.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$"
+      },
+      "uniqueItems": true
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "description": {
+      "type": "string"
+    },
+    "deviceType": {
+      "type": "string",
+      "enum": [
+        "AUTOMATED_MIDI_CC",
+        "AUTOMATED_NRPN",
+        "AUTOMATED_SYSEX",
+        "MANUAL_EURORACK",
+        "MANUAL_PROMPT",
+        "ANALOGUE_PEDAL",
+        "MOCK_DSP"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "brandLogo": {
+      "type": "string"
+    },
+    "modelImage": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "midiIdentification": {
+      "type": "object",
+      "properties": {
+        "manufacturer": {
+          "type": "string"
+        },
+        "manufacturerIdHex": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "modelIdHex": {
+          "type": "string"
+        },
+        "familyIdHex": {
+          "type": "string"
+        },
+        "sysexHeaderHex": {
+          "type": "string"
+        },
+        "autoDetectSysEx": {
+          "type": "string"
+        },
+        "portNameMatches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "preCalibrationSetup": {
+          "$ref": "#/$defs/setupActionArray"
+        },
+        "preSessionSetup": {
+          "$ref": "#/$defs/setupActionArray"
+        },
+        "postSessionTeardown": {
+          "$ref": "#/$defs/setupActionArray"
+        }
+      },
+      "additionalProperties": false
+    },
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2
+          },
+          "blockType": {
+            "type": "string",
+            "enum": [
+              "SpectrumFilter",
+              "TimeDynamic",
+              "WaveShaper",
+              "CyclicModulator",
+              "AmplitudeGain",
+              "WienerHammerstein",
+              "NeuralCalibration"
+            ]
+          },
+          "suggestedStimulus": {
+            "type": "string"
+          },
+          "captureMode": {
+            "type": "string",
+            "enum": [
+              "FIXED_TIME",
+              "ADAPTIVE_ENVELOPE",
+              "INTEGRATED_TAIL"
+            ]
+          },
+          "defaultBurstDurationSec": {
+            "type": "number",
+            "minimum": 0.05,
+            "maximum": 60
+          },
+          "maxTimeoutSec": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 300
+          },
+          "silenceThresholdDb": {
+            "type": "number",
+            "maximum": 0,
+            "minimum": -120
+          },
+          "routingGuide": {
+            "type": "object",
+            "properties": {
+              "stimulusOutput": {
+                "type": "string"
+              },
+              "responseInput": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "controlMethod": {
+                  "type": "string",
+                  "enum": [
+                    "MANUAL",
+                    "MIDI_CC",
+                    "NRPN",
+                    "SYSEX"
+                  ]
+                },
+                "cc": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 127
+                },
+                "midiCC": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 127
+                },
+                "nrpn": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 16383
+                },
+                "sysexAddress": {
+                  "type": "string"
+                },
+                "min": {
+                  "type": "number"
+                },
+                "max": {
+                  "type": "number"
+                },
+                "default": {
+                  "type": "number"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "default": {
+            "type": "number"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "bankManagement": {
+      "type": "object",
+      "description": "Especificacion declarativa para gestion de librerias, volcados SysEx y bancos de patches en ABDBankManager.",
+      "required": [
+        "bankCapacity",
+        "banksCount",
+        "programsPerBank"
+      ],
+      "properties": {
+        "bankCapacity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "banksCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "programsPerBank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "patchDataSize": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "patchNameMaxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "defaultCategory": {
+          "type": "string"
+        },
+        "addressingFormat": {
+          "type": "string",
+          "enum": [
+            "LETTER_NUMBER",
+            "NUMBER",
+            "BANK_PATCH",
+            "PRESET_ONLY"
+          ]
+        },
+        "compatibleModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sysexProtocol": {
+          "type": "object",
+          "properties": {
+            "manufacturerIdHex": {
+              "type": "string"
+            },
+            "dumpCommandHex": {
+              "type": "string"
+            },
+            "requestCommandHex": {
+              "type": "string"
+            },
+            "checksumAlgorithm": {
+              "type": "string",
+              "enum": [
+                "SUM_7BIT",
+                "ROLAND_7BIT",
+                "NONE",
+                "CUSTOM"
+              ]
+            },
+            "encoding": {
+              "type": "string",
+              "enum": [
+                "RAW_7BIT",
+                "NIBBLE_LOW_FIRST",
+                "NIBBLE_HIGH_FIRST",
+                "7_TO_8_BIT"
+              ]
+            },
+            "modelIdByteHex": {
+              "type": "string",
+              "description": "Byte de modelo dentro del mensaje SysEx (tras F0 + manufacturerId) para desambiguar modelos del mismo fabricante. Ej.: MS2000/microKORG = 58, Prophecy = 41."
+            },
+            "modelIdByteMultiHex": {
+              "type": "string",
+              "description": "Bytes adicionales esperados inmediatamente después de modelIdByteHex (secuencia de identidad multi-byte)."
+            },
+            "paramChangeCommandHex": {
+              "type": "string",
+              "description": "Comando de cambio de parámetro en tiempo real (p. ej. Korg 41)."
+            },
+            "allDumpCommandHex": {
+              "type": "string",
+              "description": "Comando de volcado completo (All Data Dump, p. ej. Korg 4C)."
+            },
+            "allRequestCommandHex": {
+              "type": "string",
+              "description": "Comando de petición de volcado completo (p. ej. Korg 0E)."
+            },
+            "supportsEditBuffer": {
+              "type": "boolean",
+              "description": "El modelo admite volcado/audición de edit buffer sin sobrescribir memoria de programa."
+            },
+            "interMessageDelayMs": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Retardo mínimo entre mensajes SysEx consecutivos (ms)."
+            },
+            "dumpTimeoutMs": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Timeout de espera de respuesta a un volcado (ms)."
+            },
+            "maxSysExMessageSize": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Tamaño máximo de mensaje SysEx antes de fragmentar volcados masivos (bytes)."
+            },
+            "midiDefaultChannel": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16,
+              "description": "Canal MIDI por defecto para volcados SysEx."
+            },
+            "midiDefaultDeviceIdHex": {
+              "type": "string",
+              "description": "Device ID por defecto para cabeceras SysEx (hex, p. ej. 18 en Roland Juno-106)."
+            },
+            "portNameMatches": {
+              "type": "array",
+              "description": "Patrones de nombre de puerto MIDI para auto-detección heurística.",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "setupActionArray": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 3
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "MIDI_CC",
+              "NRPN",
+              "SYSEX_RAW",
+              "MANUAL_PROMPT"
+            ]
+          },
+          "channel": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "controlNumber": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 16383
+          },
+          "cc": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 127
+          },
+          "nrpn": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 16383
+          },
+          "normalizedValue": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "sysexHexPayload": {
+            "type": "string",
+            "pattern": "^([0-9A-Fa-f]{2}\\s*)*$"
+          },
+          "sysexHex": {
+            "type": "string"
+          },
+          "settlingDelayMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

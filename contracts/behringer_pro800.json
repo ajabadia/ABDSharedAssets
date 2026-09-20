@@ -1,6 +1,9 @@
 {
   "schemaVersion": "2.0",
   "id": "behringer_pro800",
+  "aliases": [
+    "behringer-pro800"
+  ],
   "displayName": "Behringer PRO-800",
   "description": "8-Voice Polyphonic Analog Synthesizer (Prophet-600 reproduction with Curtis CEM3320 VCF clone)",
   "deviceType": "AUTOMATED_MIDI_CC",
@@ -14,7 +17,38 @@
     "modelIdHex": "2C",
     "sysexHeaderHex": "00 20 32 00 01 24",
     "autoDetectSysEx": "F0 7E 7F 06 01 F7",
-    "portNameMatches": ["PRO-800", "PRO 800", "PRO800", "Behringer PRO-800", "Pro-800"]
+    "portNameMatches": [
+      "PRO-800",
+      "PRO 800",
+      "PRO800",
+      "Behringer PRO-800",
+      "Pro-800"
+    ]
+  },
+  "lifecycle": {
+    "preSessionSetup": [
+      {
+        "description": "All Sound Off",
+        "method": "MIDI_CC",
+        "cc": 120,
+        "value": 0,
+        "settlingDelayMs": 30
+      },
+      {
+        "description": "Reset All Controllers",
+        "method": "MIDI_CC",
+        "cc": 121,
+        "value": 0,
+        "settlingDelayMs": 30
+      },
+      {
+        "description": "Modulation Wheel Zero",
+        "method": "MIDI_CC",
+        "cc": 1,
+        "value": 0,
+        "settlingDelayMs": 30
+      }
+    ]
   },
   "functions": [
     {
@@ -28,9 +62,39 @@
         "notes": "Filtro analógico clásico de 4 polos con respuesta pronunciada y auto-oscilación resonante pura."
       },
       "controls": [
-        { "index": 1, "name": "Filter Cutoff", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 19, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.65, "unit": "0-127" },
-        { "index": 2, "name": "Resonance", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 21, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.35, "unit": "0-127" },
-        { "index": 3, "name": "Filter Envelope Amount", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 20, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "0-127" }
+        {
+          "index": 1,
+          "name": "Filter Cutoff",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 19,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.65,
+          "unit": "0-127"
+        },
+        {
+          "index": 2,
+          "name": "Resonance",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 21,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.35,
+          "unit": "0-127"
+        },
+        {
+          "index": 3,
+          "name": "Filter Envelope Amount",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 20,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0,
+          "unit": "0-127"
+        }
       ]
     },
     {
@@ -45,11 +109,83 @@
         "notes": "Generador de envolvente de filtro dedicado analógico."
       },
       "controls": [
-        { "index": 1, "name": "Filter Attack", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 22, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.1, "unit": "0-127" },
-        { "index": 2, "name": "Filter Decay", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 23, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-127" },
-        { "index": 3, "name": "Filter Sustain", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 24, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.6, "unit": "0-127" },
-        { "index": 4, "name": "Filter Release", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 25, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-127" }
+        {
+          "index": 1,
+          "name": "Filter Attack",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 22,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.1,
+          "unit": "0-127"
+        },
+        {
+          "index": 2,
+          "name": "Filter Decay",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 23,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.5,
+          "unit": "0-127"
+        },
+        {
+          "index": 3,
+          "name": "Filter Sustain",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 24,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.6,
+          "unit": "0-127"
+        },
+        {
+          "index": 4,
+          "name": "Filter Release",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 25,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.4,
+          "unit": "0-127"
+        }
       ]
     }
-  ]
+  ],
+  "bankManagement": {
+    "bankCapacity": 400,
+    "banksCount": 4,
+    "programsPerBank": 100,
+    "patchDataSize": 173,
+    "patchNameMaxLength": 16,
+    "categories": [
+      "Bass",
+      "Lead",
+      "Pad",
+      "Strings",
+      "Brass",
+      "FX",
+      "Poly",
+      "Other"
+    ],
+    "defaultCategory": "Other",
+    "addressingFormat": "NUMBER",
+    "compatibleModels": [],
+    "sysexProtocol": {
+      "manufacturerIdHex": "002032",
+      "modelIdByteHex": "00",
+      "modelIdByteMultiHex": "01 24",
+      "checksumAlgorithm": "NONE",
+      "encoding": "RAW_7BIT",
+      "supportsEditBuffer": false,
+      "interMessageDelayMs": 50,
+      "dumpTimeoutMs": 5000,
+      "midiDefaultChannel": 1,
+      "midiDefaultDeviceIdHex": "10"
+    }
+  }
 }

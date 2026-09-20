@@ -1,6 +1,9 @@
 {
   "schemaVersion": "2.0",
   "id": "casio_cz101",
+  "aliases": [
+    "casio-cz101"
+  ],
   "displayName": "Casio CZ-101 (Phase Distortion)",
   "description": "Digital Phase Distortion Synthesizer with 8-stage DCO, DCW (Wave Envelope) and DCA Envelopes",
   "deviceType": "AUTOMATED_MIDI_CC",
@@ -14,7 +17,13 @@
     "modelIdHex": "70",
     "sysexHeaderHex": "44 00 00 70",
     "autoDetectSysEx": "F0 7E 7F 06 01 F7",
-    "portNameMatches": ["CZ-101", "CZ101", "CZ 101", "ABDCZ101", "Casio CZ"]
+    "portNameMatches": [
+      "CZ-101",
+      "CZ101",
+      "CZ 101",
+      "ABDCZ101",
+      "Casio CZ"
+    ]
   },
   "functions": [
     {
@@ -28,8 +37,38 @@
         "notes": "Modula el contenido armónico variable de sinusoidal a resonante mediante distorsión de fase."
       },
       "controls": [
-        { "index": 1, "name": "DCW Envelope Depth", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 16, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.8, "unit": "0-99" },
-        { "index": 2, "name": "Waveform 1 Select", "type": "RotarySwitch", "controlMethod": "MIDI_CC", "ccNumber": 17, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "1-8", "options": ["Sawtooth", "Square", "Pulse", "Double Sine", "Saw-Pulse", "Reso 1", "Reso 2", "Reso 3"] }
+        {
+          "index": 1,
+          "name": "DCW Envelope Depth",
+          "type": "Slider",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 16,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.8,
+          "unit": "0-99"
+        },
+        {
+          "index": 2,
+          "name": "Waveform 1 Select",
+          "type": "RotarySwitch",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 17,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0,
+          "unit": "1-8",
+          "options": [
+            "Sawtooth",
+            "Square",
+            "Pulse",
+            "Double Sine",
+            "Saw-Pulse",
+            "Reso 1",
+            "Reso 2",
+            "Reso 3"
+          ]
+        }
       ]
     },
     {
@@ -44,11 +83,88 @@
         "notes": "Envolvente segmentada de 8 pasos con tasas (Rate) y niveles (Level)."
       },
       "controls": [
-        { "index": 1, "name": "Rate 1 (Attack)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 20, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.9, "unit": "0-99" },
-        { "index": 2, "name": "Rate 2 (Decay)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 21, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-99" },
-        { "index": 3, "name": "Level 2 (Sustain)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 22, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-99" },
-        { "index": 4, "name": "Rate 3 (Release)", "type": "Slider", "controlMethod": "MIDI_CC", "ccNumber": 23, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-99" }
+        {
+          "index": 1,
+          "name": "Rate 1 (Attack)",
+          "type": "Slider",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 20,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.9,
+          "unit": "0-99"
+        },
+        {
+          "index": 2,
+          "name": "Rate 2 (Decay)",
+          "type": "Slider",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 21,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.5,
+          "unit": "0-99"
+        },
+        {
+          "index": 3,
+          "name": "Level 2 (Sustain)",
+          "type": "Slider",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 22,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.7,
+          "unit": "0-99"
+        },
+        {
+          "index": 4,
+          "name": "Rate 3 (Release)",
+          "type": "Slider",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 23,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.4,
+          "unit": "0-99"
+        }
       ]
     }
-  ]
+  ],
+  "bankManagement": {
+    "bankCapacity": 16,
+    "banksCount": 1,
+    "programsPerBank": 16,
+    "patchDataSize": 128,
+    "patchNameMaxLength": 0,
+    "categories": [
+      "Bass",
+      "Lead",
+      "Pad",
+      "FX",
+      "Keys",
+      "Perc",
+      "Synth",
+      "Other"
+    ],
+    "defaultCategory": "Other",
+    "addressingFormat": "LETTER_NUMBER",
+    "compatibleModels": [
+      "casio-cz1000",
+      "casio-cz5000",
+      "casio-cz1"
+    ],
+    "sysexProtocol": {
+      "manufacturerIdHex": "44",
+      "dumpCommandHex": "10",
+      "requestCommandHex": "30",
+      "modelIdByteHex": "12",
+      "checksumAlgorithm": "SUM_7BIT",
+      "encoding": "NIBBLE_LOW_FIRST",
+      "supportsEditBuffer": false,
+      "interMessageDelayMs": 30,
+      "dumpTimeoutMs": 3000,
+      "midiDefaultChannel": 1,
+      "midiDefaultDeviceIdHex": "10"
+    }
+  }
 }

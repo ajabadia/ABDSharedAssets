@@ -1,6 +1,9 @@
 {
   "schemaVersion": "2.0",
   "id": "korg_ms2000",
+  "aliases": [
+    "korg-ms2000"
+  ],
   "displayName": "Korg MS2000 / MS2000R",
   "description": "Analog Modeling Synthesizer with Multi-Mode Resonant Filters, WaveShaper, and 16-Band Vocoder",
   "deviceType": "AUTOMATED_MIDI_CC",
@@ -14,7 +17,14 @@
     "modelIdHex": "58",
     "sysexHeaderHex": "42 30 58",
     "autoDetectSysEx": "F0 7E 7F 06 01 F7",
-    "portNameMatches": ["MS2000", "MS2000R", "MS-2000", "ABDMS2000", "microKORG", "KORG MS"]
+    "portNameMatches": [
+      "MS2000",
+      "MS2000R",
+      "MS-2000",
+      "ABDMS2000",
+      "microKORG",
+      "KORG MS"
+    ]
   },
   "functions": [
     {
@@ -28,9 +38,45 @@
         "notes": "Filtros modelados digitalmente: LPF 24dB, LPF 12dB, BPF 12dB y HPF 12dB."
       },
       "controls": [
-        { "index": 1, "name": "Filter Cutoff", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 74, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-127" },
-        { "index": 2, "name": "Filter Resonance", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 71, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.25, "unit": "0-127" },
-        { "index": 3, "name": "Filter Type", "type": "RotarySwitch", "controlMethod": "MIDI_CC", "ccNumber": 80, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "Type", "options": ["LPF 24dB", "LPF 12dB", "BPF 12dB", "HPF 12dB"] }
+        {
+          "index": 1,
+          "name": "Filter Cutoff",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 74,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.7,
+          "unit": "0-127"
+        },
+        {
+          "index": 2,
+          "name": "Filter Resonance",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 71,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.25,
+          "unit": "0-127"
+        },
+        {
+          "index": 3,
+          "name": "Filter Type",
+          "type": "RotarySwitch",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 80,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0,
+          "unit": "Type",
+          "options": [
+            "LPF 24dB",
+            "LPF 12dB",
+            "BPF 12dB",
+            "HPF 12dB"
+          ]
+        }
       ]
     },
     {
@@ -44,8 +90,54 @@
         "notes": "Módulo de conformación de onda no lineal que pliega y distorsiona el espectro armónico."
       },
       "controls": [
-        { "index": 1, "name": "Drive / Shape Depth", "type": "Knob", "controlMethod": "MIDI_CC", "ccNumber": 79, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.6, "unit": "0-127" }
+        {
+          "index": 1,
+          "name": "Drive / Shape Depth",
+          "type": "Knob",
+          "controlMethod": "MIDI_CC",
+          "ccNumber": 79,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.6,
+          "unit": "0-127"
+        }
       ]
     }
-  ]
+  ],
+  "bankManagement": {
+    "bankCapacity": 128,
+    "banksCount": 8,
+    "programsPerBank": 16,
+    "patchDataSize": 288,
+    "patchNameMaxLength": 12,
+    "categories": [
+      "Bass",
+      "Lead",
+      "Pad",
+      "Motion",
+      "Arp",
+      "Split",
+      "Bell",
+      "Other"
+    ],
+    "defaultCategory": "Other",
+    "addressingFormat": "BANK_PATCH",
+    "compatibleModels": [
+      "korg-microkorg"
+    ],
+    "sysexProtocol": {
+      "manufacturerIdHex": "42",
+      "modelIdByteHex": "58",
+      "allDumpCommandHex": "4C",
+      "allRequestCommandHex": "0E",
+      "paramChangeCommandHex": "41",
+      "checksumAlgorithm": "NONE",
+      "encoding": "7_TO_8_BIT",
+      "supportsEditBuffer": false,
+      "interMessageDelayMs": 50,
+      "dumpTimeoutMs": 3000,
+      "midiDefaultChannel": 1,
+      "midiDefaultDeviceIdHex": "58"
+    }
+  }
 }
