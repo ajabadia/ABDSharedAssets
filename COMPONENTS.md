@@ -8,7 +8,7 @@ DOM + options dentro, callbacks fuera. Ni JUCE ni bridge ni React dentro de los 
 Todos los controles cumplen exactamente la misma API (el primero fue `Wheel`):
 
 ```js
-import { Knob, Select, Slider, Toggle, Wheel, XYPad } from '@abdsynths/shared/components';
+import { Knob, Segmented, Select, Slider, Toggle, Wheel, XYPad } from '@abdsynths/shared/components';
 
 const knob = new Knob(container, {
     label: 'Cutoff',
@@ -80,6 +80,7 @@ Reglas (las cumple cualquiera que se añada en el futuro):
 components/drag-core.js     núcleo DRY de arrastre (attachDrag, clamp)
 components/knob.js          knob rotatorio (270°) — comportamiento + contrato
 components/select.js        lista de opciones (nativa <select>), opciones deshabilitables
+components/segmented.js     selector segmentado (radiogroup plano), gemelo del Select
 components/slider.js        slider horizontal/vertical, thumb filmstrip opcional
 components/toggle.js        botón LED (latched o momentary), estado en [aria-pressed]
 components/wheel.js         rueda pitch/mod filmstrip (la original de la familia)
@@ -170,9 +171,20 @@ elemento tematizado (`[data-theme]`), asi funciona con las dos convenciones de c
 
 **Selector universal — `components/themeSwitcher.js` (`ThemeSwitcher`):** el interruptor es
 compartido, los TEMAS son de cada synth. Aplica `data-theme` en el elemento raiz que se le de
-(`<html>` o `<body>`), marca el activo (`is-active`/`aria-pressed`), persiste opcionalmente y
-su `destroy()` desacopla listeners de verdad. El tema `dark` se aplica SIN atributo (es el
-`:root`): el default de la pagina no depende del atributo.
+(`<html>` o `<body>`), persiste opcionalmente y su `destroy()` desacopla listeners de verdad.
+El tema `dark` se aplica SIN atributo (es el `:root`): el default de la pagina no depende del
+atributo. Tres funciones universales probadas en MS2000 (migrado el 2026-09-20):
+
+- `variant: 'select'` — un `<select>` unico compacto (alternativa a los botones), accesible
+  de serie. El value del select ES el id del tema; `setValue()` lo sincroniza.
+- `bodyClass` por tema — la clase de skin (`skin-*`) viaja como DATO del tema; el switcher
+  la aplica en `<body>` con politica de DUENO unico (retira la anterior al cambiar y al
+  destroy). Un synth ya no toca `document.body.className` a mano.
+- `payload` por tema — dato opaco del synth (MS2000 manda el indice de `synthMode`) que
+  `onChange(themeId, payload)` entrega como segundo argumento y `.payload` expone.
+
+Su CSS vive en `styles/components/widgets.css` (`.abd-theme-switcher` y variante
+`--select`), resuelto con tokens de la cascada.
 
 El principio de la suite aqui: un synth define SOLO los tokens de color (bloques
 `[data-theme=...]`) y ELIGE los tipos de elemento que usa (knob, slider, XYPad, fondo
@@ -180,6 +192,52 @@ tintable, LCD...). Los estilos de los elementos, las sombras, el comportamiento 
 mecanismos (temas, fondo, ajuste al viewport) son UNIVERSALES en este paquete: los skins
 cambian FORMA (registerSkin), los temas cambian COLOR (tokens), ambos se resuelven con las
 mismas variables.
+
+**FitStage — `components/fitStage.js` (`computeFit`, `mountFitStage`):** el ajuste del
+lienzo de diseno al viewport, como infraestructura de pagina (NO es un control: no lleva
+el contrato constructor/setValue). El lienzo es de tamano FIJO y la ventana cambia: sin
+ajuste, una ventana mas baja que el diseno corta por abajo el pie y la franja de teclado.
+`mountFitStage(stage, { width, height })` escala con `transform` y centra el eje que
+sobra; `computeFit` es el calculo puro (testeable sin DOM). Las cotas son parametro
+(`minScale`/`maxScale`, defaults 0.25x..3x): cada synth decide si quiere tope o no.
+
+REQUISITO de uso (composicion de la pagina, no mecanismo): el CSS de la pagina debe llevar
+`body { overflow: hidden }` — `transform` no cambia el box de layout y sin esa regla el
+lienzo sin escalar generaria scrollbars. El tamano de diseno SIEMPRE por parametro: el
+paquete no conoce lienzos ajenos (NEURONiK pasa su `CANVAS` de sections.js; CZ101, su
+1409x768).
+
+CONSUMIDORES: NEURONiK importa del barrel (`@abdsynths/shared/components`). CZ101 no tiene
+bundler (ESM nativo embebido con `juce_add_binary_data`), asi que consume COPIA GESTIONADA:
+`node scripts/sync_shared.js` copia el modulo verbatim a `WebUI/src/shared/fitStage.js` y el
+test `WebUI/tests/fitStage.test.js` lo compara byte a byte contra el paquete — editar la copia
+a mano rompe la suite a proposito. El LCD universal debera elegir el mismo camino en CZ101.
+
+**LCD universal — `components/lcdMachine.js` + `lcdScreen.js` + `lcdPanel.js`:** la maquina
+de estados es PURA (Idle/Navigation/Edit, arbol de menu INYECTADO por el synth, items
+`parameter`/`cc`/`action`, profundidad libre, hooks `onEdit/onAction/onPreview`): herencia
+directa del `LcdMenuManager` nativo de NEURONiK (retirado en c811b75, recuperado de git).
+La pantalla (`createLcdScreen`) lleva autoscroll ping-pong caracter a caracter (CZ101),
+preview con timeout (LcdDisplay nativo) y cola de mensajes con prioridad (ABDEep). El
+panel (`createLcdPanel`) anade el D-pad MENU/OK/cursores con hold-repeat (initial 400ms,
+repeat 120ms). Guia completa con el plan de adopcion por synth: `docs/LCD_GUIDE.md`. El
+port C++ vive en ABDSharedCode/LcdDisplay (`ABDShared::LcdDisplay`, INTERFACE, gate WASM).
+
+### Segmented — `components/segmented.js` (`Segmented`)
+
+**Selector segmentado: el hermano compacto del `Select`, para las listas de DOS
+opciones que se muestran de una vez** (motor, sync de LFO). Mismo contrato de
+familia (constructor/setValue/getValue/destroy/onChange silencioso en setValue,
+valor = ÍNDICE, opciones deshabilitables con nota, valor divergente conservado y
+marcado `[data-divergent]`). La diferencia es el mueble: cada opción es su
+propio botón en una fila plana (flex: 1 1 0 — N opciones llenan la celda del
+llamador), con roving tabindex y flechas ←/→/↑/↓ que saltan los vetados.
+
+La contraparte nativa vive en ABDSharedCode (`Segmented/Segmented.h`,
+`ABDShared::Segmented`, INTERFACE + sonda opt-in): radio group de TextButtons
+con togglestate, vetados y nota via tooltip, `setActive` sin notificar y
+`onChange` solo en edición. Mismo reparto de trabajo que en la web: 2-4
+opciones visibles en segmentos; listas largas en combo desplegable.
 
 ## Demo
 

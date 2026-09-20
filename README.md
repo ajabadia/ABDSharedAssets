@@ -131,7 +131,8 @@ Ver `docs/INTEGRATION_GUIDE.md` §5 bis.
 
 Para visualizar los componentes, abre demo/demo.html en un navegador.
 Incluye selector de temas interactivo, todos los componentes documentados y la
-familia JS de controles (Knob/Slider/Toggle con skins, sección 8).
+familia JS de controles (Knob/Slider/Toggle/Select/Segmented/XYPad con skins,
+sección 8).
 
 ```cmd
 npm run demo        # sirve la raíz del paquete en http://localhost:5199
