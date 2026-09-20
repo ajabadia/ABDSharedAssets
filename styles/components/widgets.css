@@ -1,0 +1,450 @@
+/*
+ * ABDSharedAssets — control family styles (knob, slider, toggle).
+ *
+ * Companion of components/{knob,slider,toggle}.js. Everything is themed through
+ * the global tokens (styles/tokens.css): --color-accent, --color-panel-surface,
+ * --color-text-muted... The literal fallbacks keep the controls usable standalone
+ * (demo pages, tests) without importing the token system.
+ */
+
+/* ── Knob ──────────────────────────────────────────────────────────────────── */
+
+.abd-knob {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1, 2px);
+    user-select: none;
+}
+
+.abd-knob__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.abd-knob__dial {
+    position: relative;
+    width: var(--abd-knob-size, 64px);
+    height: var(--abd-knob-size, 64px);
+    cursor: grab;
+    touch-action: none;   /* pointer events own the gesture */
+    outline: none;
+}
+
+.abd-knob__dial:focus-visible {
+    filter: drop-shadow(0 0 4px var(--color-accent, #00c3ff));
+}
+
+.abd-knob__dial:active { cursor: grabbing; }
+
+.abd-knob__svg { width: 100%; height: 100%; }
+
+.abd-knob__track,
+.abd-knob__arc {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+}
+
+.abd-knob__track { stroke: var(--color-panel-surface-elevated, #1c2a3d); }
+
+/* dasharray/offset are set inline by knob.js from the value */
+.abd-knob__arc { stroke: var(--color-accent, #00c3ff); }
+
+.abd-knob__pointer {
+    stroke: var(--color-text-main, #f0f7ff);
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+
+.abd-knob__value {
+    position: absolute;
+    inset: auto 0 18% 0;
+    text-align: center;
+    font-size: var(--text-2xs, 7px);
+    color: var(--color-text-dim, #4a637a);
+    pointer-events: none;
+}
+
+/* ── Slider ────────────────────────────────────────────────────────────────── */
+
+.abd-slider {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 4px);
+    user-select: none;
+}
+
+.abd-slider__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+}
+
+.abd-slider__track {
+    position: relative;
+    width: var(--abd-slider-length, 160px);
+    height: 14px;
+    background: var(--color-panel-surface-elevated, #1c2a3d);
+    border-radius: 7px;
+    cursor: pointer;
+    touch-action: none;
+    outline: none;
+}
+
+.abd-slider__track:focus-visible {
+    box-shadow: 0 0 0 1px var(--color-accent, #00c3ff);
+}
+
+.abd-slider--vertical { flex-direction: column; }
+.abd-slider--vertical .abd-slider__track {
+    width: 14px;
+    height: var(--abd-slider-length, 160px);
+    border-radius: 7px;
+}
+
+.abd-slider__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--color-accent-dim, rgba(0, 195, 255, 0.15));
+    border-radius: inherit;
+}
+
+.abd-slider__thumb {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+    background: var(--color-text-main, #f0f7ff);
+    border: 2px solid var(--color-accent, #00c3ff);
+    border-radius: 50%;
+    pointer-events: none;   /* the track handles the pointer */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.abd-slider--vertical .abd-slider__thumb {
+    left: 50%;
+    top: auto;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+}
+
+.abd-slider__value {
+    min-width: 4ch;
+    font-size: var(--text-xs, 8px);
+    color: var(--color-text-dim, #4a637a);
+}
+
+/* ── Toggle ────────────────────────────────────────────────────────────────── */
+
+.abd-toggle {
+    appearance: none;
+    border: 1px solid var(--color-panel-border, rgba(0, 195, 255, 0.2));
+    background: var(--color-panel-surface, #151f2e);
+    color: var(--color-text-muted, #7e9bb5);
+    font-size: var(--text-sm, 9px);
+    padding: var(--space-2, 4px) var(--space-3, 8px);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+}
+
+.abd-toggle::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: var(--space-2, 4px);
+    border-radius: 50%;
+    background: var(--abd-toggle-color, #00c3ff);
+    opacity: 0.25;
+    transition: opacity var(--transition-fast, 0.15s ease),
+                box-shadow var(--transition-fast, 0.15s ease);
+    vertical-align: middle;
+}
+
+.abd-toggle[aria-pressed="true"] {
+    color: var(--color-text-main, #f0f7ff);
+    border-color: var(--color-panel-border-strong, rgba(0, 195, 255, 0.45));
+}
+
+.abd-toggle[aria-pressed="true"]::before {
+    opacity: 1;
+    box-shadow: 0 0 6px 1px var(--abd-toggle-color, #00c3ff);
+}
+
+/* ── Toggle skin: ms2000 (token variant, extracted look of the MS2000 edits) ── */
+
+.abd-toggle--ms2000 {
+    border-radius: 3px;
+    font-family: var(--font-sans, sans-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* ── Toggle skin: junio (JUNiO photo sprites, 88x77 PNG on/off per color) ─── */
+
+.abd-toggle--junio {
+    width: 44px;             /* .sq geometry of the original JUNiO buttons */
+    height: 32px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: 0;            /* the sprite carries the look; hide the label */
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.abd-toggle--junio::before { content: none; }   /* no CSS LED: the sprite is the LED */
+
+/* ── Select ────────────────────────────────────────────────────────────────── */
+
+/* The list stays a native <select> (keyboard, screen readers, touch and the
+   WebView2 popup for free); only its box is themed. The arrow is deliberately
+   NOT removed: a list with no affordance is a text field that lies.
+
+   NAME OVERLAP, on purpose and guarded: `styles/components/controls.css` (the
+   CSS-only library, older) already styles a bare `<select class="abd-select">`,
+   and pages load both sheets. So the block itself stays layout-free — stacking
+   a bare select would break it — and the stacked look is opt-in via
+   `--labelled`, which components/select.js adds exactly when it has a label to
+   stack. The FIELD carries its own class, so both looks coexist. */
+
+.abd-select {
+    max-width: 100%;
+}
+
+.abd-select--labelled {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1, 2px);
+    user-select: none;
+}
+
+.abd-select__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.abd-select__field {
+    max-width: 100%;
+    padding: 2px var(--space-2, 4px);
+    font: inherit;
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-main, #f0f7ff);
+    background: var(--color-panel-surface-elevated, #1c2a3d);
+    border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.abd-select__field:focus-visible {
+    outline: none;
+    border-color: var(--color-accent, #00c3ff);
+}
+
+/* The current value is an option the UI cannot offer (e.g. host state aimed at
+   another engine). Flagged, never rewritten: see components/select.js. */
+.abd-select[data-divergent="true"] .abd-select__field {
+    border-color: var(--color-warning, #ffb454);
+}
+
+.abd-select[data-divergent="true"] .abd-select__label {
+    color: var(--color-warning, #ffb454);
+}
+
+.abd-select--ms2000 .abd-select__field,
+.abd-select__field--ms2000 {
+    font-family: var(--font-sans, sans-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-radius: 3px;
+}
+
+/* ── XYPad ─────────────────────────────────────────────────────────────────── */
+
+.abd-xypad
+{
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.abd-xypad__label
+{
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-dim, #8b98a5);
+}
+
+.abd-xypad__pad
+{
+    position: relative;
+    width: var(--abd-xypad-w, 220px);
+    height: var(--abd-xypad-h, 220px);
+    background: var(--color-bg-elev, #161b22);
+    border: 1px solid var(--color-border, #2c3542);
+    border-radius: 10px;
+    touch-action: none;
+    cursor: crosshair;
+    outline: none;
+    overflow: hidden;
+}
+
+.abd-xypad__pad:focus-visible
+{
+    border-color: var(--color-accent, #4aa3ff);
+    box-shadow: 0 0 0 2px var(--color-accent-dim, rgba(74, 163, 255, 0.35));
+}
+
+/* Grid: subtle thirds lines. */
+.abd-xypad__grid
+{
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--color-border, #2c3542) 1px, transparent 1px),
+        linear-gradient(90deg, var(--color-border, #2c3542) 1px, transparent 1px);
+    background-size: 33.34% 33.34%;
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+.abd-xypad__line
+{
+    position: absolute;
+    background: var(--color-accent-dim, rgba(74, 163, 255, 0.35));
+    pointer-events: none;
+}
+
+.abd-xypad__line--v
+{
+    top: 0;
+    bottom: 0;
+    width: 1px;
+}
+
+.abd-xypad__line--h
+{
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+
+.abd-xypad__thumb
+{
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border-radius: 50%;
+    background: var(--color-accent, #4aa3ff);
+    border: 2px solid var(--color-bg-base, #0d1117);
+    box-shadow: 0 0 10px var(--color-accent-dim, rgba(74, 163, 255, 0.5));
+    pointer-events: none;
+    transition: left 40ms linear, top 40ms linear;
+}
+
+.abd-xypad__readout
+{
+    position: absolute;
+    right: 6px;
+    bottom: 4px;
+    font-size: 10px;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    color: var(--color-text-dim, #8b98a5);
+    background: var(--color-bg-base, #0d1117);
+    padding: 1px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+/* Corner labels (optional): what lives at each corner of the surface — a
+   morph pad names its four models, same as the native XYPad::paint. Labels
+   are display-only (pointer-events: none): the pad IS the value surface.
+   While any corner is visible the percent readout hides (the wrapper carries
+   `abd-xypad--corners`): the corners say WHAT is where, the crosshair says
+   WHERE, and the value stays readable through aria-valuetext. */
+.abd-xypad--corners .abd-xypad__readout
+{
+    display: none;
+}
+
+.abd-xypad__corner
+{
+    position: absolute;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: var(--color-text-dim, #8b98a5);
+    pointer-events: none;
+}
+
+.abd-xypad__corner[data-corner="tl"] { top: 4px; left: 6px; }
+.abd-xypad__corner[data-corner="tr"] { top: 4px; right: 6px; text-align: right; }
+.abd-xypad__corner[data-corner="bl"] { bottom: 4px; left: 6px; }
+.abd-xypad__corner[data-corner="br"] { bottom: 4px; right: 6px; text-align: right; }
+
+/* Sprite URLs are relative to THIS stylesheet (styles/components/), so they
+   resolve under file:// and under any static server of the package root. */
+.abd-toggle--junio[data-color="orange"] { background-image: url('../../assets/junio/button_orange_off.png'); }
+.abd-toggle--junio[data-color="orange"][aria-pressed="true"] { background-image: url('../../assets/junio/button_orange_on.png'); }
+.abd-toggle--junio[data-color="red"] { background-image: url('../../assets/junio/button_red_off.png'); }
+.abd-toggle--junio[data-color="red"][aria-pressed="true"] { background-image: url('../../assets/junio/button_red_on.png'); }
+.abd-toggle--junio[data-color="blue"] { background-image: url('../../assets/junio/button_blue_off.png'); }
+.abd-toggle--junio[data-color="blue"][aria-pressed="true"] { background-image: url('../../assets/junio/button_blue_on.png'); }
+.abd-toggle--junio[data-color="grey"] { background-image: url('../../assets/junio/button_grey_off.png'); }
+.abd-toggle--junio[data-color="grey"][aria-pressed="true"] { background-image: url('../../assets/junio/button_grey_on.png'); }
+.abd-toggle--junio[data-color="white"] { background-image: url('../../assets/junio/button_white_off.png'); }
+.abd-toggle--junio[data-color="white"][aria-pressed="true"] { background-image: url('../../assets/junio/button_white_on.png'); }
+.abd-toggle--junio[data-color="yellow"] { background-image: url('../../assets/junio/button_yellow_off.png'); }
+.abd-toggle--junio[data-color="yellow"][aria-pressed="true"] { background-image: url('../../assets/junio/button_yellow_on.png'); }
+
+
+/* --- theme switcher (infraestructura de pagina, no un control) ------------ */
+
+.abd-theme-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 4px);
+}
+
+.abd-theme-switcher__btn {
+  appearance: none;
+  border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+  background: transparent;
+  color: var(--color-text-dim, #4a637a);
+  font: inherit;
+  font-size: var(--text-2xs, 7px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-md, 4px);
+  cursor: pointer;
+  transition: var(--transition-fast, 0.15s ease);
+}
+
+.abd-theme-switcher__btn:hover {
+  color: var(--color-text-main, #f0f7ff);
+  border-color: var(--color-panel-border-strong, rgb(0 195 255 / 45%));
+}
+
+.abd-theme-switcher__btn.is-active {
+  color: var(--color-accent, #00c3ff);
+  border-color: var(--color-accent, #00c3ff);
+  background: var(--color-accent-dim, rgb(0 195 255 / 15%));
+}

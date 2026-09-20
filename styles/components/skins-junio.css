@@ -1,0 +1,83 @@
+/*
+ * Skins for the ABDSharedAssets control family: 'ms2000' (vector rim/cap/dot)
+ * and 'junio' (photographic filmstrip PNG). Theming via tokens, fallbacks keep
+ * them usable standalone.
+ */
+
+/* ── ms2000 (vector, extracted from ABDMS2000 WebUI rotaryKnob) ────────────── */
+
+.abd-ms2000-knob { display: block; }
+
+.abd-ms2000-knob__rim {
+    fill: var(--color-panel-surface-elevated, #1c2a3d);
+    stroke: var(--color-panel-border, rgba(0, 195, 255, 0.2));
+    stroke-width: 1.5;
+}
+
+.abd-ms2000-knob__cap {
+    fill: var(--color-panel-surface, #151f2e);
+    stroke: var(--color-panel-border-dim, rgba(0, 195, 255, 0.1));
+}
+
+.abd-ms2000-knob__tick {
+    fill: var(--color-accent, #00c3ff);
+}
+
+.abd-ms2000-knob__dot {
+    fill: var(--color-text-muted, #7e9bb5);
+}
+
+/* ── junio (filmstrip, extracted from ABDJUNiO601 knob.png) ────────────────── */
+
+/* The host serves the sprite; size matches the JUNiO asset proportions. The
+   marker substitutes the original .knob pointer (2px white line). */
+.abd-junio-knob {
+    position: relative;
+    width: var(--abd-knob-size, 64px);
+    height: var(--abd-knob-size, 64px);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    transform-origin: center;
+}
+
+.abd-junio-knob__marker {
+    position: absolute;
+    width: 2px;
+    height: 22%;
+    left: 50%;
+    top: 6%;
+    transform: translateX(-50%);
+    background: var(--color-text-main, #f0f7ff);
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    border-radius: 1px;
+}
+
+/* ── junio slider: slot PNG as (vertical) track, cap PNG as thumb ──────────── */
+
+/* Thumb: the photo cap (86x46 asset, scaled to 26x15). */
+.abd-slider--junio .abd-slider__thumb--junio-cap {
+    width: 26px;
+    height: 15px;
+    border: none;
+    border-radius: 2px;
+    background: url('../../assets/junio/slider_cap.png') center / contain no-repeat;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* The cap shows the position; the vector fill would peek behind it. */
+.abd-slider--junio .abd-slider__fill { background: transparent; }
+
+/* Vertical fader: the slot PNG (86x308) fits the track height. */
+.abd-slider--junio.abd-slider--vertical .abd-slider__track--junio-slot {
+    background: transparent;
+    border-radius: 0;
+}
+
+.abd-slider--junio.abd-slider--vertical .abd-slider__track--junio-slot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('../../assets/junio/slider_slot.png') center / contain no-repeat;
+    pointer-events: none;
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@abdsynths/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fuente Unica de la Verdad (Zero-Copy) para la suite ABDSynths: design tokens, temas, componentes UI, contratos y assets.",
+  "exports": {
+    "./styles": "./styles/index.css",
+    "./styles/*": "./styles/*",
+    "./contracts/*": "./contracts/*",
+    "./docs/*": "./docs/*",
+    "./components": "./components/index.js",
+    "./components/*": "./components/*",
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "styles",
+    "contracts",
+    "brands",
+    "models",
+    "icons",
+    "docs",
+    "demo",
+    "components",
+    "assets"
+  ],
+  "scripts": {
+    "demo": "vite . --port 5199",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "vitest": "^1.6.0",
+    "jsdom": "^24.0.0"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  }
+}
