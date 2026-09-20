@@ -27,6 +27,18 @@
     fill: var(--color-text-muted, #7e9bb5);
 }
 
+/* Modulation ring: own outer radius (the rim owns 23), double stroke like the
+   native LookAndFeel, themed with --color-mod-ring. */
+.abd-ms2000-knob__mod-halo,
+.abd-ms2000-knob__mod-ring {
+    fill: none;
+    stroke: var(--color-mod-ring, var(--color-accent, #00c3ff));
+    stroke-linecap: round;
+}
+
+.abd-ms2000-knob__mod-halo { stroke-width: 3; opacity: 0.4; }
+.abd-ms2000-knob__mod-ring { stroke-width: 1.5; }
+
 /* ── junio (filmstrip, extracted from ABDJUNiO601 knob.png) ────────────────── */
 
 /* The host serves the sprite; size matches the JUNiO asset proportions. The
