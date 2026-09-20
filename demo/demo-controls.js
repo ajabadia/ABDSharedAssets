@@ -4,7 +4,7 @@
  * (containers here, controls instantiated below with the three built-in skins).
  */
 
-import { Knob, Select, Slider, Toggle, XYPad } from '../components/index.js';
+import { Knob, Select, Slider, Toggle, XYPad, createLcdPanel } from '../components/index.js';
 
 const SKINS = ['vector', 'ms2000', 'junio'];
 
@@ -159,3 +159,29 @@ mount('demo-xypads', (host) =>
     // Mirror updates must not echo back into main (setValue silent by default).
     host.appendChild(log);
 });
+
+// ── LCD (pantalla + maquina + D-pad) ────────────────────────────────────────
+const lcdHost = document.getElementById('demo-lcd');
+if (lcdHost) {
+  const values = { masterLevel: 0.75, midiChannel: 1, reverbMix: 0.3 };
+  const lcd = createLcdPanel(lcdHost, {
+    menu: [
+      { label: 'GLOBAL', sub: [
+        { label: 'MASTER VOL', paramId: 'masterLevel' },
+        { label: 'MIDI CH', paramId: 'midiChannel' },
+      ] },
+      { label: 'EFFECTS', sub: [{ label: 'REVERB MIX', paramId: 'reverbMix' }] },
+      { label: 'PANIC', type: 'action' },
+    ],
+    idle: () => ['DEMO SUITE', 'LISTO'],
+    editValue: (item) => String(values[item.paramId] ?? ''),
+    hooks: {
+      onEdit: (paramId, dir) => {
+        values[paramId] = Math.min(1, Math.max(0, (values[paramId] ?? 0) + dir * 0.05));
+        lcd.screen.preview(1, String(values[paramId]), { durationMs: 600 });
+      },
+      onAction: () => lcd.screen.message('panic', '¡PANIC!', { priority: 1, durationMs: 1200 }),
+    },
+  });
+  window.__demoLcd = lcd; // QA desde consola
+}

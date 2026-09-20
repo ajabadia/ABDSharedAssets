@@ -14,9 +14,14 @@
 
 export { Knob } from './knob.js';
 export { Select } from './select.js';
+export { Segmented } from './segmented.js';
 export { Slider } from './slider.js';
 export { Toggle } from './toggle.js';
 export { Wheel } from './wheel.js';
 export { XYPad } from './xypad.js';
 export { ThemeSwitcher } from './themeSwitcher.js';
+export { computeFit, mountFitStage } from './fitStage.js';
 export { registerSkin, getSkin, applySkin, skinNames } from './skins/index.js';
+export { createLcdMachine, formatValue } from './lcdMachine.js';
+export { createLcdScreen } from './lcdScreen.js';
+export { createLcdPanel } from './lcdPanel.js';

@@ -43,7 +43,7 @@ describe('ThemeSwitcher', () => {
     expect(onChange).not.toHaveBeenCalled();
 
     ts.setValue('dark');
-    expect(onChange).toHaveBeenCalledWith('dark');
+    expect(onChange).toHaveBeenCalledWith('dark', undefined);
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
@@ -88,5 +88,93 @@ describe('ThemeSwitcher', () => {
     // El clon ya no lleva el listener: el click no debe llamar a onChange.
     btn.click();
     expect(onChange).not.toHaveBeenCalled();
+  });
+  describe('variante select', () => {
+    it('renders a single <select> whose value IS the theme id', () => {
+      const root = document.createElement('div');
+      const ts = make({
+        root,
+        variant: 'select',
+        themes: [{ id: 'dark', label: 'Oscuro' }, { id: 'light', label: 'Claro' }],
+      });
+
+      expect(ts.element.tagName).toBe('SELECT');
+      expect(ts.element.querySelectorAll('option').length).toBe(2);
+      expect(ts.element.value).toBe('dark'); // estado inicial reflejado
+      expect(root.hasAttribute('data-theme')).toBe(false);
+
+      ts.setValue('light');
+      expect(ts.element.value).toBe('light'); // sincronizado
+      expect(root.getAttribute('data-theme')).toBe('light');
+    });
+
+    it('user change on the <select> fires onChange and applies the theme', () => {
+      const root = document.createElement('div');
+      const onChange = vi.fn();
+      make({ root, variant: 'select', themes: [{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }], onChange });
+
+      const select = container.querySelector('select');
+      select.value = 'light';
+      select.dispatchEvent(new Event('change'));
+
+      expect(root.getAttribute('data-theme')).toBe('light');
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith('light', undefined);
+    });
+
+    it('destroy() detaches the change listener for real', () => {
+      const onChange = vi.fn();
+      const ts = make({ variant: 'select', themes: [{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }], onChange });
+      const select = ts.element;
+
+      ts.destroy();
+      // aunque el elemento siga referenciado, no debe responder al cambio
+      select.value = 'light';
+      select.dispatchEvent(new Event('change'));
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bodyClass (politica de dueno unico)', () => {
+    it('applies the active theme bodyClass and removes the previous one', () => {
+      const ts = make({
+        themes: [
+          { id: 'dark', label: 'Dark' },
+          { id: 'cyber', label: 'Cyber', bodyClass: 'skin-cyber' },
+        ],
+      });
+
+      ts.setValue('cyber');
+      expect(document.body.classList.contains('skin-cyber')).toBe(true);
+      ts.destroy();
+      expect(document.body.classList.contains('skin-cyber')).toBe(false);
+    });
+
+    it('is a no-op for themes without bodyClass, and destroy removes nothing', () => {
+      const ts = make({ themes: [{ id: 'dark', label: 'Dark' }, { id: 'light', label: 'Light' }] });
+
+      ts.setValue('light');
+      expect(document.body.className).toBe('');
+      ts.destroy();
+      expect(document.body.className).toBe('');
+    });
+  });
+
+  describe('payload por tema', () => {
+    it('delivers the theme payload as the second onChange argument', () => {
+      const onChange = vi.fn();
+      const ts = make({
+        themes: [
+          { id: 'performance', label: 'Performance', payload: 0 },
+          { id: 'advanced', label: 'Advanced', payload: 1 },
+        ],
+        onChange,
+      });
+      expect(ts.payload).toBe(0); // el del tema activo
+
+      ts.setValue('advanced', { fromUser: true });
+      expect(onChange).toHaveBeenCalledWith('advanced', 1);
+      expect(ts.payload).toBe(1);
+    });
   });
 });
