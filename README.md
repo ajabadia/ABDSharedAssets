@@ -48,6 +48,13 @@ Colores (4 bg, 3 bordes, accent + estados, 3 text), tipografia (8 tamanos), espa
 | Juno | Tricolor | themes/juno.css |
 | AudioLab | Green / dark | themes/audiolab.css |
 
+Ademas de los temas por synth, la suite trae un MODO CLARO generico: `[data-theme="light"]`
+en `styles/tokens.css` (contraste WCAG medido; el LCD no cambia: es autoiluminado). El
+interruptor universal es `components/themeSwitcher.js` (`ThemeSwitcher`): aplica `data-theme`
+en `<html>` o `<body>`, persiste opcionalmente y el fondo tintable (`--abd-bg-tint`) sigue al
+tema solo. Principio: un synth define SOLO tokens de color y elige tipos de elemento; lo demas
+(widgets, skins de forma, mecanismos) es universal en este paquete.
+
 ### Componentes (10 archivos)
 | Componente | Archivo | Contenido |
 |---|---|---|
@@ -108,7 +115,7 @@ import '@abdsynths/shared/styles/index.css';   // bundle completo
 
 Cascada de 3 niveles: importa los tokens compartidos primero y carga tus overrides host
 (`themes.css`, `--synth-*`, `--kbd-*`...) después — el look actual del proyecto se conserva.
-Ver `demo/proto/` (prototipo Vite) y `docs/INTEGRATION_GUIDE.md` §5 bis.
+Ver `docs/INTEGRATION_GUIDE.md` §5 bis.
 
 ---
 
@@ -123,9 +130,10 @@ Ver `demo/proto/` (prototipo Vite) y `docs/INTEGRATION_GUIDE.md` §5 bis.
 ## Demo
 
 Para visualizar los componentes, abre demo/demo.html en un navegador.
-Incluye selector de temas interactivo y todos los componentes documentados.
+Incluye selector de temas interactivo, todos los componentes documentados y la
+familia JS de controles (Knob/Slider/Toggle con skins, sección 8).
 
-Prototipo Vite (importa `@abdsynths/shared` por nombre + cascada host MS2000):
 ```cmd
-npm run demo        # sirve demo/proto en http://localhost:5199
+npm run demo        # sirve la raíz del paquete en http://localhost:5199
+                    # abrir /demo/demo.html
 ```

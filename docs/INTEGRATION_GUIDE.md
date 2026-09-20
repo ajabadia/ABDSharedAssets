@@ -115,7 +115,8 @@ import '@abdsynths/shared/styles/themes/ms2000.css';
 **Cascada de 3 niveles (host MS2000 intacto):** los tokens compartidos se importan primero y los
 overrides del proyecto se cargan después (sus `themes.css`, `--synth-*`, `--kbd-*`, etc.). En
 ABDMS2000 esto se hace con `WebUI/src/styles/shared-cascade.css` + un plugin Vite que lo inyecta
-como primer stylesheet; `themes.css` del host gana la cascada. Ver demo en `demo/proto/`.
+como primer stylesheet; `themes.css` del host gana la cascada. El prototipo Vite original
+(`demo/proto/`) fue absorbido por `demo/demo.html` y eliminado.
 
 ---
 
@@ -125,6 +126,6 @@ como primer stylesheet; `themes.css` del host gana la cascada. Ver demo en `demo
 - tokens.css importado
 - Tema seleccionado aplicado (data-theme o @import)
 - Componentes importados (panels.css, buttons.css, etc.)
-- QA visual con demo/demo.html y demo/proto/ (prototipo Vite) como referencia
+- QA visual con demo/demo.html como referencia (familia JS de controles incluida, sección 8)
 - Cascada host verificada: los overrides del proyecto ganan a los tokens compartidos
 - Verificar que _review/ NO esta en el proyecto
