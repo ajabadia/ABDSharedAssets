@@ -207,11 +207,22 @@ lienzo sin escalar generaria scrollbars. El tamano de diseno SIEMPRE por paramet
 paquete no conoce lienzos ajenos (NEURONiK pasa su `CANVAS` de sections.js; CZ101, su
 1409x768).
 
-CONSUMIDORES: NEURONiK importa del barrel (`@abdsynths/shared/components`). CZ101 no tiene
-bundler (ESM nativo embebido con `juce_add_binary_data`), asi que consume COPIA GESTIONADA:
-`node scripts/sync_shared.js` copia el modulo verbatim a `WebUI/src/shared/fitStage.js` y el
-test `WebUI/tests/fitStage.test.js` lo compara byte a byte contra el paquete — editar la copia
-a mano rompe la suite a proposito. El LCD universal debera elegir el mismo camino en CZ101.
+CONSUMIDORES (los cuatro synths): NEURONiK y MS2000 importan del barrel
+(`@abdsynths/shared/components`) — NEURONiK con su lienzo fijo (`CANVAS` de sections.js);
+MS2000 en modo FLUIDO: floor de diseno (`min-width/min-height` 1080x680 en `#app`) +
+`onlyShrink: true` — identidad por encima del diseno, escala por debajo; las media queries
+del dashboard siguen mandando el reflow (el fit solo garantiza que nada se corte).
+CZ101 y ABDEep no tienen bundler: COPIA GESTIONADA — `node scripts/sync_shared.js` (CZ101)
+o `node scripts/sync_shared.mjs` (ABDEep) copian el modulo verbatim a
+`WebUI/src/shared/fitStage.js` (ABDEep anade el glue ESM `js/fit-stage.js`, unico modulo de
+su app) y el test de cada uno lo compara byte a byte contra el paquete — editar la copia a
+mano rompe la suite a proposito. El LCD universal debera elegir el mismo camino.
+
+`onlyShrink` (paginas fluidas): a identidad los margenes de centrado son 0 y el transform se
+LIMPIA — un `scale(1)` residual crea containing block y re-anclaria overlays
+`position: fixed` (drawer, modales). `stageWidth`/`stageHeight` declaran la caja NATURAL del
+stage cuando su CSS puede exceder el diseno (el floor de una pagina fluida): el centrado
+apunta a la caja escalada real, no al diseno, y no recorta el eje no limitante.
 
 **LCD universal — `components/lcdMachine.js` + `lcdScreen.js` + `lcdPanel.js`:** la maquina
 de estados es PURA (Idle/Navigation/Edit, arbol de menu INYECTADO por el synth, items
