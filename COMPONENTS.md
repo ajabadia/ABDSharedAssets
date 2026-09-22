@@ -150,8 +150,10 @@ con `file://` y con cualquier servidor estático. Para páginas en subcarpetas (
 ### Fondo de lienzo tintable (`assets/backgrounds/`)
 
 `bg_neutral.png` (1672x941, gris medio-acromático) es el fondo GENÉRICO de la suite y el
-MÁSTER bit-exacto; `bg_neutral.webp` (sin pérdida, pixel-exacto) es el que se sirve. El PNG:
-no lleva color — el tema lo tiñe. Uso: `class="abd-theme-bg"` en el contenedor y
+MÁSTER bit-exacto; `bg_tile512.webp` (341 KB, tile seamless sin pérdida) es el que se sirve
+por defecto (`repeat`, costura medida 0.000, banding 267/MP — 3x mejor que el master); 
+`bg_neutral.webp` (1.9 MB) es la variante FULL-BLEED opt-in (`.abd-theme-bg--full`, `cover`).
+Métricas completas en `docs/STYLES_GUIDE.md` §4b. El PNG: no lleva color — el tema lo tiñe. Uso: `class="abd-theme-bg"` en el contenedor y
 `--abd-bg-tint` con el color del tema (`styles/components/backgrounds.css`, mezcla
 `soft-light` para que el tono y la luminancia del tema manden y la textura module). Un
 tema puede usar OTRO fondo con `--abd-bg-image` (URL relativa a SU css). Pesos y

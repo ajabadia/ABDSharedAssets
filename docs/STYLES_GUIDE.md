@@ -138,6 +138,52 @@ Nota (2026-09-05): los modulos (scope, keyboard) ya NO embeben paletas por tema 
 
 ---
 
+## 4b. Fondo tintable por tema (backgrounds.css)
+
+El fondo generico de la suite NO lleva el color encima: una textura de grano gris acromatico
+(media ~106, std ~24, R=G=B) modula el color que pone el tema. Un solo asset sirve para
+antracita, rojo intenso, azules electricos, tierra o grises claros.
+
+```html
+<body class="abd-theme-bg"> ... </body>
+```
+```css
+[data-theme="rojo"] { --abd-bg-tint: #b3121f; }
+```
+
+Mezcla por defecto `soft-light` (conserva tono y luminancia del tema); el tinte por defecto
+es `--color-bg-base` del tema activo. Variante opt-in `.abd-theme-bg--full` usa el master
+completo con `cover`.
+
+### Ficheros y metricas (medidas sobre el master, L= luminancia)
+
+| fichero | bytes | rol | PSNR | banding (escalones/MP) | costura repeat |
+|---|---|---|---|---|---|
+| `bg_neutral.png` | 2.81 MB | MASTER bit-exacto (1672x941) | — | 866 | n/a |
+| `bg_neutral.webp` | 1.95 MB | variante FULL-BLEED (`--full`) | inf (lossless) | 866 | n/a |
+| `bg_tile512.webp` | 341 KB | **TILE por defecto** (`repeat`) | inf (lossless) | **267** | **0.000** |
+
+Como se fabrico el tile (script reproducible):
+1. recorte 512x512 del master de mayor std (energia del grano; y=0, x=416 en el master actual);
+2. bordes espejo-plumados de 64 px (izq<->der, top<->bottom): la costura del `repeat` queda con
+   gradiente continuo;
+3. recentrado de la media a 104.7 (la del master);
+4. WebP **sin perdida** (pixel-exacto del tile: cero banding por construccion).
+
+Por que NO lossy: la codificacion con perdida cuantiza el grano fino en mesetas — a q85 el
+banding se multiplica x6 (5093/MP) y a q75 x23 (19729/MP). Con `quality=90` la costura del
+tile tambien se degrada (0.31 relativa). El tile lossless es lo unico que cumple "cero
+banding" con 5.6x menos bytes que el full-bleed.
+
+Percepcion: el std del tile (14.95) replica el del master medido en ventanas de 512 px
+(mediana 15.16, p10 13.30, p90 17.44) — el grano que ve el ojo dentro de un viewport no
+cambia; solo desaparece la deriva de luminancia macro, imperceptible al modular un tinte.
+
+Coste en binario de plugin (NEURONiK, asset embebido via BinaryData): 1.95 MB -> 0.34 MB
+por instancia del fondo (~1.6 MB liberados por plugin).
+
+---
+
 ## 5. Como Consumir los Estilos
 
 ### Opcion A: Bundle completo
