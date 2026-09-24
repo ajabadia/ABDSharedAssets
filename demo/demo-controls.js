@@ -4,7 +4,9 @@
  * (containers here, controls instantiated below with the three built-in skins).
  */
 
-import { Knob, Select, Slider, Toggle, XYPad, createLcdPanel } from '../components/index.js';
+import { Knob, NumberBox, Segmented, Select, Slider, Toggle, XYPad, createLcdPanel } from '../components/index.js';
+
+import { WAVEFORM_GLYPHS, WAVEFORM_NAMES } from '../components/waveforms.js';
 
 const SKINS = ['vector', 'ms2000', 'junio'];
 
@@ -185,3 +187,55 @@ if (lcdHost) {
   });
   window.__demoLcd = lcd; // QA desde consola
 }
+
+
+/* ── LFO waveform furniture: two variants side by side ─────────────────────── */
+
+const WAVE_OPTIONS = WAVEFORM_NAMES.map((name, index) => ({ label: name, glyph: WAVEFORM_GLYPHS[index] }));
+
+mount('demo-wave-rows', (host) =>
+{
+    new Segmented(host, { options: WAVE_OPTIONS, value: 0, label: 'LFO 1 Wave' });
+});
+
+mount('demo-wave-led', (host) =>
+{
+    new Segmented(host, { options: WAVE_OPTIONS, variant: 'led', value: 2, label: 'LFO 1 Wave' });
+});
+
+mount('demo-wave-select', (host) =>
+{
+    new Select(host, { options: WAVEFORM_NAMES, value: 0, label: 'LFO 1 Wave' });
+});
+
+mount('demo-wave-gated', (host) =>
+{
+    new Segmented(host,
+    {
+        options: WAVE_OPTIONS,
+        variant: 'led',
+        value: 0,
+        disabled: [5],
+        label: 'S&H apagado por gating',
+    });
+});
+
+mount('demo-nb-bpm', (host) =>
+{
+    new NumberBox(host, { value: 120, min: 20, max: 400, label: 'Master BPM', unit: 'bpm' });
+});
+
+mount('demo-nb-channel', (host) =>
+{
+    new NumberBox(host, { value: 1, min: 1, max: 16, label: 'MIDI Channel' });
+});
+
+mount('demo-nb-float', (host) =>
+{
+    new NumberBox(host, { value: 0.5, min: 0, max: 1, step: 0.05, integer: false, label: 'Amount' });
+});
+
+mount('demo-nb-gated', (host) =>
+{
+    new NumberBox(host, { value: 7, min: 0, max: 16, label: 'Deshabilitado', disabled: true });
+});

@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="../styles/components/controls.css">
 <link rel="stylesheet" href="../styles/components/widgets.css">
 <link rel="stylesheet" href="../styles/components/skins-junio.css">
+<link rel="stylesheet" href="../styles/components/backgrounds.css">
 <link rel="stylesheet" href="../styles/components/navbar.css">
 <link rel="stylesheet" href="../components/lcd.css">
 
@@ -111,6 +112,25 @@ body {
 }
 .demo-toggle-momentary { border-color: var(--color-accent-danger, #ff4a4a); }
 .demo-junio-colors { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+</style>
+<style>
+/* QA fondo tintable */
+.demo-bg-box {
+  width: 220px;
+  height: 150px;
+  border: 1px solid var(--color-panel-border, rgba(0,195,255,0.2));
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px;
+}
+.demo-bg-box .demo-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
 </style>
 </head>
 <body data-theme="ms2000">
@@ -322,6 +342,71 @@ body {
 </div>
 </div></div>
 <div style="height: 60px;"></div>
+
+<section class="demo-section">
+  <h2>Fondo tintable del suite (tile seamless · full-bleed)</h2>
+  <p class="note">El tile <code>bg_tile512.webp</code> (341 KB, lossless) es el asset por defecto de
+    <code>.abd-theme-bg</code>; el color lo pone el tema vía <code>--abd-bg-tint</code> y la textura lo modula
+    (<code>soft-light</code>). La variante <code>.abd-theme-bg--full</code> sirve el master completo (1.9 MB).</p>
+  <div class="demo-row">
+    <div class="abd-theme-bg demo-bg-box" style="--abd-bg-tint: #1a1d21;"><div class="demo-label">antracita · tile</div></div>
+    <div class="abd-theme-bg demo-bg-box" style="--abd-bg-tint: #b3121f;"><div class="demo-label">rojo intenso · tile</div></div>
+    <div class="abd-theme-bg demo-bg-box" style="--abd-bg-tint: #00308f;"><div class="demo-label">azul eléctrico · tile</div></div>
+    <div class="abd-theme-bg demo-bg-box" style="--abd-bg-tint: #cfd6dd;"><div class="demo-label">gris claro · tile</div></div>
+    <div class="abd-theme-bg abd-theme-bg--full demo-bg-box" style="--abd-bg-tint: #101216;"><div class="demo-label">full-bleed · master</div></div>
+  </div>
+</section>
+
+<section class="demo-section">
+  <h2>NumberBox — caja numérica −/+ (BPM, canal, octavas)</h2>
+  <p class="note">Portado del mueble de ABDEep (OCT −/+ + <code>.modal-input</code>) al contrato
+    de familia: modelo en unidades REALES, clamp al rango, step para los botones,
+    entero opcional, <code>setValue</code> silencioso, onChange solo al editar.</p>
+  <div class="demo-row" style="align-items: flex-start;">
+    <div class="demo-box" style="min-width: 180px;">
+      <div class="demo-label">BPM (entero, 20–400)</div>
+      <div id="demo-nb-bpm"></div>
+    </div>
+    <div class="demo-box" style="min-width: 180px;">
+      <div class="demo-label">Canal MIDI (1–16)</div>
+      <div id="demo-nb-channel"></div>
+    </div>
+    <div class="demo-box" style="min-width: 180px;">
+      <div class="demo-label">Float con paso (0–1, paso 0.05)</div>
+      <div id="demo-nb-float"></div>
+    </div>
+    <div class="demo-box" style="min-width: 180px;">
+      <div class="demo-label">Deshabilitado</div>
+      <div id="demo-nb-gated"></div>
+    </div>
+  </div>
+</section>
+
+<section class="demo-section">
+  <h2>LFO — formas de onda: dos variantes de mueble (QA)</h2>
+  <p class="note">Variantes del <code>Segmented</code> compartido con los glifos canónicos
+    (<code>waveforms.js</code>): <strong>A</strong> segmentos compactos de dos líneas
+    (marca sobre el nombre), <strong>B</strong> fila de botones LED. Mismo contrato:
+    valor por índice del contrato, silent <code>setValue</code>, onChange solo al elegir.</p>
+  <div class="demo-row" style="align-items: flex-start;">
+    <div class="demo-box" style="min-width: 260px;">
+      <div class="demo-label">Variante A — dos líneas</div>
+      <div id="demo-wave-rows"></div>
+    </div>
+    <div class="demo-box" style="min-width: 260px;">
+      <div class="demo-label">Variante B — fila LED</div>
+      <div id="demo-wave-led"></div>
+    </div>
+    <div class="demo-box" style="min-width: 200px;">
+      <div class="demo-label">Referencia — Select actual</div>
+      <div id="demo-wave-select"></div>
+    </div>
+    <div class="demo-box" style="min-width: 240px;">
+      <div class="demo-label">Las dos, deshabilitando S&H (gating)</div>
+      <div id="demo-wave-gated"></div>
+    </div>
+  </div>
+</section>
 
 <section class="demo-section">
   <h2>LCD universal (pantalla + máquina + D-pad)</h2>

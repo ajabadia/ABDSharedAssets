@@ -180,7 +180,10 @@ Percepcion: el std del tile (14.95) replica el del master medido en ventanas de 
 cambia; solo desaparece la deriva de luminancia macro, imperceptible al modular un tinte.
 
 Coste en binario de plugin (NEURONiK, asset embebido via BinaryData): 1.95 MB -> 0.34 MB
-por instancia del fondo (~1.6 MB liberados por plugin).
+por instancia del fondo (~1.6 MB liberados por instancia). **Verificado sobre el binario
+completo** (suma de los `BinaryData*.cpp` generados en build-reference): los fuentes
+embebidos bajan de **8.1 MB a 2.69 MB (-5.4 MB, -67%)** con el tile como unico fondo del
+dist; la variante `--full` sigue disponible como asset externo, no embebido.
 
 ---
 
