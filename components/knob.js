@@ -23,8 +23,11 @@ const START_ANGLE = -135;
  * @param {object} options
  *   size        px, default 64.
  *   value       initial normalised 0..1, default 0.
- *   label       text above the knob, optional.
+ *   label       text above the knob, optional. Doubles as the slider's
+ *               accessible name (see ariaLabel).
  *   skin        skin name (see components/skins), default 'vector'.
+ *   ariaLabel   explicit accessible name for the role=slider dial, when the
+ *               visible label is absent or must differ from it.
  *   format      (normalised) => string for the readout, default percent.
  *   step        keyboard step, default 0.01.
  *   onChange    (normalised) => void, fires on user edits (not on setValue).
@@ -51,6 +54,7 @@ export class Knob
             size: 64,
             value: 0,
             label: '',
+            ariaLabel: null,
             skin: 'vector',
             step: 0.01,
             format: (v) => `${Math.round(v * 100)}%`,
@@ -91,6 +95,12 @@ export class Knob
         this.dial.setAttribute('role', 'slider');
         this.dial.setAttribute('aria-valuemin', '0');
         this.dial.setAttribute('aria-valuemax', '1');
+        // Accessible name: a div[role=slider] cannot be tied with <label
+        // for> (that is form-element only), so the name travels ON the
+        // dial — explicit ariaLabel, else the visible label's text.
+        const accessibleName = this.options.ariaLabel ?? this.options.label;
+        if (accessibleName)
+            this.dial.setAttribute('aria-label', accessibleName);
 
         // The skin paints INSIDE the interaction surface and owns its own DOM.
         this.skin = applySkin(this.options.skin, this.dial, this);
@@ -113,6 +123,13 @@ export class Knob
             onDragStart: () => this.options.onDragStart?.(),
             onDragEnd: () => this.options.onDragEnd?.(),
             onStep: (direction) => clamp01(this.value + direction * this.options.step),
+        });
+
+        // Double-click to reset to default value
+        this.dial.addEventListener('dblclick', () => {
+            this.value = clamp01(this.options.value ?? 0);
+            this.render();
+            this.options.onChange?.(this.value);
         });
     }
 

@@ -50,6 +50,7 @@ export class XYPad
             width: 220,
             height: 220,
             label: '',
+            ariaLabel: null,
             step: 0.01,
             format: (v) => `${Math.round(v * 100)}%`,
             corners: null,
@@ -86,8 +87,15 @@ export class XYPad
         this.pad = document.createElement('div');
         this.pad.className = 'abd-xypad__pad';
         this.pad.tabIndex = 0;
-        this.pad.setAttribute('role', 'application');
-        this.pad.setAttribute('aria-label', this.options.label || 'X-Y pad');
+        // role=slider, not 'application': the keyboard MOVES the value (arrows,
+        // PageUp/Down, Home/End), which is exactly the slider contract. Absolute
+        // pointer jumps are an input method, not a role.
+        this.pad.setAttribute('role', 'slider');
+        this.pad.setAttribute('aria-valuemin', '0');
+        this.pad.setAttribute('aria-valuemax', '1');
+        const accessibleName = this.options.ariaLabel ?? this.options.label;
+        this.pad.setAttribute('aria-label', accessibleName || 'X-Y pad');
+        this.pad.setAttribute('aria-valuenow', `${this.value.x}`);
         this.pad.setAttribute('aria-valuetext', this.formatXY());
 
         this.pad.innerHTML = `
@@ -97,6 +105,7 @@ export class XYPad
             <div class="abd-xypad__thumb"></div>
             <span class="abd-xypad__readout">${this.formatXY()}</span>`;
 
+        this.renderAria();
         this.lineV = this.pad.querySelector('.abd-xypad__line--v');
         this.lineH = this.pad.querySelector('.abd-xypad__line--h');
         this.thumb = this.pad.querySelector('.abd-xypad__thumb');
@@ -107,6 +116,13 @@ export class XYPad
         this.renderCorners();
 
         this.container.appendChild(this.wrapper);
+    }
+
+    /** @brief aria-valuenow follows the live value (valuetext does the pair). */
+    renderAria ()
+    {
+        this.pad.setAttribute('aria-valuenow', `${this.value.x}`);
+        this.pad.setAttribute('aria-valuetext', this.formatXY());
     }
 
     attachInteraction ()
@@ -233,6 +249,7 @@ export class XYPad
 
         const text = this.formatXY();
         this.readout.textContent = text;
+        this.pad.setAttribute('aria-valuenow', `${x}`);
         this.pad.setAttribute('aria-valuetext', text);
     }
 

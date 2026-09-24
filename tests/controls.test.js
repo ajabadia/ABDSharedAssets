@@ -155,6 +155,32 @@ describe('Knob', () =>
     expect(Number(knob.dial.getAttribute('aria-valuenow'))).toBeCloseTo(0.75);
     knob.destroy();
   });
+
+  it('the slider dial carries an accessible name', () =>
+  {
+    // The visible label doubles as the name (how NEURONiK drawer knobs are
+    // built: they gain the accessible name for free).
+    const named = new Knob(host, { label: 'Cutoff' });
+    expect(named.dial.getAttribute('aria-label')).toBe('Cutoff');
+    named.destroy();
+
+    // Explicit override, for knobs without a visible label or with a
+    // different spoken name.
+    const explicit = new Knob(host, { ariaLabel: 'Filter cutoff' });
+    expect(explicit.dial.getAttribute('aria-label')).toBe('Filter cutoff');
+    expect(explicit.wrapper.querySelector('.abd-knob__label')).toBeNull();
+    explicit.destroy();
+
+    // Explicit beats visible when both are given.
+    const both = new Knob(host, { label: 'Level', ariaLabel: 'Master level' });
+    expect(both.dial.getAttribute('aria-label')).toBe('Master level');
+    both.destroy();
+
+    // No label, no name: the dial stays unnamed rather than lying.
+    const anonymous = new Knob(host, {});
+    expect(anonymous.dial.getAttribute('aria-label')).toBeNull();
+    anonymous.destroy();
+  });
 });
 
 describe('Slider', () =>
@@ -484,13 +510,16 @@ describe('skins', () =>
   it('junio skin paints the filmstrip and rotates it', () =>
   {
     const knob = new Knob(host, { skin: 'junio', value: 0 });
-    const dial = knob.dial.querySelector('.abd-junio-knob');
+    const ring = knob.dial.querySelector('.abd-knob-ring');
+    const marker = ring?.querySelector('.knob');
 
-    expect(dial.style.backgroundImage).toContain('knob.png');
-    expect(dial.style.transform).toContain('-135deg');
+    // Junio exacto: el filmstrip es el ARO (grafico + marcas radiales de fondo)
+    // y la aguja es la linea que rota dentro de el.
+    expect(ring.style.backgroundImage).toContain('knob.png');
+    expect(marker.style.transform).toContain('-135deg');   // 0*270 - 135
 
     knob.setValue(1);
-    expect(dial.style.transform).toContain('135deg');
+    expect(marker.style.transform).toContain('135deg');    // 270 - 135
     knob.destroy();
   });
 
@@ -559,16 +588,21 @@ describe('skins', () =>
 
   it('partial skins fall back per-kind to the vector renderer', () =>
   {
-    const sliderHost = document.createElement('div');
+    const boxHost = document.createElement('div');
 
-    document.body.appendChild(sliderHost);
+    document.body.appendChild(boxHost);
 
-    // 'junio' has no knob renderer gap, but 'ms2000' has no slider renderer:
-    const slider = new Slider(sliderHost, { skin: 'ms2000' });
+    // 'ms2000' paints knob/toggle/select/segmented/slider but has no numberbox:
+    // the omitted KIND falls back to the vector renderer, not the whole map.
+    const fake = { getValue: () => 0.5, options: {}, wrapper: document.createElement('div') };
 
-    expect(slider.wrapper.classList.contains('abd-skin--vector')).toBe(true);
-    slider.destroy();
-    sliderHost.remove();
+    fake[CONTROL_KIND] = 'numberbox';
+
+    const applied = applySkin('ms2000', boxHost, fake);
+
+    expect(fake.wrapper.classList.contains('abd-skin--vector')).toBe(true);
+    applied.destroy();
+    boxHost.remove();
   });
 
   it('applySkin dispatches by control kind and falls back when unknown', () =>

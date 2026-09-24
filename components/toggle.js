@@ -70,6 +70,11 @@ export class Toggle
         this.button.type = 'button';
         this.button.className = 'abd-toggle';
         this.button.textContent = this.options.label;
+
+        // Accessible name: without it an unlabeled toggle is announced only by
+        // state ("toggle button, pressed") — meaningless out of context.
+        if (this.options.ariaLabel)
+            this.button.setAttribute('aria-label', this.options.ariaLabel);
         this.button.style.setProperty('--abd-toggle-color', this.options.color);
 
         if (this.options.colorName)

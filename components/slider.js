@@ -22,6 +22,7 @@ import { applySkin, CONTROL_KIND } from './skins/index.js';
  *   length        px of the track, default 160 (horizontal) / 160 (vertical).
  *   value         initial normalised 0..1.
  *   label         optional text label.
+ *   ariaLabel     accessible name override (defaults to `label`'s text).
  *   format        (normalised) => string readout.
  *   step          keyboard step, default 0.01.
  *   skin          skin name (see components/skins), default 'vector'.
@@ -45,6 +46,7 @@ export class Slider
             length: 160,
             value: 0,
             label: '',
+            ariaLabel: null,
             step: 0.01,
             skin: 'vector',
             format: (v) => `${Math.round(v * 100)}%`,
@@ -91,6 +93,16 @@ export class Slider
         this.track.setAttribute('role', 'slider');
         this.track.setAttribute('aria-valuemin', '0');
         this.track.setAttribute('aria-valuemax', '1');
+        // Same naming contract as knob.js: a div[role=slider] cannot be tied
+        // with <label for>, so the name travels ON the track — explicit
+        // ariaLabel, else the visible label's text.
+        const accessibleName = this.options.ariaLabel ?? this.options.label;
+        if (accessibleName)
+            this.track.setAttribute('aria-label', accessibleName);
+        // Orientation is meaningful to assistive tech only on the vertical
+        // case ('horizontal' is the implicit default).
+        if (vertical)
+            this.track.setAttribute('aria-orientation', 'vertical');
 
         this.fill = document.createElement('div');
         this.fill.className = 'abd-slider__fill';

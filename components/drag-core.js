@@ -66,7 +66,8 @@ export function attachDrag (element, handlers, options = {})
         lastY = event.clientY;
         lastX = event.clientX;
 
-        const newValue = handlers.onDelta(pixelDelta / dragLanePx, pixelDelta);
+        const speed = event.shiftKey ? 0.2 : 1.0; // Shift = fine tune (0.2x)
+        const newValue = handlers.onDelta(pixelDelta / dragLanePx * speed, pixelDelta);
 
         if (newValue !== undefined)
             handlers.onValue?.(newValue);

@@ -73,6 +73,19 @@ Reglas (las cumple cualquiera que se añada en el futuro):
 4. **Sin WebGL**: el catálogo `RESOURCES/ui_componants-main` tiene efectos de demo con
    GL; aquí se extrae el control y su brillo se resuelve con CSS box-shadow.
 5. **destroy() limpia todo** — un control destruido no deja listeners ni DOM.
+6. **Accesibilidad** (auditada en bloque, 2026-09): todo control de valor lleva ROL
+   y NOMBRE accesible — `aria-label` = `ariaLabel` ?? texto del `label` visible
+   (un control anónimo queda sin nombre pero SIEMPRE nameable por el host). Semántica
+   de valores completa: `aria-valuemin/max/now` + `aria-valuetext` formateado. Roles:
+   Knob/Slider/XYPad = `slider` (el pad, aunque sea superficie absoluta: su teclado
+   MUEVE el valor; el pointer es un método de entrada, no un rol), Slider vertical
+   declara `aria-orientation="vertical"`, Toggle = botón con `[aria-pressed]` +
+   `ariaLabel` para usos de solo-icono, Segmented = `radiogroup` con roving tabindex
+   y nombre del grupo vía `<label for>` (con id) o `aria-label` (sin id), NumberBox =
+   `spinbutton` con botones `+/-` nombrados `increase/decrease`, Select/Wheel =
+   `<select>`/`<input type=range>` nativos (semántica gratis), LcdPanel = botones de
+   glifo con nombre explícito (`‹` = "Cursor left"...) y pantalla `role=status`
+   `aria-live=polite`. Fijado por `tests/accessibility.test.js`.
 
 ## Ficheros
 

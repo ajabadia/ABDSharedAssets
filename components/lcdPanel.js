@@ -36,11 +36,15 @@ export function createLcdPanel(container, options = {}) {
   const pad = document.createElement('div');
   pad.className = 'abd-lcd-panel__pad';
   const buttons = {};
+  // GLYPH_NAMES: the D-pad paints single-glyph buttons; the accessible name
+  // spells what they do (a bare '<' or '^' reads as "less than" / "caret").
+  const GLYPH_NAMES = { menu: 'Menu', ok: 'OK', left: 'Cursor left', right: 'Cursor right', up: 'Cursor up', down: 'Cursor down' };
   for (const [key, label] of [['menu', 'MENU'], ['ok', 'OK'], ['left', '‹'], ['right', '›'], ['up', '^'], ['down', 'v']]) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `abd-lcd-panel__btn abd-lcd-panel__btn--${key}`;
     btn.textContent = label;
+    btn.setAttribute('aria-label', GLYPH_NAMES[key]);
     pad.append(btn);
     buttons[key] = btn;
   }
