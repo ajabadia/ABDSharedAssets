@@ -186,6 +186,15 @@ registerSkin('vector', {
 
         return { root: control.wrapper, update () {}, destroy () {} };
     },
+
+    numberbox (host, control)
+    {
+        // Default look: dark field + paired buttons styled by widgets.css —
+        // tag only, same deal as the select/segmented above.
+        control.wrapper.classList.add('abd-skin--vector');
+
+        return { root: control.wrapper, update () {}, destroy () {} };
+    },
 });
 
 /* ── ms2000: Korg-flavoured vector (extracted from ABDMS2000 rotaryKnob) ───── */
@@ -280,7 +289,45 @@ registerSkin('ms2000', {
 
         return { root: control.wrapper, update () {}, destroy () {} };
     },
-    // no slider renderer: falls back to 'vector' (fill + thumb)
+
+    slider (host, control)
+    {
+        // MS2000 filmstrip fader: vertical uses 58x107px frames, horizontal 230x69px.
+        // Sprite URL and geometry come from control.options (spriteUrl, frameWidth, frameHeight, frames).
+        const vertical = control.options?.orientation === 'vertical';
+        const spriteUrl = control.options?.spriteUrl ?? (vertical
+            ? './assets/ST_Fader_58x107_128.png'
+            : './assets/ST_Fader_230x69_128f.png');
+        const frameWidth = control.options?.frameWidth ?? (vertical ? 58 : 230);
+        const frameHeight = control.options?.frameHeight ?? (vertical ? 107 : 69);
+        const frames = control.options?.frames ?? 128;
+
+        control.wrapper.classList.add('abd-slider--ms2000');
+        control.track.classList.add('abd-slider__track--ms2000');
+        control.thumb.classList.add('abd-slider__thumb--ms2000');
+
+        // Apply filmstrip to thumb if sprite provided
+        if (spriteUrl) {
+            control.thumb.style.width = `${frameWidth}px`;
+            control.thumb.style.height = `${frameHeight}px`;
+            control.thumb.style.backgroundImage = `url('${spriteUrl}')`;
+            control.thumb.style.backgroundRepeat = 'no-repeat';
+            control.thumb.dataset.frames = `${frames}`;
+            control.thumb.dataset.frameHeight = `${frameHeight}`;
+        }
+
+        return {
+            root: control.wrapper,
+            update ()
+            {
+                if (!spriteUrl) return;
+                const v = typeof control.getValue === 'function' ? control.getValue() : 0;
+                const frame = Math.round(v * (frames - 1));
+                control.thumb.style.backgroundPosition = `0 -${frame * frameHeight}px`;
+            },
+            destroy () {},
+        };
+    },
 });
 
 /* ── junio: photographic sprites (extracted from ABDJUNiO601 assets) ───────── */
@@ -288,20 +335,43 @@ registerSkin('ms2000', {
 registerSkin('junio', {
     knob (host, control)
     {
+        // Junio EXACT structure: .knob-ring (filmstrip bg with knob graphics + radial marks) > .knob (white marker line)
+        // The .knob-ring IS the filmstrip element with the knob graphic + radial marks as background (FIXED).
+        // The .knob is a child div that rotates around the center of the knob graphic.
+        // Matches ABDJUNiO601 Source/UI/WebUI/css/controls.css lines 61-81
         const root = document.createElement('div');
-        root.className = 'abd-skin abd-skin--junio';
+        root.className = 'abd-knob-ring';  // Exact class from Junio
 
-        // Document-relative default: pages served from the package root.
-        // Pages elsewhere (demo/, WebUI/) pass spriteUrl explicitly.
         const sprite = control.options?.spriteUrl ?? './assets/junio/knob.png';
+        const size = control.options?.size ?? 64;
 
-        root.innerHTML = `
-            <div class="abd-junio-knob" style="background-image:url('${sprite}')">
-                <div class="abd-junio-knob__marker"></div>
-            </div>`;
+        root.style.cssText = `
+            width: ${size}px;
+            height: ${size}px;
+            background: url('${sprite}') no-repeat center;
+            background-size: contain;
+            position: relative;
+            cursor: grab;
+            touch-action: none;
+        `;
 
-        const dial = root.querySelector('.abd-junio-knob');
+        // The marker line - EXACT match to Junio .knob (controls.css lines 70-81)
+        const marker = document.createElement('div');
+        marker.className = 'knob';  // Exact class from Junio
+        marker.style.cssText = `
+            position: absolute;
+            width: 2px;
+            height: 6px;
+            background: var(--white);
+            left: 50%;
+            top: 17px;
+            transform: translateX(-50%);
+            transform-origin: center 13px;  // 13px from top of knob = center of knob graphic
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+            border-radius: 1px;
+        `;
 
+        root.appendChild(marker);
         host.appendChild(root);
 
         return {
@@ -309,8 +379,9 @@ registerSkin('junio', {
             update ()
             {
                 const v = typeof control.getValue === 'function' ? control.getValue() : 0;
-
-                dial.style.transform = `rotate(${-135 + v * 270}deg)`;
+                // Junio: translateX(-50%) rotate(${val * 270 - 135}deg)
+                const angle = v * 270 - 135;
+                marker.style.transform = `translateX(-50%) rotate(${angle}deg)`;
             },
             destroy () {},
         };
@@ -318,12 +389,116 @@ registerSkin('junio', {
 
     slider (host, control)
     {
-        // JUNiO look: slot PNG as the track, cap PNG as the thumb.
-        control.wrapper.classList.add('abd-slider--junio');
-        control.track.classList.add('abd-slider__track--junio-slot');
-        control.thumb.classList.add('abd-slider__thumb--junio-cap');
+        // Junio EXACT: .v-slider (slot bg) > .track (inner) > .handle (cap)
+        // Vertical: .v-slider (32x160) with .track (4x144) and .handle (32x16)
+        // Horizontal: .v-slider-mini (160x32) with .track (144x4) and .handle (16x32)
+        // Source: ABDJUNiO601 Source/UI/WebUI/css/controls.css lines 32-58
+        // Sync logic: ui-sliders.js lines 390-397
+        
+        const isVertical = control.options.orientation === 'vertical';
+        
+        if (isVertical) {
+            control.wrapper.classList.add('v-slider');
+            control.wrapper.style.cssText = `
+                width: 32px;
+                height: 160px;
+                background: url('../../assets/junio/slider_slot.png') no-repeat center center;
+                background-size: contain;
+                position: relative;
+                cursor: ns-resize;
+            `;
+        } else {
+            control.wrapper.classList.add('v-slider', 'v-slider-mini');
+            control.wrapper.style.cssText = `
+                width: 160px;
+                height: 32px;
+                background: url('../../assets/junio/slider_slot.png') no-repeat center center;
+                background-size: contain;
+                position: relative;
+                cursor: ew-resize;
+            `;
+        }
+        
+        // Inner track element (Junio .track) - 8px padding
+        const track = document.createElement('div');
+        track.className = 'track';
+        if (control.options.orientation === 'vertical') {
+            track.style.cssText = `
+                position: absolute;
+                top: 8px;
+                bottom: 8px;
+                width: 4px;
+                left: 14px;
+                background: transparent;
+            `;
+        } else {
+            track.style.cssText = `
+                position: absolute;
+                left: 8px;
+                right: 8px;
+                top: 0;
+                bottom: 0;
+                height: 4px;
+                background: transparent;
+            `;
+        }
+        control.wrapper.appendChild(track);
 
-        return { root: control.wrapper, update () {}, destroy () {} };
+        // Handle (cap) - EXACT match to Junio .handle
+        const handle = document.createElement('div');
+        handle.className = 'handle';
+        if (control.options.orientation === 'vertical') {
+            handle.style.cssText = `
+                position: absolute;
+                width: 32px;
+                height: 16px;
+                left: 0;
+                background: url('../../assets/junio/slider_cap.png') no-repeat center center;
+                background-size: contain;
+                pointer-events: none;
+            `;
+        } else {
+            handle.style.cssText = `
+                position: absolute;
+                width: 16px;
+                height: 32px;
+                top: 0;
+                left: 0;
+                background: url('../../assets/junio/slider_cap.png') no-repeat center center;
+                background-size: contain;
+                pointer-events: none;
+            `;
+        }
+        control.wrapper.appendChild(handle);
+
+        // Override render to move cap EXACTLY like Junio syncUI (ui-sliders.js lines 390-397)
+        const originalRender = control.render.bind(control);
+        control.render = () => {
+            originalRender();
+            const v = control.getValue();
+            const track = control.wrapper.querySelector('.track');
+            const handleEl = control.wrapper.querySelector('.handle');
+            const isVertical = control.options.orientation === 'vertical';
+            const containerDim = isVertical ? track.clientHeight : track.clientWidth;
+            const handleDim = isVertical ? handleEl.clientHeight : handleEl.clientWidth;
+            const availableSpace = Math.max(0, containerDim - handleDim);
+            if (availableSpace >= 0) {
+                const pos = (1 - v) * availableSpace;
+                if (isVertical) {
+                    handleEl.style.top = `${pos}px`;
+                    handleEl.style.left = '0';
+                } else {
+                    handleEl.style.left = `${pos}px`;
+                    handleEl.style.top = '0';
+                }
+            }
+        };
+
+        return { 
+            root: control.wrapper, 
+            update: () => control.render(), 
+            destroy () {} 
+        };
     },
 
     toggle (host, control)

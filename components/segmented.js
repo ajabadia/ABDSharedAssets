@@ -29,6 +29,17 @@
  *
  * Skins: tagged as kind 'segmented'; a skin may restyle it via the 'vector'
  * fallback (see components/skins/index.js).
+ *
+ * GLYPHS: an entry may carry a `glyph` (inline SVG string, see waveforms.js)
+ * or the whole control may pass a `glyphs` array aligned with the options.
+ * A glyphed segment renders two rows - mark above the text - with the SVG
+ * following `currentColor` like every other piece of the family, so the
+ * active fill inverts it for free.
+ *
+ * VARIANTS: `variant: 'led'` (default 'strip') swaps the shared-border strip
+ * for a row of lamp buttons: dark pads whose mark lights with the accent when
+ * active. Same DOM contract, same value model, only the furniture changes
+ * (`.abd-segmented--led`).
  */
 
 import { applySkin, CONTROL_KIND } from './skins/index.js';
@@ -42,6 +53,8 @@ import { applySkin, CONTROL_KIND } from './skins/index.js';
  *   id        optional id for the group (lets a <label for> or a host script
  *             find it; the control never invents ids).
  *   disabled  array of indices or (entry, index) => boolean, default [].
+ *   glyphs    optional array of inline-SVG strings aligned with `options`.
+ *   variant   'strip' (default) or 'led' (row of lamp buttons).
  *   skin      optional skin name (see components/skins).
  *   onChange  (index) => void, fires on user picks only (not on setValue).
  */
@@ -68,6 +81,18 @@ export class Segmented
         };
 
         this.entries = this.options.options.map(normalizeEntry);
+
+        // Glyphs: per-entry wins; the aligned array fills the gaps.
+        if (Array.isArray(this.options.glyphs))
+        {
+            this.options.glyphs.forEach((glyph, index) =>
+            {
+                if (this.entries[index] && this.entries[index].glyph === '')
+                    this.entries[index].glyph = String(glyph ?? '');
+            });
+        }
+
+        this.variant = this.options.variant === 'led' ? 'led' : 'strip';
         this.disabledSpec = this.options.disabled;
         this.value = this.clampIndex(this.options.value);
         this.listeners = [];
@@ -86,6 +111,9 @@ export class Segmented
     {
         this.wrapper = document.createElement('div');
         this.wrapper.className = 'abd-segmented';
+
+        if (this.variant !== 'strip')
+            this.wrapper.classList.add(`abd-segmented--${this.variant}`);
 
         // Same <label for> deal as Select: reachable by name when the caller
         // gives an id. The target is the ACTIVE button, so focus/label agree.
@@ -112,6 +140,11 @@ export class Segmented
             this.labelEl.id = `${this.options.id}-label`;
             this.labelEl.htmlFor = this.options.id;
         }
+        else if (this.options.label)
+        {
+            // No id -> no <label for> wiring; the group still needs a name.
+            this.group.setAttribute('aria-label', this.options.label);
+        }
 
         this.buttons = this.entries.map((entry, index) =>
         {
@@ -121,7 +154,22 @@ export class Segmented
             button.className = 'abd-segmented__segment';
             button.setAttribute('role', 'radio');
             button.dataset.index = `${index}`;
-            button.textContent = entry.label;
+
+            if (entry.glyph !== '')
+            {
+                button.classList.add('abd-segmented__segment--glyphed');
+
+                const glyphSpan = document.createElement('span');
+                glyphSpan.className = 'abd-segmented__glyph';
+                glyphSpan.innerHTML = entry.glyph;   // trusted: the suite's own SVGs
+                button.appendChild(glyphSpan);
+            }
+
+            const textSpan = document.createElement('span');
+            textSpan.className = 'abd-segmented__text';
+            textSpan.textContent = entry.label;
+            button.appendChild(textSpan);
+
             this.group.appendChild(button);
 
             return button;
@@ -289,10 +337,11 @@ export class Segmented
 function normalizeEntry (entry)
 {
     if (typeof entry === 'string')
-        return { label: entry, disabled: false, note: '' };
+        return { label: entry, glyph: '', disabled: false, note: '' };
 
     return {
         label: `${entry?.label ?? ''}`,
+        glyph: entry?.glyph != null ? String(entry.glyph) : '',
         disabled: Boolean(entry?.disabled),
         note: entry?.note ?? '',
     };

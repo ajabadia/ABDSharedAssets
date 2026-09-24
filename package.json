@@ -11,6 +11,9 @@
     "./docs/*": "./docs/*",
     "./components": "./components/index.js",
     "./components/*": "./components/*",
+    "./utils": "./utils/index.js",
+    "./utils/*": "./utils/*",
+    "./icons/*": "./icons/*",
     "./assets/*": "./assets/*"
   },
   "files": [

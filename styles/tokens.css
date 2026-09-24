@@ -22,6 +22,14 @@
 /* Font loading is the HOST's business (offline WebView2 builds must not pull
    remote CSS): declare the stack locally instead of @import-ing Google Fonts. */
 
+@font-face {
+    font-family: 'SevenSegment';
+    src: url('../assets/junio/SevenSegment.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
   /* =========================================================================
      1. Surfaces & Backgrounds (4 depth levels)
@@ -62,6 +70,7 @@
   --color-text-dim:    #4a637a;  /* Secondary info, placeholders */
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SevenSegment', 'Courier New', 'Roboto Mono', monospace;
   --font-lcd:  'Courier New', 'Roboto Mono', monospace;
 
   /* =========================================================================

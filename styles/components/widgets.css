@@ -427,6 +427,97 @@
 .abd-toggle--junio[data-color="yellow"] { background-image: url('../../assets/junio/button_yellow_off.png'); }
 .abd-toggle--junio[data-color="yellow"][aria-pressed="true"] { background-image: url('../../assets/junio/button_yellow_on.png'); }
 
+/* ── Slider skin: ms2000 (filmstrip faders from ST_Fader sprites) ──────────── */
+.abd-slider--ms2000 .abd-slider__track {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.abd-slider--ms2000 .abd-slider__fill {
+    display: none;
+}
+
+.abd-slider--ms2000 .abd-slider__track:focus-visible {
+    box-shadow: none;
+}
+
+.abd-slider--ms2000 .abd-slider__thumb {
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    transform: translate(-50%, -50%);
+}
+
+.abd-slider--ms2000 .abd-slider--vertical .abd-slider__thumb {
+    transform: translate(-50%, 50%);
+}
+
+/* The thumb carries the filmstrip via inline style (spriteUrl, frames). */
+.abd-slider--ms2000 .abd-slider__thumb[data-frames] {
+    background-size: 100% auto;
+    background-position: 0 0;
+}
+
+/* ── FilmstripFader (viewport + scrolling filmstrip) ───────────────────────── */
+.abd-filmstrip-fader {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1, 2px);
+    user-select: none;
+}
+
+.abd-filmstrip-fader__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.abd-filmstrip-fader__viewport {
+    position: relative;
+    width: var(--abd-fader-vw, 36px);
+    height: var(--abd-fader-vh, 80px);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    cursor: grab;
+    touch-action: none;
+    outline: none;
+    overflow: hidden;
+}
+
+.abd-filmstrip-fader__viewport:focus-visible {
+    box-shadow: 0 0 0 1px var(--color-accent, #00c3ff);
+}
+
+.abd-filmstrip-fader__viewport:active {
+    cursor: grabbing;
+}
+
+.abd-filmstrip-fader--horizontal .abd-filmstrip-fader__viewport {
+    width: var(--abd-fader-vw, 140px);
+    height: var(--abd-fader-vh, 32px);
+}
+
+.abd-filmstrip-fader__sprite {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-position: center 0%;
+    background-repeat: no-repeat;
+    pointer-events: none;
+}
+
+.abd-filmstrip-fader__value {
+    min-width: 4ch;
+    font-size: var(--text-xs, 8px);
+    color: var(--color-text-dim, #4a637a);
+}
+
 
 /* --- theme switcher (infraestructura de pagina, no un control) ------------ */
 
@@ -577,6 +668,186 @@
     outline-offset: 1px;
     z-index: 1;
 }
+/* ---------------------------------------------------------------------------
+ * Segmented con glifos — las dos variantes de mueble de la familia.
+ * El SVG sigue currentColor (como todo el mueble): el segmento activo invierte
+ * la marca gratis porque la capa activa pinta con el accent.
+ * ------------------------------------------------------------------------- */
+
+/* Marca y texto como piezas apilables; el segmento con glifo es de DOS LINEAS
+ * (marca sobre el texto) en ambas variantes — el strip clasico sin glifo no
+ * cambia. La marca mide 24x16 (la caja completa del glifo canonico). */
+.abd-segmented__segment--glyphed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 5px 2px 4px;
+}
+
+.abd-segmented__glyph {
+    display: inline-flex;
+    line-height: 0;
+}
+
+.abd-segmented__glyph svg {
+    width: 24px;
+    height: 16px;
+    display: block;
+}
+
+.abd-segmented__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Variante B: fila de botones LED --------------------------------------
+ * Pad oscuro con la marca dormida; el activo se enciende con el accent y su
+ * halo (--color-led-glow esta pensado para el rojo de rec, pero el mueble
+ * pide el accent del tema con el mismo patron de resplandor). Sin activo no
+ * hay capa de fondo que invertir: la marca vive siempre sobre oscuro.
+ * ------------------------------------------------------------------------- */
+.abd-segmented--led .abd-segmented__group {
+    gap: 3px;
+}
+
+.abd-segmented--led .abd-segmented__segment {
+    border: 1px solid var(--color-panel-border-dim, rgb(0 195 255 / 10%));
+    border-radius: var(--radius-sm, 3px);
+    background: var(--color-panel-surface, #151f2e);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 45%);
+    margin-left: 0;
+    padding: 6px 2px 4px;
+}
+
+.abd-segmented--led .abd-segmented__segment--glyphed {
+    flex-direction: column;
+    gap: 2px;
+}
+
+.abd-segmented--led .abd-segmented__segment:hover {
+    border-color: var(--color-panel-border, rgb(0 195 255 / 20%));
+    background: var(--color-panel-surface-elevated, #1c2a3d);
+}
+
+.abd-segmented--led .abd-segmented__segment.is-active {
+    background: var(--color-panel-surface-elevated, #1c2a3d);
+    color: var(--color-accent, #00c3ff);
+    border-color: var(--color-accent, #00c3ff);
+    box-shadow:
+        inset 0 1px 2px rgb(0 0 0 / 45%),
+        0 0 8px var(--color-accent-dim, rgb(0 195 255 / 15%));
+}
+
+/* ---------------------------------------------------------------------------
+ * NumberBox — caja numerica con −/+ y edicion directa (BPM, canales, octavas).
+ * Portado del mueble de ABDEep (OCT −/+ + .modal-input) al contrato de familia.
+ * ------------------------------------------------------------------------- */
+.abd-numberbox {
+    max-width: 100%;
+}
+
+.abd-numberbox--labelled {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1, 2px);
+    user-select: none;
+}
+
+.abd-numberbox__label {
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.abd-numberbox__box {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+}
+
+.abd-numberbox__btn {
+    flex: 0 0 auto;
+    width: 22px;
+    padding: 4px 0;
+    font: inherit;
+    font-size: var(--text-base, 11px);
+    line-height: 1;
+    color: var(--color-text-muted, #7e9bb5);
+    background: var(--color-panel-surface, #141d2b);
+    border: 1px solid var(--color-panel-border, rgb(0 195 255 / 20%));
+    cursor: pointer;
+    transition: var(--transition-fast, 0.15s ease);
+}
+
+.abd-numberbox__btn:hover {
+    color: var(--color-text-main, #f0f7ff);
+    background: var(--color-panel-surface-elevated, #1c2a3d);
+}
+
+.abd-numberbox__btn--decrement {
+    border-radius: var(--radius-sm, 3px) 0 0 var(--radius-sm, 3px);
+}
+
+.abd-numberbox__btn--increment {
+    border-radius: 0 var(--radius-sm, 3px) var(--radius-sm, 3px) 0;
+}
+
+.abd-numberbox__btn.is-at-edge {
+    opacity: 0.45;
+}
+
+.abd-numberbox__field {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+    font: inherit;
+    font-size: var(--text-base, 11px);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-main, #f0f7ff);
+    background: var(--color-bg-base, #0a0e14);
+    border: 1px solid var(--color-panel-border-dim, rgb(0 195 255 / 10%));
+    border-left: none;
+    border-right: none;
+    padding: 4px 2px;
+    outline: none;
+}
+
+.abd-numberbox__field:focus {
+    border-color: var(--color-accent, #00c3ff);
+}
+
+.abd-numberbox__unit {
+    flex: 0 0 auto;
+    align-self: center;
+    font-size: var(--text-sm, 9px);
+    color: var(--color-text-muted, #7e9bb5);
+    padding-right: 4px;
+    background: var(--color-bg-base, #0a0e14);
+    border-top: 1px solid var(--color-panel-border-dim, rgb(0 195 255 / 10%));
+    border-bottom: 1px solid var(--color-panel-border-dim, rgb(0 195 255 / 10%));
+    align-self: stretch;
+    display: inline-flex;
+    align-items: center;
+}
+
+.abd-numberbox__field:disabled,
+.abd-numberbox__btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.abd-numberbox[data-disabled='true'] .abd-numberbox__field {
+    color: var(--color-text-muted, #7e9bb5);
+}
 /* ============================================================
    Drawer compartido (createDrawer) — panel lateral deslizante.
    Posicion/clase son base; cada synthe afina look local (ancho,
@@ -670,3 +941,135 @@
     padding: 12px;
     overflow-y: auto;
 }
+
+
+/* =========================================================================
+   SevenSegmentDisplay
+   ========================================================================= */
+.abd-seven-seg {
+    display: inline-flex;
+    gap: 2px;
+    font-variant-numeric: tabular-nums;
+}
+
+.abd-seven-seg__digit {
+    min-width: 0.6em;
+    text-align: center;
+}
+
+/* =========================================================================
+   SilverFilmstripKnob (RE-201 style)
+   ========================================================================= */
+.abd-silver-filmstrip-knob {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+}
+
+.abd-silver-filmstrip-knob__label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--color-text-muted, #7e9bb5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.abd-silver-filmstrip-knob__dial {
+    position: relative;
+    cursor: grab;
+    touch-action: none;
+    outline: none;
+    overflow: hidden;
+    border-radius: 50%;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.abd-silver-filmstrip-knob__dial:active { cursor: grabbing; }
+
+.abd-silver-filmstrip-knob__filmstrip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-repeat: no-repeat;
+    background-position: center 0%;
+    pointer-events: none;
+    transition: background-position 0ms;
+}
+
+/* =========================================================================
+   EffectLEDButton (Junio .sq buttons)
+   ========================================================================= */
+.abd-effect-led-btn {
+    width: 44px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.05s, filter 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: center;
+}
+
+.abd-effect-led-btn:active {
+    transform: translateY(1px);
+    filter: brightness(0.85);
+}
+
+.abd-effect-led-btn--tiny {
+    width: 28px;
+    height: 20px;
+}
+
+.abd-effect-led-btn[data-active="true"] {
+    /* background-image set via JS for on/off sprites */
+}
+
+/* =========================================================================
+   PeakLED (RE-201 style)
+   ========================================================================= */
+.abd-peak-led {
+    width: 32px;
+    height: 17px;
+    opacity: 0;
+    transition: opacity 0.05s;
+}
+
+.abd-peak-led--sprite {
+    display: block;
+}
+
+.abd-peak-led--css {
+    background: var(--color-led-active, #ff3344);
+    border-radius: 2px;
+    box-shadow: 0 0 6px var(--color-led-glow, rgba(255, 51, 68, 0.6));
+}
+
+/* =========================================================================
+   TapeEchoVisual (RE-201 tape echo SVG)
+   ========================================================================= */
+.abd-tape-echo-visual {
+    position: relative;
+    overflow: visible;
+}
+
+.abd-tape-echo-visual svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.abd-tape-echo-visual .svg-sync-hidden { display: none; }
+.abd-tape-echo-visual .svg-sync-visible { display: block; }
+.abd-tape-echo-visual .svg-bpm-hidden { display: none; }
+.abd-tape-echo-visual .svg-bpm-visible { display: block; }
+
+.abd-tape-echo-visual #peak-led { opacity: 0; transition: opacity 0.05s; }
+
+
+
