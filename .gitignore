@@ -20,3 +20,11 @@ _review/
 
 # JS dependencies
 node_modules/
+
+# Logs efimeros de sesion (servidores de demo, builds locales)
+serve-err.log
+serve-out.log
+*.log
+
+# Copia espejo de la WebUI de ABDBankManager (la canonica vive en su repo)
+abdbank/
