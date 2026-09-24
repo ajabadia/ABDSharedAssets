@@ -85,6 +85,8 @@ components/slider.js        slider horizontal/vertical, thumb filmstrip opcional
 components/toggle.js        botón LED (latched o momentary), estado en [aria-pressed]
 components/wheel.js         rueda pitch/mod filmstrip (la original de la familia)
 components/xypad.js         pad 2D absoluto ({x,y}, y-up) — morphing, filtros XY
+components/drawer.js        cajón lateral fijo a la derecha (createDrawer): contenido
+                            estable (sin re-render al abrir), ESC/fondo/botón, dialog
 components/skins/index.js   SKINS: cómo se dibuja cada control (registry + 3 skins)
 components/index.js         barrel: controles + registerSkin/getSkin/applySkin
 styles/components/widgets.css     estilos base de knob/slider/toggle/select

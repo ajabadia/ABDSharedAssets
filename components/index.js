@@ -22,6 +22,7 @@ export { XYPad } from './xypad.js';
 export { ThemeSwitcher } from './themeSwitcher.js';
 export { computeFit, mountFitStage } from './fitStage.js';
 export { registerSkin, getSkin, applySkin, skinNames } from './skins/index.js';
+export { createDrawer } from './drawer.js';
 export { createLcdMachine, formatValue } from './lcdMachine.js';
 export { createLcdScreen } from './lcdScreen.js';
 export { createLcdPanel } from './lcdPanel.js';
