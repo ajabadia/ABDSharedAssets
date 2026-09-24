@@ -22,6 +22,8 @@
  */
 @import './tokens.css';
 @import './themes/ms2000.css';
+@import './themes/microkorg.css';
+@import './themes/advanced.css';
 @import './themes/cz101.css';
 @import './themes/deepmind.css';
 @import './themes/juno.css';
