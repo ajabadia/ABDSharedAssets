@@ -1,0 +1,62 @@
+name: Docs audit
+
+# La auditoria de documentacion (tests/documentedOptions.test.js, 11 reglas) es una
+# puerta, no un recordatorio: si una regla falla, este job falla y el PR no se mergea.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Sin filtro de `paths` a proposito: un check requerido que no llega a ejecutarse deja el
+# PR bloqueado para siempre. Aqui se corre siempre.
+concurrency:
+  group: docs-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Docs audit + suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Las versiones de la suite: la raiz del workspace declara pnpm@10.25.0 y los
+      # demas repos compartidos corren sus tests en Node 20.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # A diferencia del resto de la suite, aqui SI hay lockfile versionado y es suelto
+      # (un unico importer, el de este paquete): el install es reproducible y no hace
+      # falta el layout de hermanos que reproduce pnpm-workspace-bootstrap.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
+      # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
+      - name: Audit documentation (11 rules)
+        run: pnpm exec vitest run tests/documentedOptions.test.js
+
+      - name: Run full Vitest suite
+        run: pnpm test
+
+      # El smoke resuelve Chromium en /usr/bin/google-chrome, que el runner de Ubuntu
+      # trae: es la misma puerta de ARIA que se corre a mano en local.
+      - name: Smoke ARIA on real Chromium
+        run: pnpm run smoke:a11y
