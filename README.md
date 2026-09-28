@@ -19,13 +19,47 @@ Para evitar duplicacion de archivos, desincronizaciones accidentales o sobreescr
 D:desarrollosABDSynthsABDSharedAssets+-- brands/       <- Logotipos vectoriales SVG de fabricantes
 +-- models/       <- Renders e imagenes (WebP / PNG / SVG) de sintetizadores
 +-- icons/        <- Iconografia vectorial monocromatica (currentColor)
-+-- contracts/    <- Contratos JSON de especificacion de hardware
++-- contracts/    <- Contratos JSON: hardware Y tablas de modulacion
 +-- styles/       <- Sistema de diseno, tokens CSS globales, temas y componentes
 +-- components/   <- Modulos JS reutilizables (wheel.js, ...)
 +-- assets/       <- Assets binarios compartidos (bender.png, ...)
 +-- demo/         <- Demo interactiva para QA visual de componentes
 +-- docs/         <- Guias oficiales de integracion, estilos e iconografia
 ```
+
+### Contratos de matriz de modulacion
+
+`contracts/modulation_matrix.schema.json` declara la forma de la tabla de
+modulacion de un synth: que fuentes y que destinos existen, en que orden, y que
+politica aplica a cada destino. Hay tres instancias:
+
+| Contrato | Synth | `authority` | De donde sale |
+|---|---|---|---|
+| `abdeep_modulation_matrix.json` | DeepMind 12 | `hardware` | manual + rango de byte + **medido** en los bancos de fabrica |
+| `abdms2000_modulation_matrix.json` | Korg MS-2000 | `hardware` | `VirtualPatchMatrix.h` |
+| `neuronik_modulation_matrix.json` | NEURONiK | `design` | `getModDestinationTable()` + el `switch` del motor |
+
+`authority` no es decorativo: los dos `hardware` emulan un dispositivo y sus
+indices son indices de BYTE, con el orden del manual. El `design` es un synth
+propio, pero su tabla es ademas el **formato de preset** (los choices guardan
+indice). Los tres tienen el mismo motivo, asi que la misma regla: **solo se
+appendea al final**, porque insertar una fila en medio re-mapea todos los presets
+guardados. Eso lo verifica `tests/modulationMatrixContract.test.js`.
+
+Dos campos de la tabla de destinos llevan la politica que antes vivia dentro de
+codigo:
+
+- **`perNote`**: el destino se resuelve por voz. Una envolvente no es global.
+- **`replaces`**: cuando la fuente es una envolvente, la ruta REEMPLAZA el
+  factor del destino en vez de sumar encima (sintesis de reemplazo). En
+  NEURONiK son los destinos 1, 10 y 12-16, y es lo que no puede perderse al
+  sacar el `switch` de 31 casos a la tabla.
+
+Y un detalle que no es uniforme: **el indice 0 no siempre es inerte**. En ABDEep
+y NEURONiK es el 'None'/'Off', pero en ABDMS2000 el 0 es el EG1, una fuente de
+verdad, y una ruta se apaga con la intensidad a cero. El motor compartido
+(`ABDSharedCode/SynthCore/ModMatrix.h`) lo lleva como parametro de plantilla
+(`kZeroIdInert`) justamente para no suponerlo.
 
 Los `@import` de `wheel.js`/`wheels.css`/`kbd-buttons.css` y `assets/bender.png`
 se publican via `package.json` (exports `./components/*`, `./styles/*`, `./assets/*`,
