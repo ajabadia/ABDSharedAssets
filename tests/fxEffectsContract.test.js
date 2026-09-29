@@ -105,14 +105,21 @@ describe('fxEffectsContract — el catálogo de efectos y su esquema', () => {
   });
 
   describe('las reglas que el esquema NO puede decir', () => {
-    it('los ids van del 0 al 56, sin huecos y sin repetidos', () => {
+    it('los ids son 0..max, sin huecos y sin repetidos', () => {
       const ids = CONTRACT.effects.map((e) => e.id);
       expect(new Set(ids).size).toBe(ids.length);
-      // Sin huecos entre el minimo y el maximo. El esquema no lo puede
-      // comprobar: un hueco es un entero valido.
+      // El RECORRIDO se deriva del fichero, no se escribe a mano. Fijar aqui el
+      // numero de filas seria cambiar el contrato y tener que venir a tocar el
+      // test por el camino, que es exactamente como se cuela el numero viejo.
+      // Lo que NO se deriva es el invariante: sin huecos entre 0 y el maximo. El
+      // esquema no lo puede comprobar, porque un hueco es un entero valido.
+      const max = Math.max(...ids);
+      expect(ids).toContain(0);
       expect([...ids].sort((a, b) => a - b)).toEqual(
-        Array.from({ length: 57 }, (_, i) => i),
+        Array.from({ length: max + 1 }, (_, i) => i),
       );
+      // Y que arrancar en 0 sea de verdad: el 0 es el BYPASS, no un efecto mas.
+      expect(CONTRACT.effects.find((e) => e.id === 0).engine).toBeNull();
     });
 
     it('el 0 es el bypass y el UNICO SIN motor', () => {
@@ -135,10 +142,11 @@ describe('fxEffectsContract — el catálogo de efectos y su esquema', () => {
 
     it('una familia sin tema es un modulo con los colores de otro', () => {
       // El mismo fallo que ya se dio en `fxTheme.test.js`, comprobado desde el
-      // otro lado: aqui se mira que la familia exista, alli que tenga tema.
+      // otro lado: aqui se mira que la familia exista, alli que tenga tema. El
+      // numero de familias tampoco se escribe: lo que se vigila es que todas
+      // las declaradas se usen, que es la regla que de verdad importa.
       const declaradas = new Set(CONTRACT.families.map((f) => f.id));
       const usadas = new Set(CONTRACT.effects.map((e) => e.family));
-      expect([...declaradas].length).toBe(11);
       expect(usadas.size).toBe(declaradas.size);
     });
   });

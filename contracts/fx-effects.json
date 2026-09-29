@@ -5,12 +5,13 @@
   "description": "Fuente unica de verdad de QUE efectos existen y como se agrupan. La consumen la WebUI de ABDEep, la de ABDNeural y el registro de temas (components/fxTheme.js), de modo que el catalogo no se vuelva a escribir a mano en tres sitios. La tabla sale de la fabrica de ABDEep (Source/DSP/FX/FXSlot_Factory.cpp), que es la parte autoritativa. Los nombres viven aqui y no en la UI.",
   "generatedFrom": "ABDEep/Source/DSP/FX/FXSlot_Factory.cpp",
   "notes": [
-    "El id es el que habla el motor: 0 es bypass y los ids 1..56 son efectos. El rango lo fija el motor, no este fichero (que por eso no lo repite).",
+    "El id es el que habla el motor: 0 es bypass y los ids 1..60 son efectos. El rango lo fija el motor, no este fichero (que por eso no lo repite).",
     "`engine` + `variant` juntos describen la clase que se instancia. Varios ids son VARIANTES del mismo motor con otra constante, y por ahi la tabla se parece a la politica inyectada de ABDSharedCode/DspEffects/EffectPolicy.h vista desde el lado de la interfaz. Anadir una variante nueva es una fila mas, no un motor mas.",
     "`family` es la que agrupa para el TEMA (styles/components/fx.css). Deliberadamente son pocas: un tema por familia y no por efecto, porque 57 temas no los diferencia nadie y, si no los diferencia el usuario, son 57 formas de no tener tema.",
     "`params` es el numero de controles que ACEPTA el motor, no el numero que se pinta. El motor acepta mas parametros de los que la UI enseña, y por eso la columna se llama params y no controls.",
     "AVISO CONOCIDO 1: la lista de nombres que tenia ABDEep en WebUI/js/effects_data.js (FX_TYPE_NAMES) NO esta alineada con estos ids: enumera diez variantes de reverb seguidas en 1..10, mientras que la fabrica las reparte entre 1..6 y 22, 26..28. Usar el array antiguo reintroduce el desfase, asi que el nombre sale de aqui.",
-    "AVISO CONOCIDO 2: FXSimpleComp existe como clase (12 parametros, se llama 'Fair Comp') pero la fabrica NO la instancia: el id 31 va a FXFairComp. Es codigo muerto en el motor. No se anade aqui, y por eso este fichero no lista 57 ids sino 0..56 sin huecos."
+    "LOS IDS 57..59 Y EL 60 LOS PRODUCE OTRO MOTOR. Son las primeras filas del fichero que `generatedFrom` NO genera: salen de `ABDSharedCode/DspEffects` (FxDefaultCatalogue.h), que es la unica implementacion que existe de esos motores, y por eso en ellas `engine` es el nombre de la clase real (Reverb, Saturation, SchroederReverb, ShelfFilter) en vez de una clase de la fabrica de ABDEep. En esas cuatro filas `params` cuenta los mandos del motor compartido; en el resto, los de la implementacion de ABDEep. Es el mismo descuido que el de los NOMBRES: una tabla compartida describe el vocabulario, no la implementacion de cada producto. Un `generatedFrom` falso es la clase de mentira que hace que alguien de confianza regenere el fichero desde la fabrica y borre tres efectos sin avisar, asi que el matiz vive aqui y no en el campo, que sigue siendo una sola ruta. La 60 (la repisa, `ShelfFilter`) se anadio el 2026-09-29 porque el modulo compartido migro la repisa del ecualizador del ABDMS2000 y el catalogo de NEURONiK (ocho filas) se quedo con seis: la tabla de identidades de ABDNeural devolvia fila nula para todas, y el desplegable de efecto se quedaba en 'Bypass'. El phaser no hizo falta fila nueva: el 9 ya es 'Stereo Phaser' con `engine` `Phaser`, que es la misma clase.",
+    "AVISO CONOCIDO 2: FXSimpleComp existe como clase (12 parametros, se llama 'Fair Comp') pero la fabrica NO la instancia: el id 31 va a FXFairComp. Es codigo muerto en el motor. No se anade aqui, y por eso las 61 filas de `effects` son los ids 0..60 TODOS, sin huecos."
   ],
   "families": [
     { "id": "bypass",     "label": "Bypass" },
@@ -92,6 +93,12 @@
     { "id": 43, "name": "Pattern Freeze",     "engine": "PatternFreeze",        "variant": null,      "family": "space",      "params": 4 },
     { "id": 49, "name": "MB Vocoder",         "engine": "Vocoder",              "variant": null,      "family": "space",      "params": 6 },
     { "id": 54, "name": "Nimbus",             "engine": "Nimbus",               "variant": null,      "family": "space",      "params": 5 },
-    { "id": 56, "name": "Tree Monster",       "engine": "Treemonster",          "variant": null,      "family": "space",      "params": 5 }
+    { "id": 56, "name": "Tree Monster",       "engine": "Treemonster",          "variant": null,      "family": "space",      "params": 5 },
+
+    { "id": 57, "name": "FreeVerb Reverb",    "engine": "Reverb",               "variant": null,      "family": "reverb",     "params": 4 },
+    { "id": 58, "name": "Saturation",         "engine": "Saturation",           "variant": null,      "family": "distortion", "params": 1 },
+    { "id": 59, "name": "Schroeder Reverb",   "engine": "SchroederReverb",      "variant": null,      "family": "reverb",     "params": 4 },
+
+    { "id": 60, "name": "Shelf Filter",       "engine": "ShelfFilter",           "variant": null,      "family": "filter",    "params": 3 }
   ]
 }

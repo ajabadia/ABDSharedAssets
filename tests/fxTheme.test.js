@@ -95,10 +95,16 @@ export function catalogueFamilies (effects)
 /* ── 1. el catalogo ───────────────────────────────────────────────────────── */
 
 describe('el catalogo de efectos', () => {
-  it('cubre los ids 0..56 sin huecos ni duplicados', () => {
+  it('cubre los ids 0..max sin huecos ni duplicados', () => {
     const ids = catalogue.effects.map((e) => e.id).sort((a, b) => a - b);
 
-    expect(ids).toEqual([...Array(57).keys()]);
+    // El FINAL se deriva del catalogo, no se escribe. `[...Array(57).keys()]` es
+    // el numero que se quedo viejo en cuanto se anadio una fila (las 57..59, que
+    // produce el modulo compartido y no la fabrica de ABDEep), y para enterarse
+    // hubo que ir a este test a mirar el fallo. El INVARIANTE no se deriva: sin
+    // huecos entre el 0 y el maximo, que es la regla que de verdad importa.
+    expect(ids[0]).toBe(0);
+    expect(ids).toEqual([...Array(ids[ids.length - 1] + 1).keys()]);
   });
 
   it('el id 0 es bypass y no tiene motor', () => {
