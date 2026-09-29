@@ -47,6 +47,7 @@
       "perNote": true
     }
   ],
+  "replacesNote": "`replaces` es exactamente `envAssign` en el motor: la envolvente PISA el factor de routing en vez de sumarse encima. Los destinos 12..16 dejaron de publicarlo el 2026-09-29: son acumuladores a cero, la envolvente los MODULA y no los pisa, y por eso van con `perNote: true` y `replaces: false`. Los unicos que reemplazan son el 1 (ENV 1 -> VCA) y el 10 (ENV 2 -> cutoff), donde la envolvente ES la senal.",
   "destinations": [
     {
       "label": "Off",
@@ -104,31 +105,31 @@
       "label": "Filter Env Amt",
       "parameterId": null,
       "perNote": true,
-      "replaces": true
+      "replaces": false
     },
     {
       "label": "Flt Attack",
       "parameterId": "filterAttack",
       "perNote": true,
-      "replaces": true
+      "replaces": false
     },
     {
       "label": "Flt Decay",
       "parameterId": "filterDecay",
       "perNote": true,
-      "replaces": true
+      "replaces": false
     },
     {
       "label": "Flt Sustain",
       "parameterId": "filterSustain",
       "perNote": true,
-      "replaces": true
+      "replaces": false
     },
     {
       "label": "Flt Release",
       "parameterId": "filterRelease",
       "perNote": true,
-      "replaces": true
+      "replaces": false
     },
     {
       "label": "Saturation",
