@@ -132,7 +132,7 @@
     },
     {
       "label": "Saturation",
-      "parameterId": "fxSaturation"
+      "parameterId": "fx1Param1"
     },
     {
       "label": "Delay Time",
