@@ -530,8 +530,6 @@ const LIMITE_LINEAS = 300;
  *  es la foto de una deuda, y una entrada que se queda sin motivo (el fichero ya
  *  cabe) es un fallo del contrato, que lo dice para que se borre. */
 const EXCEPCIONES_DE_TAMANO = new Set([
-  'segmented.js',
-  'select.js',
   'modMatrix.js',
   'numberbox.js',
   'xypad.js',
