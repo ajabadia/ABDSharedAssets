@@ -211,43 +211,43 @@ NEURONIK_SOURCES = [
     ('ENV 2', 'envelope', True),
 ]
 
-# Los destinos por voz y los que reemplazan, tal cual los declara hoy el switch
-# de NeuronikEngine::applyModulation. La fuente de la verdad es el switch, asi
-# que la lista se contrasta contra el al final.
-NEURONIK_PER_NOTE = {1, 10, 12, 13, 14, 15, 16}
-NEURONIK_REPLACES = {1, 10, 12, 13, 14, 15, 16}
+# La tabla de destinos vive en ModDestinationTable.h como `kModDestinationTable`
+# —un constexpr ya, no una tabla local dentro de getModDestinationTable()— y cada
+# fila lleva su perNote y su replaces. Antes aqui habia dos conjuntos de indices
+# escritos a mano para sacar esas dos banderas del switch de
+# NeuronikEngine::applyModulation; ahora se leen de la fila, que es donde estan,
+# y la tabla no puede dejar de cuadrar con el codigo sin que se note.
+NEURONIK_DESTINATION = re.compile(
+    r'\{\s*"([^"]*)"\s*,\s*(?:nullptr|"([^"]*)")'
+    r'(?:\s*,\s*(true|false)\s*,\s*(true|false))?\s*\}')
 
 
 def parse_neuronik_table():
-    """Lee getModDestinationTable() de ParameterDefinitions.h."""
+    """Lee `kModDestinationTable` de ModDestinationTable.h.
+
+    Devuelve una fila por destino: (etiqueta, parameterId, perNote, replaces).
+    El parameterId va como cadena o None, que es como lo escribe el contrato."""
     text = read(os.path.join(
-        ROOT, 'ABDNeural', 'Source', 'State', 'ParameterDefinitions.h'))
-    start = text.index('getModDestinationTable()')
-    open_brace = text.index('{', text.index('table', start))
+        ROOT, 'ABDNeural', 'Source', 'State', 'ModDestinationTable.h'))
+    start = text.index('kModDestinationTable[]')
+    open_brace = text.index('{', text.index('=', start))
     end = text.index('};', open_brace)
     body = text[open_brace:end]
 
     rows = []
-    for m in re.finditer(
-            r'\{\s*"([^"]*)"\s*,\s*(nullptr|[A-Za-z_:]*IDs::\w+)', body):
-        label = m.group(1)
-        param = m.group(2)
-        if param == 'nullptr':
-            parameter_id = None
-        else:
-            parameter_id = param.split('::')[-1]
-        rows.append((label, parameter_id))
+    for m in NEURONIK_DESTINATION.finditer(body):
+        rows.append((m.group(1), m.group(2),
+                     m.group(3) == 'true', m.group(4) == 'true'))
     return rows
 
 
 def build_neuronik():
-    rows = parse_neuronik_table()
     dests = []
-    for index, (label, parameter_id) in enumerate(rows):
+    for label, parameter_id, per_note, replaces in parse_neuronik_table():
         entry = {'label': label, 'parameterId': parameter_id}
-        if index in NEURONIK_PER_NOTE:
+        if per_note:
             entry['perNote'] = True
-        if index in NEURONIK_REPLACES:
+        if replaces:
             entry['replaces'] = True
         dests.append(entry)
 
@@ -269,10 +269,10 @@ def build_neuronik():
         ],
         'destinations': dests,
         'provenance': {
-            'source': ('Source/State/ParameterDefinitions.h '
-                       '(getModDestinationTable + getModSources) y el switch de '
+            'source': ('Source/State/ModDestinationTable.h '
+                       '(kModDestinationTable) y el switch de '
                        'NeuronikEngine::applyModulation'),
-            'verifiedAt': '2026-09-28',
+            'verifiedAt': '2026-09-29',
         },
     }
 
@@ -290,6 +290,23 @@ def main():
         'abdms2000_modulation_matrix.json': build_ms2000(),
         'neuronik_modulation_matrix.json': build_neuronik(),
     }
+
+    # Una tabla que se lee VACIA no es un synth sin destinos: es un parser que ha
+    # dejado de entender el codigo. Sin este corte el generador escribia encima
+    # del contrato commiteado una lista vacia y el --check decia «desfasado» como
+    # si fuera cosa de otro. Parsear cero filas es un fallo del script, no un dato.
+    vacios = [nombre for nombre, contrato in sorted(contracts.items())
+              if not contrato['sources'] or not contrato['destinations']]
+
+    if vacios:
+        print('')
+        for nombre in vacios:
+            print('VACIO %s: la tabla del synth no ha dado ni una fila. No se '
+                  'escribe nada; el contrato commiteado se queda como estaba.' % nombre)
+        print('')
+        print('El parser ha dejado de reconocer el codigo del synth: mira su '
+              'tabla antes de regenerar.')
+        return 2
 
     stale = []
 

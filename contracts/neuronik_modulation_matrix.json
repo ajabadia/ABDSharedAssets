@@ -188,7 +188,7 @@
     }
   ],
   "provenance": {
-    "source": "Source/State/ParameterDefinitions.h (getModDestinationTable + getModSources) y el switch de NeuronikEngine::applyModulation",
-    "verifiedAt": "2026-09-28"
+    "source": "Source/State/ModDestinationTable.h (kModDestinationTable) y el switch de NeuronikEngine::applyModulation",
+    "verifiedAt": "2026-09-29"
   }
 }
