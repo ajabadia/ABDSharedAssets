@@ -2,6 +2,23 @@
  * ABD PeakLED — RE-201 style peak level LED (inside SVG or standalone).
  * Small rectangular LED that lights on signal peaks.
  */
+/**
+ * Usage:
+ *   const led = new PeakLED(el, { color: '#ff4400' });
+ *   led.trigger();               // destello de 80ms (default)
+ *   led.setState(true);          // modo VU: encendido fijo
+ *   led.destroy();
+ *
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   width      px, default 32.
+ *   height     px, default 17.
+ *   color      lit color, default '#ff4400'.
+ *   glowColor  halo color, default '#ff4400'.
+ *   spriteUrl  sprite used when useSprite is on, default
+ *              './assets/junio/re201_peak_led.png'.
+ *   useSprite  paint from the sprite instead of the CSS LED, default true.
+ */
 export class PeakLED {
     constructor(container, options = {}) {
         this.container = typeof container === 'string'
@@ -51,7 +68,10 @@ export class PeakLED {
         this.container.appendChild(this.element);
     }
 
-    /** Trigger peak — flashes the LED briefly. */
+    /**
+     * Trigger peak — flashes the LED briefly.
+     * @param {number} [duration]  milisegundos de destello (default 80).
+     */
     trigger(duration = 80) {
         if (this.active) return;
         this.active = true;
@@ -62,7 +82,10 @@ export class PeakLED {
         }, duration);
     }
 
-    /** Set continuous state (for VU-like behavior). */
+    /**
+     * Set continuous state (for VU-like behavior).
+     * @param {boolean} on  true deja el LED fijo encendido.
+     */
     setState(on) {
         this.element.style.opacity = on ? '1' : '0';
     }

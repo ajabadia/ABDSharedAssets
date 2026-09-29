@@ -16,6 +16,19 @@
 import { createLcdMachine } from './lcdMachine.js';
 import { createLcdScreen } from './lcdScreen.js';
 
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   menu                arbol de items de la maquina (ver lcdMachine).
+ *   hooks               onEdit/onAction/onPreview/onIdle del synth.
+ *   lines               lineas de la pantalla, default 2.
+ *   widthChars          caracteres por linea, default 16.
+ *   repeat              hold-repeat del D-pad: { initial: 400, interval: 120 }.
+ *   idle                lineas de reposo: () => [linea1, linea2].
+ *   editValue           texto del valor en EDIT (el synth lo formatea).
+ *   onIdleLinesChange   aviso para repintar el reposo.
+ *   screen              opciones extra para createLcdScreen, tal cual.
+ */
 export function createLcdPanel(container, options = {}) {
   const {
     menu = [],                 // arbol de items (lcdMachine)

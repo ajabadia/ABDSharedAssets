@@ -14,11 +14,12 @@
  *   components/lcd.css        -- LCD display panels
  *   components/scope.css      -- oscilloscope display
  *   components/keyboard.css   -- piano keyboard
+ *   components/fx.css         -- modulos de efecto y sus temas por familia
  *
  * Structure:
  *   tokens.css          -- 120+ design tokens
  *   themes/*.css        -- per-instrument themes (5 available)
- *   components/*.css    -- reusable UI components (7 files)
+ *   components/*.css    -- reusable UI components (8 files)
  */
 @import './tokens.css';
 @import './themes/ms2000.css';
@@ -39,3 +40,4 @@
 @import './components/lcd.css';
 @import './components/scope.css';
 @import './components/keyboard.css';
+@import './components/fx.css';   /* modulos de efecto del rack, temas por familia */

@@ -2,6 +2,20 @@
  * ABD SevenSegmentDisplay — 7-segment LED display (3 chars default).
  * Matches ABDJUNiO601 #seven-segment-display using SevenSegment.ttf.
  */
+/**
+ * Usage:
+ *   const display = new SevenSegmentDisplay(el, { digits: 3 });
+ *   display.setValue('128');
+ *   display.destroy();
+ *
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   digits      characters shown, default 3.
+ *   fontSize    CSS font size, default '24px'.
+ *   color       lit color, default '#ff4400'.
+ *   fontFamily  display font, default 'SevenSegment, monospace'.
+ *   value       initial text, default ''.
+ */
 export class SevenSegmentDisplay {
     constructor(container, options = {}) {
         this.container = typeof container === 'string'
@@ -52,6 +66,10 @@ export class SevenSegmentDisplay {
         this.container.appendChild(this.wrapper);
     }
 
+    /**
+     * Pinta el valor: cada digito en su celda, relleno con espacios a la izquierda.
+     * @param {number|string} value  valor a mostrar; se trunca a `digits`.
+     */
     setValue(value) {
         const str = String(value).padStart(this.options.digits, ' ');
         for (let i = 0; i < this.options.digits; i++) {

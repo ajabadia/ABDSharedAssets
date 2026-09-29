@@ -31,7 +31,10 @@
  *     onChange: (id, payload) => {},
  *   });
  *   // ts.value -> tema activo; ts.payload -> el payload del tema activo;
- *   // ts.setValue('light'); ts.destroy();
+ *   // (ts?.value / ts?.payload: el mismo acceso con encadenado opcional,
+ *   //  por si el switch puede faltar en ese punto)
+ *   ts.setValue('light', { fromUser: false });   // silencioso: no notifica
+ *   ts.destroy();
  */
 
 const DEFAULT_THEMES = [
@@ -131,6 +134,11 @@ export class ThemeSwitcher {
   /** El payload del tema activo (undefined si el tema no declaro ninguno). */
   get payload() { return this._payloads.get(this._value); }
 
+  /**
+   * Aplica un tema por id.
+   * @param {string} themeId
+   * @param {{ fromUser?: boolean }} [o]  `{ fromUser }`: gesto del usuario, notifica a onChange.
+   */
   setValue(themeId, { fromUser = true } = {}) {
     if (!this._buttons.has(themeId)) {
       throw new Error(`ThemeSwitcher: tema desconocido "${themeId}"`);
@@ -138,6 +146,7 @@ export class ThemeSwitcher {
     this._apply(themeId, { fromUser });
   }
 
+  /** Quita los listeners, la clase de body y el elemento; idempotente. */
   destroy() {
     for (const [id, fn] of this._handlers) {
       if (id === '__select__') {

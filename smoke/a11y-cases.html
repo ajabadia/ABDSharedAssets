@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ABD ARIA smoke — casos</title>
+    <!-- Los estilos entran a proposito: si un CSS saca un nodo del arbol (display:
+         none, visibility) o deja de sacarlo (el clip del texto oculto), aqui se ve. -->
+    <link rel="stylesheet" href="../styles/index.css">
+</head>
+<body>
+    <h1>ABD ARIA smoke — casos</h1>
+    <p>
+        Cada sección monta un control en un estado que importa. El smoke test
+        (<code>smoke/a11y-smoke.mjs</code>) abre esta página en Chromium real y
+        comprueba el árbol de accesibilidad, no los atributos.
+    </p>
+
+    <main id="cases"></main>
+
+    <script type="module" src="./a11y-cases.js"></script>
+</body>
+</html>

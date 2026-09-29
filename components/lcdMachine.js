@@ -201,13 +201,22 @@ function snapshot(machine) {
 }
 
 /**
+ * @typedef {object} ValueSpec  como se formatea el valor de un item: un mapa de
+ *   etiquetas, un SI/NO o un numero con su unidad. La nombra `formatValue`, de abajo, y sus
+ *   `@property` son la lista de lo que el formateo sabe mirar.
+ * @property {string} [type]  'bool' para SI/NO; lo demas se formatea como numero.
+ * @property {Array<{label: string}>} [choices]  etiquetas cuando el valor es un indice.
+ * @property {string} [unit]  sufijo del numero (`HZ`, `dB`...).
+ * @property {number} [decimals]  cifras decimales del numero formateado, default 2.
+ */
+
+/**
  * formatValue — formatear el valor de un item para la linea del LCD.
  * Separado de la maquina porque es lo unico que cada synth suele querer
  * personalizar (unidades, mapeos, booleanos a OFF/ON...).
  *
  * @param {number|null} value valor crudo del parametro
- * @param {{ type?: string, choices?: Array<{label: string}>, unit?: string,
- *            decimals?: number }} spec
+ * @param {ValueSpec} spec
  */
 export function formatValue(value, spec = {}) {
   if (spec.choices) {

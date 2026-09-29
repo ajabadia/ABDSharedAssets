@@ -16,6 +16,14 @@
  *
  * Sin saber nada del synth: puro DOM + timers, inyectable y destruyible.
  * La maquina de estados (lcdMachine.js) es opcional y va aparte.
+ *
+ * Usage:
+ *   const lcd = createLcdScreen(el, { lines: 2 });
+ *   lcd.setLine(0, 'PITCH +1.2');
+ *   lcd.message('save', 'GUARDADO', { priority: 1 });
+ *   lcd.preview(1, 'CARGANDO', { durationMs: 800 });   // transitorio, vuelve solo
+ *   lcd.clearMessage('save');                          // al cancelar la operacion
+ *   lcd.destroy();
  */
 
 const DEFAULTS = {
@@ -139,7 +147,11 @@ export function createLcdScreen(container, options = {}) {
 
   // ================= API =================
 
-  /** Texto de reposo de una linea (el synth repinta tras cada cambio). */
+  /**
+   * Texto de reposo de una linea (el synth repinta tras cada cambio).
+   * @param {number} lineIdx  linea afectada.
+   * @param {string} text
+   */
   function setLine(lineIdx, text) {
     base[lineIdx] = String(text ?? '');
     clearPreview(lineIdx);
@@ -192,7 +204,10 @@ export function createLcdScreen(container, options = {}) {
     refreshQueue();
   }
 
-  /** Quitar un mensaje concreto (p. ej. al cancelar una operacion). */
+  /**
+   * Quitar un mensaje concreto (p. ej. al cancelar una operacion).
+   * @param {string} id
+   */
   function clearMessage(id) {
     const e = queue.get(id);
     if (e && e.timer) { clearTimeout(e.timer); timers.delete(e.timer); }

@@ -10,10 +10,16 @@
  * Orientation is horizontal (default) or vertical via `orientation`. LOOK lives
  * in a skin (components/skins): 'vector' (default fill+thumb) or 'junio'
  * (slot+cap photo sprites). A filmstrip thumb overrides the skin's thumb.
+ *
+ * Usage:
+ *   const slider = new Slider(el, { orientation: 'vertical', value: 0.5 });
+ *   slider.setValue(0.8);   // programatico: no dispara onChange
+ *   slider.getValue();
  */
 
 import { attachDrag } from './drag-core.js';
 import { applySkin, CONTROL_KIND } from './skins/index.js';
+import { announceSettled, createContinuousNotices } from './continuousNotices.js';
 
 /**
  * @param {HTMLElement|string} container
@@ -28,7 +34,9 @@ import { applySkin, CONTROL_KIND } from './skins/index.js';
  *   skin          skin name (see components/skins), default 'vector'.
  *   spriteUrl     optional filmstrip sprite for the thumb (frames stacked vertically).
  *   frameWidth/frameHeight/frames  sprite geometry when spriteUrl is set.
- *   onChange / onDragStart / onDragEnd  callbacks.
+ *   onChange    (normalised) => void, fires on user edits (not on setValue).
+ *   onSettled   (normalised) => void, fires ONCE per gesture when the value settles (pointerup / drag end); only if the final value differs from the gesture start. Keyboard steps and wheel notches settle immediately.
+ *   onDragStart / onDragEnd  for host gesture bridging.
  */
 export class Slider
 {
@@ -55,6 +63,7 @@ export class Slider
             frameHeight: 36,
             frames: 1,
             onChange: null,
+            onSettled: null,
             onDragStart: null,
             onDragEnd: null,
             ...options,
@@ -62,6 +71,10 @@ export class Slider
 
         this.value = clamp01(this.options.value);
         this.dragDetach = null;
+        this.notices = createContinuousNotices({
+            onMovement: (v) => this.options.onChange?.(v),
+            onSettled: (v) => this.options.onSettled?.(v),
+        });
         this[CONTROL_KIND] = 'slider';
 
         this.buildDom();
@@ -146,12 +159,23 @@ export class Slider
             onDelta: (turns) => clamp01(this.value + turns),
             onValue: (newValue) =>
             {
+                const previous = this.value;
                 this.value = newValue;
                 this.render();
-                this.options.onChange?.(this.value);
+                const moved = this.notices.announceMovement(previous, newValue);
+                if (moved && ! this.notices.isActive())
+                    announceSettled(this.options.onSettled, previous, newValue);
             },
-            onDragStart: () => this.options.onDragStart?.(),
-            onDragEnd: () => this.options.onDragEnd?.(),
+            onDragStart: () =>
+            {
+                this.notices.begin(this.value);
+                this.options.onDragStart?.();
+            },
+            onDragEnd: () =>
+            {
+                this.notices.end(this.value);
+                this.options.onDragEnd?.();
+            },
             onStep: (direction) => clamp01(this.value + direction * this.options.step),
         }, { dragLanePx: Math.max(60, this.options.length) });
     }
@@ -189,7 +213,10 @@ export class Slider
         this.track.setAttribute('aria-valuetext', text);
     }
 
-    /** @brief Programmatic update: does NOT fire onChange (user edits do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user edits do).
+     * @param {number} value  normalised 0..1.
+     */
     setValue (value)
     {
         this.value = clamp01(Number(value) || 0);

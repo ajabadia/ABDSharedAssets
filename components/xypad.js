@@ -12,7 +12,10 @@
  *   - value = { x, y } NORMALISED 0..1 each;
  *   - y = 1 is the TOP of the pad (screen Y grows downward, pad Y grows up);
  *   - onChange fires with { x, y } on user edits; setValue() is silent by
- *     default so programmatic updates (bridge snapshots) don't echo back;
+ *     default so programmatic updates (bridge snapshots) don't echo back. Como el
+ *     resto del linaje, el aviso es de TRANSICION, no de intencion: empujar una
+ *     flecha contra el borde, o pedir el punto donde ya esta, no avisa
+ *     (transitionNotices.js);
  *   - unlike knob/slider, the pad is an ABSOLUTE surface: clicking jumps there.
  *
  * Corner labels (optional): `corners: [topLeft, topRight, bottomLeft,
@@ -29,10 +32,27 @@
  *   pad.getValue();                      // -> { x, y }
  */
 
+import { announceSettled, createContinuousNotices } from './continuousNotices.js';
+
 const clamp01 = (v) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 0));
 
 const CORNER_POSITIONS = ['tl', 'tr', 'bl', 'br'];
 
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   x / y           initial value, normalised 0..1 each, default 0.5.
+ *   width / height  px, default 220.
+ *   label           text above the pad, optional (doubles as its accessible name).
+ *   ariaLabel       accessible name override, optional.
+ *   step            keyboard step, default 0.01.
+ *   format          (normalised) => string readout, default percent.
+ *   corners         [topLeft, topRight, bottomLeft, bottomRight] labels; empty
+ *                   strings hide their corner. setCorners() updates them later.
+ *   onChange    ({ x, y }) => void, fires on user edits (not on setValue) — aviso por MOVIMIENTO, por paso.
+ *   onSettled   ({ x, y }) => void, fires ONCE per gesture when the drag settles (pointerup); only if the final point differs from the gesture start. A drag that ends where it started does not settle; programmatic setValue never settles. Keyboard steps settle immediately.
+ *   onDragStart / onDragEnd  for host gesture bridging (automation).
+ */
 export class XYPad
 {
     constructor (container, options = {})
@@ -55,6 +75,7 @@ export class XYPad
             format: (v) => `${Math.round(v * 100)}%`,
             corners: null,
             onChange: null,
+            onSettled: null,
             onDragStart: null,
             onDragEnd: null,
             ...options,
@@ -63,6 +84,10 @@ export class XYPad
         this.value = { x: clamp01(this.options.x), y: clamp01(this.options.y) };
         this._destroyed = false;
         this._dragging = false;
+        this.notices = createContinuousNotices({
+            onMovement: (v) => this.options.onChange?.(v),
+            onSettled: (v) => this.options.onSettled?.(v),
+        });
 
         this.buildDom();
         this.attachInteraction();
@@ -131,6 +156,7 @@ export class XYPad
         // to that point. Y inversion lives here: screen y -> pad y = 1 - ratio.
         this.pad.addEventListener('pointerdown', (event) => {
             this._dragging = true;
+            this.notices.begin(this.value);
             try { this.pad.setPointerCapture(event.pointerId); } catch { /* jsdom */ }
             this.pad.focus({ preventScroll: true });
             if (this.options.onDragStart) this.options.onDragStart();
@@ -144,6 +170,7 @@ export class XYPad
         const endDrag = () => {
             if (!this._dragging) return;
             this._dragging = false;
+            this.notices.end(this.value);
             if (this.options.onDragEnd) this.options.onDragEnd();
         };
 
@@ -185,24 +212,38 @@ export class XYPad
         this.setValue({ x, y }, true);
     }
 
-    /** Silent, programmatic update (bridge snapshots). Notifies only when asked. */
+    /**
+     * Silent, programmatic update (bridge snapshots). Notifies only when asked,
+     * and then only on a REAL transition: the same point is an intention, not a
+     * transition, and calls nobody.
+     * @param {{ x: number, y: number }} value  normalised 0..1 each.
+     * @param {boolean} [notify]  cuando es true, avisa del cambio (una vez, y solo
+     *                            si el punto cambio).
+     */
     setValue ({ x, y }, notify = false)
     {
         if (this._destroyed) return;
 
+        const previous = this.value;
         this.value = { x: clamp01(x), y: clamp01(y) };
         this.render();
 
-        if (notify && this.options.onChange)
-            this.options.onChange({ ...this.value });
+        if (notify)
+        {
+            const moved = this.notices.announceMovement(previous, this.value);
+            if (moved && ! this.notices.isActive())
+                announceSettled(this.options.onSettled, previous, this.value);
+        }
     }
 
+    /** @returns {object} copia del valor actual, `{ x, y }` normalizado 0..1. */
     getValue () { return { ...this.value }; }
 
     /**
      * Corner labels, any time after construction: [topLeft, topRight,
      * bottomLeft, bottomRight]. An empty string hides its corner; `null`
      * removes every label. Rebuilding four spans is cheaper than diffing them.
+     * @param {Array} corners  hasta cuatro etiquetas; `null` las quita todas.
      */
     setCorners (corners)
     {

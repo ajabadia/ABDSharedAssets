@@ -5,7 +5,22 @@
  * Colors: orange, yellow, beige (white), patch-blue, grey, red
  *
  * Usage:
- *   new EffectLEDButton(el, { color: 'orange', value: false, onChange });
+ *   const button = new EffectLEDButton(el, { color: 'orange', value: false, onChange });
+ *   button.setValue(true);       // programatico: SI dispara onChange
+ *   button.setValueSilent(true); // para restaurar estado sin avisar
+ *   button.destroy();
+ */
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   color      sprite set: orange | yellow | beige | patch-blue | grey | red,
+ *              default 'orange'.
+ *   value      initial state, default false (LED off).
+ *   label      optional text painted on the button.
+ *   size       'normal' (default) or 'tiny'.
+ *   momentary  if true it is a push button: lit while pressed, never latches
+ *              (onChange(true) on press, onChange(false) on release).
+ *   onChange   (boolean) => void, fires on user presses only.
  */
 export class EffectLEDButton {
     constructor(container, options = {}) {
@@ -123,14 +138,20 @@ export class EffectLEDButton {
         this.button.setAttribute('data-active', this.value ? 'true' : 'false');
     }
 
-    /** @brief Programmatic update — fires onChange. */
+    /**
+     * @brief Programmatic update — fires onChange.
+     * @param {boolean} value  estado nuevo del boton.
+     */
     setValue(value) {
         this.value = Boolean(value);
         this.render();
         this.options.onChange?.(this.value);
     }
 
-    /** Silent update (no onChange). */
+    /**
+     * Silent update (no onChange).
+     * @param {boolean} value  estado nuevo, sin aviso al host.
+     */
     setValueSilent(value) {
         this.value = Boolean(value);
         const state = this.value ? 'on' : 'off';

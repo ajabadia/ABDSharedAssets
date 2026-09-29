@@ -12,6 +12,12 @@
  *   - value model: normalised 0..1
  *   - themed via CSS tokens, sprite via options
  *
+ * Usage:
+ *   const fader = new FilmstripFader(el, { spriteUrl, value: 0.5, onChange });
+ *   fader.setValue(0.8);
+ *   fader.getValue();
+ *   fader.destroy();
+ *
  * @param {HTMLElement|string} container
  * @param {object} options
  *   orientation       'vertical' | 'horizontal', default 'vertical'
@@ -32,6 +38,11 @@
 import { attachDrag } from './drag-core.js';
 
 export class FilmstripFader {
+    /**
+     * @param {HTMLElement|string} container  elemento o selector donde montarse.
+     * @param {object} options  ver bloque de arriba: spriteUrl, frameWidth/Height,
+     *                          frames, value, label, ariaLabel, format, step, callbacks.
+     */
     constructor(container, options = {}) {
         this.container = typeof container === 'string'
             ? document.querySelector(container)
@@ -172,7 +183,10 @@ export class FilmstripFader {
         this.viewport.setAttribute('aria-valuetext', text);
     }
 
-    /** @brief Programmatic update: does NOT fire onChange (user edits do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user edits do).
+     * @param {number} value  normalizado 0..1; se recorta.
+     */
     setValue(value) {
         this.value = clamp01(Number(value) || 0);
         this.render();

@@ -71,6 +71,35 @@ describe('XYPad — family contract', () =>
         pad.destroy();
     });
 
+    it('setValue con notify, pero el mismo punto, no avisa (intencion sin transicion)', () =>
+    {
+        const onChange = vi.fn();
+        const pad = new XYPad(host, { x: 0.5, y: 0.5, onChange });
+
+        pad.setValue({ x: 0.5, y: 0.5 }, true);
+        expect(onChange).not.toHaveBeenCalled();
+
+        pad.setValue({ x: 0.5, y: 0.6 }, true);
+        expect(onChange).toHaveBeenCalledTimes(1);
+
+        pad.destroy();
+    });
+
+    it('la flecha que empuja contra el borde no re-notifica (0/1 son el tope)', () =>
+    {
+        const onChange = vi.fn();
+        const pad = new XYPad(host, { x: 0, y: 0.5, onChange });
+
+        pad.pad.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        expect(pad.getValue()).toEqual({ x: 0, y: 0.5 });
+        expect(onChange).not.toHaveBeenCalled();
+
+        pad.pad.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+        expect(onChange).toHaveBeenCalledTimes(1);
+
+        pad.destroy();
+    });
+
     it('getValue returns a copy — mutating it does not touch the control', () =>
     {
         const pad = new XYPad(host, {});

@@ -144,4 +144,259 @@ describe('drawer (compartido)', () => {
 
     document.removeEventListener('keydown', onKeyDown);
   });
+
+  it('setHeader reescribe título y distintivo (y el aria-label) sin tocar el cuerpo', () => {
+    const drawer = mount();
+    const cell = document.createElement('div');
+
+    drawer.body.append(cell);
+
+    // Encadenable: devuelve el cajón.
+    expect(drawer.setHeader({ title: 'GLOBAL', badge: '5 RUTAS' })).toBe(drawer);
+
+    expect(drawer.header.querySelector('.drawer__title').textContent).toBe('GLOBAL');
+    expect(drawer.header.querySelector('.drawer__badge').textContent).toBe('5 RUTAS');
+    // El título visible y el nombre del dialog son el mismo dato.
+    expect(drawer.element.getAttribute('aria-label')).toBe('GLOBAL');
+
+    // Un campo que no viene se queda como estaba...
+    drawer.setHeader({ badge: '6 RUTAS' });
+    expect(drawer.header.querySelector('.drawer__title').textContent).toBe('GLOBAL');
+    expect(drawer.element.getAttribute('aria-label')).toBe('GLOBAL');
+    expect(drawer.header.querySelector('.drawer__badge').textContent).toBe('6 RUTAS');
+
+    // ...y uno que viene vacío se limpia (sin inventarse un texto).
+    drawer.setHeader({ badge: '' });
+    expect(drawer.header.querySelector('.drawer__badge').textContent).toBe('');
+
+    // Sin argumentos no cambia nada ni revienta.
+    drawer.setHeader();
+    expect(drawer.header.querySelector('.drawer__title').textContent).toBe('GLOBAL');
+
+    // Y el cuerpo es el MISMO nodo: setHeader no reconstruye (ver la cabecera).
+    expect(drawer.body.querySelector('div')).toBe(cell);
+
+    drawer.destroy();
+  });
+
+  it('setHeader sobre un cajón destruido no muta (como el resto de la API)', () => {
+    const drawer = mount();
+
+    drawer.destroy();
+    drawer.setHeader({ title: 'TARDE', badge: 'X' });
+
+    expect(document.querySelector('[data-drawer="drawer-test"]')).toBeNull();
+  });
+
+  it('onOpen/onClose avisan UNA vez por transición real, no por petición', () => {
+    const onOpen = vi.fn();
+    const onClose = vi.fn();
+    const drawer = mount({ onOpen, onClose });
+
+    // Cerrar lo que ya está cerrado no es una transición: nadie avisa.
+    drawer.close();
+    expect(onClose).not.toHaveBeenCalled();
+
+    drawer.open();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledWith(drawer);
+
+    // Abrir lo que ya está abierto tampoco.
+    drawer.open();
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    // Los tres caminos de cierre pasan por el mismo aviso, y una sola vez cada uno.
+    drawer.element.querySelector('.drawer__close').click();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(drawer);
+
+    drawer.backdrop.click();   // ya cerrado: no avisa
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    drawer.toggle();
+    expect(onOpen).toHaveBeenCalledTimes(2);
+    drawer.backdrop.click();
+    expect(onClose).toHaveBeenCalledTimes(2);
+
+    drawer.toggle();
+    expect(onOpen).toHaveBeenCalledTimes(3);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(drawer.isOpen()).toBe(false);
+
+    drawer.destroy();
+  });
+
+  it('destroy NO es un cierre: quitarlo abierto no dispara onClose', () => {
+    const onClose = vi.fn();
+    const drawer = mount({ onClose });
+
+    drawer.open();
+    drawer.destroy();
+
+    // El nodo se va sin pasar por la transición: quien tenga que soltar algo lo
+    // suelta en su propio camino de destrucción (ver la cabecera de drawer.js).
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  /* ── Gestión de foco: entrada, trampa de Tab y vuelta al disparador ─────── */
+
+  it('al abrir, el foco entra en el primer control del cuerpo (y en el cierre si no hay)', () => {
+    const drawer = mount();
+    const first = document.createElement('button');
+    const second = document.createElement('button');
+
+    drawer.body.append(first, second);
+
+    drawer.open();
+    expect(document.activeElement).toBe(first);
+
+    // Un cuerpo sin nada que tabular no deja el foco fuera: el cierre, único
+    // control propio, es el destino.
+    drawer.close();
+    first.remove();
+    second.remove();
+    drawer.open();
+    expect(document.activeElement).toBe(drawer.header.querySelector('.drawer__close'));
+
+    drawer.destroy();
+  });
+
+  it('al cerrar, el foco vuelve al disparador, por los tres caminos de cierre', () => {
+    const trigger = document.createElement('button');
+    const control = document.createElement('button');
+    const drawer = mount();
+
+    document.body.append(trigger);
+    drawer.body.append(control);
+
+    trigger.focus();
+    drawer.open();
+    expect(document.activeElement).toBe(control);
+
+    // ESC...
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(document.activeElement).toBe(trigger);
+
+    // ...el fondo...
+    drawer.open();
+    drawer.backdrop.click();
+    expect(document.activeElement).toBe(trigger);
+
+    // ...y el botón de cierre: el mismo camino, el mismo destino.
+    drawer.open();
+    drawer.header.querySelector('.drawer__close').click();
+    expect(document.activeElement).toBe(trigger);
+
+    // Un disparador que ya no está en el documento no se toca: no se devuelve el
+    // foco a un nodo muerto.
+    drawer.open();
+    trigger.remove();
+    drawer.close();
+    expect(document.activeElement).not.toBe(trigger);
+
+    drawer.destroy();
+  });
+
+  it('la trampa de Tab cicla por el cajón y solo intercepta en los bordes', () => {
+    const drawer = mount();
+    const first = document.createElement('button');
+    const last = document.createElement('button');
+
+    drawer.body.append(first, last);
+
+    const close = drawer.header.querySelector('.drawer__close');
+    const pressTab = (shiftKey = false) => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      document.dispatchEvent(event);
+      return event;
+    };
+
+    // Cerrado, el teclado es del documento: el cajón no toca Tab.
+    first.focus();
+    expect(pressTab().defaultPrevented).toBe(false);
+
+    drawer.open();
+    expect(document.activeElement).toBe(first);
+
+    // En medio, tabula el navegador (aquí no hay layout: el foco no se mueve).
+    expect(pressTab().defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(first);
+
+    // Borde derecho: del último del DOM (el cuerpo va tras el encabezado) al
+    // primero (el cierre).
+    last.focus();
+    expect(pressTab().defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(close);
+
+    // Borde izquierdo: de vuelta al último.
+    expect(pressTab(true).defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
+
+    drawer.destroy();
+  });
+
+  it('sin controles enfocables el cajón mismo recibe el foco y retiene Tab', () => {
+    const drawer = mount();
+
+    // El llamador puede quedarse sin un solo control (ni el cierre).
+    drawer.header.querySelector('.drawer__close').remove();
+
+    drawer.open();
+    expect(document.activeElement).toBe(drawer.element);
+
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(drawer.element);
+
+    drawer.destroy();
+  });
+
+  it('cerrado, el contenido no es tabulable: el cajón va `inert` y lo suelta al abrir', () => {
+    const drawer = mount();
+    const control = document.createElement('button');
+
+    drawer.body.append(control);
+
+    // Nace cerrado (y por tanto inerte), con el contenido en el documento: el
+    // `inert` no quita nodos, solo los saca del orden de tabulación.
+    expect(drawer.isOpen()).toBe(false);
+    expect(drawer.element.hasAttribute('inert')).toBe(true);
+
+    drawer.open();
+    expect(drawer.element.hasAttribute('inert')).toBe(false);
+    expect(drawer.body.contains(control)).toBe(true);
+
+    // Cerrar vuelve a sacarlo, y el nodo es el MISMO (el cajón no reconstruye).
+    drawer.close();
+    expect(drawer.element.hasAttribute('inert')).toBe(true);
+    expect(drawer.body.querySelector('button')).toBe(control);
+
+    drawer.destroy();
+  });
+
+  it('destroy no devuelve el foco: no es un cierre', () => {
+    const trigger = document.createElement('button');
+    const drawer = mount();
+
+    document.body.append(trigger);
+    trigger.focus();
+
+    drawer.open();
+    drawer.destroy();
+
+    expect(document.activeElement).not.toBe(trigger);
+  });
 });

@@ -277,6 +277,20 @@
     color: var(--color-warning, #ffb454);
 }
 
+/* Motivos del veto: ocultos a la vista, vivos en el arbol de accesibilidad.
+ * Viven FUERA del <option> (un nodo oculto dentro del option entraria en su
+ * nombre accesible) y llegan al lector por aria-describedby: el mismo trato que
+ * en Segmented. */
+.abd-select__notes {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
 .abd-select--ms2000 .abd-select__field,
 .abd-select__field--ms2000 {
     font-family: var(--font-sans, sans-serif);
@@ -648,7 +662,7 @@
     border-bottom-right-radius: var(--radius-sm, 3px);
 }
 
-.abd-segmented__segment:hover {
+.abd-segmented__segment:hover:not([aria-disabled="true"]) {
     color: var(--color-text-main, #f0f7ff);
 }
 
@@ -658,9 +672,26 @@
     border-color: var(--color-accent, #00c3ff);
 }
 
-.abd-segmented__segment:disabled {
+/* Vetado: el mueble apagado cubre los dos selectores. El estado real es
+ * aria-disabled (un `disabled` nativo sacaria al radio del foco y con el su
+ * anuncio); el nativo se mantiene por si un consumidor aun lo pinta asi. */
+.abd-segmented__segment:disabled,
+.abd-segmented__segment[aria-disabled="true"] {
     opacity: 0.35;
     cursor: not-allowed;
+}
+
+/* Motivos del veto: ocultos a la vista, vivos en el arbol de accesibilidad.
+ * Viven FUERA de los botones (un nodo oculto dentro del boton entraria en su
+ * nombre accesible) y llegan al lector por aria-describedby. */
+.abd-segmented__notes {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 .abd-segmented__segment:focus-visible {
@@ -726,7 +757,7 @@
     gap: 2px;
 }
 
-.abd-segmented--led .abd-segmented__segment:hover {
+.abd-segmented--led .abd-segmented__segment:hover:not([aria-disabled="true"]) {
     border-color: var(--color-panel-border, rgb(0 195 255 / 20%));
     background: var(--color-panel-surface-elevated, #1c2a3d);
 }

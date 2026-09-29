@@ -2,8 +2,11 @@
  * ABD Wheel — reusable filmstrip modulation wheel (PITCH / MOD).
  *
  * Renders a label, a sprite sheet driven by a hidden vertical range slider,
- * and a value readout. Designed to be themed via --kbd-* / --color-* tokens
- * (see styles/components/wheels.css) and shared across ABDSynths projects.
+ * and a value readout. The readout is NOT paint-only: the same formatted text
+ * goes to `aria-valuetext`, so a reader hears "+1.2" instead of the raw range
+ * number (0..127, or -8192..8191 on the pitch wheel). Designed to be themed via
+ * --kbd-* / --color-* tokens (see styles/components/wheels.css) and shared
+ * across ABDSynths projects.
  *
  * Usage:
  *   import { Wheel } from '@abdsynths/shared/components/wheel.js';
@@ -13,12 +16,35 @@
  *     frameWidth: 18, frameHeight: 76, frames: 101,
  *     onChange: (normalized) => {},
  *   });
+ *   wheel.setValue(0.5, false);   // actualizacion silenciosa (no dispara onChange)
  *   wheel.destroy();
+ *
+ * El contenedor es de la rueda y lo PINTA al construir: da igual lo que tuviera
+ * dentro, sale con una rueda. (Dos Wheel sobre el mismo contenedor dejan al primero
+ * apuntando a nodos ya sustituidos: el contenedor es de uno.)
  */
+
+import { announceSettled, createContinuousNotices } from './continuousNotices.js';
 
 const FRAME_HEIGHT = 76;
 const FRAMES = 101;
 
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   type            'pitch' (springs back to 0 on release) or 'mod' (stays),
+ *                   default 'mod'.
+ *   spriteUrl       filmstrip sprite, default 'assets/bender.png'.
+ *   frameWidth      px per frame, default 18.
+ *   frameHeight     px per frame, default 76.
+ *   frames          frames in the sprite, default 101.
+ *   initialFrame    frame painted before any value, default the middle one.
+ *   min / max       raw range, default -8192..8191 (pitch) or 0..127 (mod).
+ *   label           text above the wheel, default 'PITCH' / 'MOD'.
+ *   valueFormatter  (raw) => string readout; the same text is announced.
+ *   onChange        (raw) => void, fires on user edits (not on setValue).
+ *   onSettled       (raw) => void, fires ONCE per gesture when the value settles (pointerup / change); only if the final value differs from the gesture start. Keyboard steps and wheel notches settle immediately; pitch-wheel spring-back is a movement, not a settled commit.
+ */
 export class Wheel {
   constructor(container, options = {}) {
     this.container = container;
@@ -29,12 +55,17 @@ export class Wheel {
     this.frames = options.frames || FRAMES;
     this._initialFrame = options.initialFrame ?? Math.floor((this.frames - 1) / 2);
     this.onChange = options.onChange || (() => {});
+    this.onSettled = options.onSettled || (() => {});
     this.isPitch = this.type === 'pitch';
     this.min = options.min !== undefined ? options.min : (this.isPitch ? -8192 : 0);
     this.max = options.max !== undefined ? options.max : (this.isPitch ? 8191 : 127);
     this.label = options.label || (this.isPitch ? 'PITCH' : 'MOD');
     this.valueFormatter = options.valueFormatter || this.defaultValueFormatter.bind(this);
     this._destroyed = false;
+    this.notices = createContinuousNotices({
+      onMovement: (v) => this.onChange(v),
+      onSettled: (v) => this.onSettled(v),
+    });
 
     this.render();
     this.attachEvents();
@@ -49,7 +80,10 @@ export class Wheel {
   }
 
   render() {
-    if (this.container.hasChildNodes()) return;
+    // Sin guard por contenido previo: aquel `return` dejaba this.slider sin definir
+    // y attachEvents reventaba despues con un TypeError ("Cannot read properties of
+    // undefined (reading 'addEventListener')") que no decia nada de la causa real.
+    // La rueda repinta su contenedor: es suyo (1:1).
     this.container.classList.add('kbd-wheel-wrapper');
     this.container.innerHTML = `
       <label class="kbd-wheel-label">${this.label}</label>
@@ -64,6 +98,8 @@ export class Wheel {
     this.sprite = this.container.querySelector('.kbd-wheel-sprite');
     this.slider = this.container.querySelector('.kbd-wheel-slider');
     this.valueEl = this.container.querySelector('.kbd-wheel-value');
+
+    this.updateValueText(parseInt(this.slider.value, 10));
   }
 
   updateVisuals(val) {
@@ -71,8 +107,19 @@ export class Wheel {
     const frame = Math.max(0, Math.min(this.frames - 2, Math.round(pct * (this.frames - 1))));
     this.sprite.style.backgroundPosition = `0px -${frame * this.frameHeight}px`;
     this.valueEl.textContent = this.valueFormatter(val);
+    this.updateValueText(val);
   }
 
+  /** El readout formateado tambien como valor anunciable (no el numero crudo). */
+  updateValueText(val) {
+    this.slider.setAttribute('aria-valuetext', this.valueFormatter(val));
+  }
+
+  /**
+   * Actualiza el valor de la rueda; `notify` dispara onChange cuando es true.
+   * @param {number} val  valor crudo, se recorta a [min, max].
+   * @param {boolean} [notify]  cuando es false no dispara onChange.
+   */
   setValue(val, notify = true) {
     const clamped = Math.max(this.min, Math.min(this.max, val));
     this.slider.value = clamped;
@@ -85,23 +132,56 @@ export class Wheel {
   }
 
   attachEvents() {
+    const getRaw = () => parseInt(this.slider.value, 10);
+    this._rawPrev = getRaw();
+
+    const beginGesture = () => this.notices.begin(getRaw());
+    const endGesture = () => {
+      const cur = getRaw();
+      this.notices.end(cur);
+      this._rawPrev = cur;
+    };
+
+    this.slider.addEventListener('pointerdown', beginGesture);
+    this.slider.addEventListener('pointerup', endGesture);
+    this.slider.addEventListener('pointercancel', endGesture);
+    this.slider.addEventListener('change', endGesture);
+
     const onInput = () => {
-      const val = parseInt(this.slider.value, 10);
+      const val = getRaw();
+      const prev = this._rawPrev;
+      this._rawPrev = val;
       this.updateVisuals(val);
-      this.onChange(val);
+      const moved = this.notices.announceMovement(prev, val);
+      if (moved && ! this.notices.isActive())
+        announceSettled(this.onSettled, prev, val);
     };
     this.slider.addEventListener('input', onInput);
     if (this.isPitch) {
-      const resetSpring = () => { this.slider.value = 0; this.updateVisuals(0); this.onChange(0); };
+      const resetSpring = () => {
+        const prev = this._rawPrev;
+        this.slider.value = 0;
+        this._rawPrev = 0;
+        this.updateVisuals(0);
+        // spring movement is not a settled commit: it returns to rest
+        this.notices.announceMovement(prev, 0);
+      };
       this.slider.addEventListener('mouseup', resetSpring);
       this.slider.addEventListener('touchend', resetSpring);
       this.slider.addEventListener('mouseleave', (e) => { if (e.buttons === 1) resetSpring(); });
     }
     this.slider.addEventListener('dblclick', () => {
-      this.slider.value = 0; this.updateVisuals(0); this.onChange(0);
+      const prev = this._rawPrev;
+      this.slider.value = 0;
+      this._rawPrev = 0;
+      this.updateVisuals(0);
+      const moved = this.notices.announceMovement(prev, 0);
+      if (moved && ! this.notices.isActive())
+        announceSettled(this.onSettled, prev, 0);
     });
   }
 
+  /** Quita el marcado que pinto en el contenedor; idempotente. */
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;

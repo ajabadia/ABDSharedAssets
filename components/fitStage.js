@@ -42,6 +42,8 @@
  *   identity the centring offsets are 0 so fluid layouts stay untouched
  * @param {number} [p.stageWidth]  natural (unscaled) stage box width, when the
  *   stage's CSS box may exceed the design (fluid floor); defaults to the design
+ * @param {number} [p.stageHeight] natural (unscaled) stage box height, the same
+ *   case on the vertical axis; defaults to the design height
  * @returns {{ scale: number, offsetX: number, offsetY: number }}
  *   `scale` clamped to [minScale, maxScale]; offsets (>= 0) centre the spare axis.
  *   Centring is computed against the SCALED STAGE BOX (design x scale, see the

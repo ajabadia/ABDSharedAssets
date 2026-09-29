@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>ABD ARIA smoke — sonda de valuetext</title>
+</head>
+<body>
+    <h1>Sonda: ¿qué hace Chromium con aria-valuetext?</h1>
+
+    <p>Los tres nodos declaran el MISMO texto formateado ("50%"). Lo que cambia es
+       el tipo de nodo: un widget ARIA, un rango nativo y un div con rol de valor.
+       El volcado (<code>--dump</code>) enseña qué acaba exponiendo cada uno.</p>
+
+    <div data-probe="aria-slider" role="slider" tabindex="0"
+         aria-label="Sonda ARIA slider"
+         aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.5" aria-valuetext="50%"></div>
+
+    <input data-probe="native-range" type="range"
+           aria-label="Sonda range nativo"
+           min="0" max="1" step="0.01" value="0.5" aria-valuetext="50%">
+
+    <div data-probe="spinbutton-div" role="spinbutton" tabindex="0"
+         aria-label="Sonda spinbutton"
+         aria-valuenow="30" aria-valuetext="30 bpm"></div>
+
+    <h2>Sonda: ¿qué anuncia Chromium del motivo de una opción vetada?</h2>
+
+    <p>Cinco <code>&lt;option&gt;</code> con el MISMO motivo ("Requiere el motor
+       Neurotik") por cinco vías distintas. El volcado enseña cuál llega al árbol.</p>
+
+    <label for="probe-select">Modo</label>
+    <select id="probe-select">
+        <option data-probe="option-plain" value="0">Normal</option>
+        <option data-probe="option-title" value="1"
+                title="Requiere el motor Neurotik">Con title</option>
+        <option data-probe="option-describedby" value="2" disabled
+                aria-describedby="probe-note-outside">Con describedby fuera</option>
+        <option data-probe="option-inside" value="3" disabled
+                aria-describedby="probe-note-inside">Con describedby dentro
+            <span id="probe-note-inside">Requiere el motor Neurotik</span></option>
+        <option data-probe="option-text" value="4" disabled>Con el motivo en el texto
+            (Requiere el motor Neurotik)</option>
+    </select>
+    <p id="probe-note-outside">Requiere el motor Neurotik</p>
+</body>
+</html>

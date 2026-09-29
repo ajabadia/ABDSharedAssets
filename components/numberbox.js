@@ -9,7 +9,14 @@
  *   - constructor(container, options) + setValue/getValue/destroy + onChange;
  *   - pure DOM/CSS, themed via --color-* tokens with literal fallbacks;
  *   - silent setValue, onChange only on user edits;
- *   - label + <label for> deal identical to Select/Segmented.
+ *   - label deal identical to Select/Segmented: <label for> when an id is
+ *     given, aria-label on the field otherwise (role=spinbutton is never
+ *     left mute);
+ *   - +/- buttons announce the parameter they belong to
+ *     ("Master BPM: decrease", not a bare "decrease");
+ *   - aria-valuetext sits on the role=spinbutton field (where valuemin/max/now
+ *     already are), so it actually reaches the reader: it carries the formatted
+ *     readout plus the unit ("Omni", "30 bpm"), not the raw number.
  *
  * VALUE MODEL: REAL numbers (BPM, channels, semitones — not the 0..1 wire):
  * the caller converts at the boundary, exactly like the rest of the family
@@ -33,6 +40,14 @@
 import { applySkin, CONTROL_KIND } from './skins/index.js';
 
 /**
+ * Usage:
+ *   const box = new NumberBox(el, { min: 0, max: 1, step: 0.01, onChange });
+ *   box.setValue(0.5);
+ *   box.getValue();
+ *   box.setDisabled(true);    // host-driven (MIDI learning, etc.)
+ *   box.focus();
+ *   box.destroy();
+ *
  * @param {HTMLElement|string} container
  * @param {object} options
  *   label     optional text above the box.
@@ -131,6 +146,14 @@ export class NumberBox
                 this.labelEl.id = `${this.options.id}-label`;
             }
         }
+        else if (this.options.label)
+        {
+            // Sin id no hay <label for> que asocie el texto visible (la etiqueta se
+            // crea como <span>), asi que el campo se quedaba mudo teniendo role
+            // spinbutton. Mismo reparto que el resto de la familia: <label for> con
+            // id, aria-label sin id. Con id NO se duplica: ya lo aporta el <label>.
+            this.field.setAttribute('aria-label', this.options.label);
+        }
 
         if (this.options.unit)
         {
@@ -154,13 +177,18 @@ export class NumberBox
     buildButton (text, direction)
     {
         const button = document.createElement('button');
+        const verb = direction === 'increment' ? 'increase' : 'decrease';
+
+        // El nombre accesible dice A QUE parametro pertenece el boton: un +/- suelto
+        // no sirve de nada cuando hay diez cajas en la misma pantalla. El verbo queda
+        // de sufijo, asi que el nombre se lee (parametro, accion). Sin label se mantiene
+        // el verbo a secas, como antes.
+        const name = this.options.label ? `${this.options.label}: ${verb}` : verb;
 
         button.type = 'button';
         button.className = `abd-numberbox__btn abd-numberbox__btn--${direction}`;
         button.textContent = text;
-        button.setAttribute('aria-label', direction === 'increment'
-            ? 'increase'
-            : 'decrease');
+        button.setAttribute('aria-label', name);
 
         return button;
     }
@@ -259,6 +287,15 @@ export class NumberBox
         return this.isInteger ? `${Math.round(v)}` : `${v}`;
     }
 
+    /**
+     * @brief Formatted value for assistive tech (aria-valuetext): the readout
+     * plus the unit, e.g. "Omni" or "30 bpm" instead of the raw wire number.
+     */
+    valueText ()
+    {
+        return `${this.formatValue(this.value)}${this.options.unit ? ` ${this.options.unit}` : ''}`;
+    }
+
     /** @brief Push value + availability into the DOM. */
     render ()
     {
@@ -274,10 +311,19 @@ export class NumberBox
         this.incButton.classList.toggle('is-at-edge', this.value >= this.max);
 
         this.wrapper.dataset.disabled = this.disabled ? 'true' : 'false';
-        this.wrapper.setAttribute('aria-valuetext', `${this.formatValue(this.value)}${this.options.unit ? ` ${this.options.unit}` : ''}`);
+        // aria-valuetext es una propiedad del WIDGET: solo cuenta en el nodo que
+        // lleva el rol. Aqui el rol spinbutton vive en this.field (y ahi van ya
+        // valuemin/max/now), asi que en el wrapper -un <div> sin rol- el atributo
+        // era inerte y el lector anunciaba el numero crudo en vez del formateado
+        // ("Omni", "30 bpm"). El resto de la familia ya lo escribe junto a su rol.
+        this.field.setAttribute('aria-valuetext', this.valueText());
     }
 
     /** @brief Programmatic update: does NOT fire onChange (user edits do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user edits do).
+     * @param {number} v  valor crudo; se recorta a [min, max] y redondea si es entero.
+     */
     setValue (v)
     {
         this.value = this.clamp(v);
@@ -290,13 +336,20 @@ export class NumberBox
 
     getValue () { return this.value; }
 
+    /**
+     * @brief Enable/disable the whole control.
+     * @param {boolean} disabled  true deja el campo fuera de la interaccion.
+     */
     setDisabled (disabled)
     {
         this.disabled = Boolean(disabled);
         this.render();
     }
 
-    /** @brief Focus the field (host-driven edits, MIDI learning...). */
+    /**
+     * @brief Focus the field (host-driven edits, MIDI learning...).
+     * @param {void}  sin parametros; aqui solo para la convencion del audit.
+     */
     focus ()
     {
         this.field.focus();

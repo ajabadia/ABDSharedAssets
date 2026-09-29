@@ -5,11 +5,26 @@
  *   - 'normal': 31 positions (silver_re201_normal.png, 60x1860px, 60x60 each)
  *
  * Usage:
- *   new SilverFilmstripKnob(el, { variant: 'preset', value: 0.5, onChange });
+ *   const knob = new SilverFilmstripKnob(el, { variant: 'preset', value: 0.5, onChange });
+ *   knob.setValue(0.7);          // programatico: no dispara onChange
+ *   knob.getMeta();
+ *   knob.destroy();
  *   new SilverFilmstripKnob(el, { variant: 'normal', value: 0.3, onChange });
  */
 import { attachDrag } from './drag-core.js';
 
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   variant    'preset' (12 positions, default) or 'normal' (31 positions).
+ *   value      initial position 0..1, default 0.
+ *   size       px, default 100 ('preset') / 60 ('normal').
+ *   label      optional text label.
+ *   spriteUrl  filmstrip sprite, default one per variant.
+ *   frames     positions in the sprite, default 12 / 31 by variant.
+ *   frameSize  px per frame, default 100 / 60 by variant.
+ *   onChange / onDragStart / onDragEnd  callbacks; setValue stays silent.
+ */
 export class SilverFilmstripKnob {
     constructor(container, options = {}) {
         this.container = typeof container === 'string'
@@ -26,8 +41,6 @@ export class SilverFilmstripKnob {
             spriteUrl: options.spriteUrl ?? this._defaultSpriteUrl(options.variant),
             frames: options.frames ?? (options.variant === 'preset' ? 12 : 31),
             frameSize: options.frameSize ?? (options.variant === 'preset' ? 100 : 60),
-            step: options.step ?? 1,
-            format: options.format ?? ((v, meta) => meta ? `${meta.index + 1}` : `${Math.round(v * 100)}%`),
             onChange: options.onChange ?? null,
             onDragStart: options.onDragStart ?? null,
             onDragEnd: options.onDragEnd ?? null,
@@ -145,7 +158,10 @@ export class SilverFilmstripKnob {
         };
     }
 
-    /** @brief Programmatic update: does NOT fire onChange (user edits do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user edits do).
+     * @param {number} value  normalizado 0..1; se recorta.
+     */
     setValue(value) {
         this.value = clamp01(Number(value) || 0);
         this.render();

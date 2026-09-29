@@ -18,7 +18,8 @@
  * convention as a native <input type=range>.
  *
  * @param {HTMLElement} element      The draggable surface.
- * @param {object}      handlers
+ * @param {{ onDelta: function(number, number): number, onDragStart?: function(): void,
+ *          onDragEnd?: function(): void, onStep?: function(number): number }} handlers
  * @param {function(number, number): number} handlers.onDelta
  *   Receives (deltaTurns, pixelDelta) — RELATIVE to the previous move: pixels
  *   travelled since the last pointer event divided by a full drag lane
@@ -26,11 +27,20 @@
  *   (value + turns), so each pixel of travel counts exactly once — an absolute
  *   from-start delta here would compound with the handler's own accumulation
  *   and the control would accelerate quadratically. Return the new value.
+ * @param {function(number): void} [handlers.onValue]   Notified with the value each
+ *          handler returned (host-side hook).
  * @param {function(): void} [handlers.onDragStart]  User grabbed the control.
  * @param {function(): void} [handlers.onDragEnd]    User released it.
  * @param {function(number): number} [handlers.onStep]  Keyboard step; returns new value.
  * @param {object} [options] { dragLanePx }
  * @returns {function(): void} detach — removes every listener (call from destroy()).
+ *
+ * Usage:
+ *   const detach = attachDrag(el, {
+ *     onDelta: (turns) => value + turns,
+ *     onStep: (direction) => clamp(value + direction, 0, 1),
+ *   });
+ *   detach();
  */
 export function attachDrag (element, handlers, options = {})
 {

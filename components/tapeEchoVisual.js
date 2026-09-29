@@ -9,6 +9,12 @@
  *   tape.setSyncDivision(3); // 1/4T
  *   tape.setHeadActive(0, true);
  */
+/**
+ * @param {HTMLElement|string} container
+ * @param {object} options
+ *   width   px, default 220.
+ *   height  px, default 85.
+ */
 export class TapeEchoVisual {
     constructor(container, options = {}) {
         this.container = typeof container === 'string'
@@ -159,12 +165,19 @@ export class TapeEchoVisual {
         }
     }
 
-    /** Set head active/inactive (0,1,2). */
+    /**
+     * Set head active/inactive (0,1,2).
+     * @param {number} index  head index, 0..2.
+     * @param {boolean} active
+     */
     setHeadActive(index, active) {
         this.headStates[index] = !!active;
     }
 
-    /** Set sync enabled state. */
+    /**
+     * Set sync enabled state.
+     * @param {boolean} enabled
+     */
     setSyncEnabled(enabled) {
         this.syncEnabled = !!enabled;
         if (this.svgSyncEl) {
@@ -174,7 +187,10 @@ export class TapeEchoVisual {
         }
     }
 
-    /** Set BPM display. */
+    /**
+     * Set BPM display.
+     * @param {number} bpm
+     */
     setBPM(bpm) {
         this.bpm = bpm;
         if (this.svgBpmEl) {
@@ -183,7 +199,10 @@ export class TapeEchoVisual {
         }
     }
 
-    /** Set sync division (0-8). */
+    /**
+     * Set sync division (0-8).
+     * @param {number} index
+     */
     setSyncDivision(index) {
         this.syncDivision = index;
         if (this.svgSyncEl && this.syncEnabled) {

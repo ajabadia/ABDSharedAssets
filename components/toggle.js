@@ -16,18 +16,29 @@
  */
 
 import { applySkin, CONTROL_KIND } from './skins/index.js';
+import { announceTransition } from './transitionNotices.js';
 
 /**
+ * Usage:
+ *   const toggle = new Toggle(el, { value: false, onChange });
+ *   toggle.setValue(true);        // programatico: no dispara onChange
+ *   toggle.getValue();
+ *   toggle.destroy();
+ *
  * @param {HTMLElement|string} container
  * @param {object} options
  *   label       text on the button.
+ *   ariaLabel   accessible name override (icon-only buttons).
  *   value       initial boolean, default false.
  *   color       LED color as CSS color, default var(--color-accent, #00c3ff).
  *   skin        optional skin name ('toggle-ms2000', 'toggle-junio'...).
  *   colorName   sprite color for 'toggle-junio': orange|red|blue|grey|white|yellow.
  *   momentary   if true, behaves like a push button (fires onChange on
  *               press/release, does not latch). Default false.
- *   onChange    (boolean) => void, fires on user toggles (not on setValue).
+ *   onChange    (boolean) => void, fires on user toggles (not on setValue) and
+ *               only on a REAL transition: un press/release repetido (o un release
+ *               sin press) no re-avisa. Contrato compartido de avisos de
+ *               transicion, `components/transitionNotices.js`.
  */
 export class Toggle
 {
@@ -90,29 +101,34 @@ export class Toggle
             if (this.options.momentary)
                 return;   // momentary buttons report press/release, not a latched value
 
+            const previous = this.value;
             this.value = ! this.value;
             this.render();
-            this.options.onChange?.(this.value);
+            announceTransition(this.options.onChange, previous, this.value);
         };
 
         const onPress = () =>
         {
-            if (this.options.momentary)
-            {
-                this.value = true;
-                this.render();
-                this.options.onChange?.(true);
-            }
+            if (! this.options.momentary)
+                return;
+
+            const previous = this.value;
+            this.value = true;
+            this.render();
+            // Un segundo press sin release en medio no es una transicion nueva.
+            announceTransition(this.options.onChange, previous, true);
         };
 
         const onRelease = () =>
         {
-            if (this.options.momentary)
-            {
-                this.value = false;
-                this.render();
-                this.options.onChange?.(false);
-            }
+            if (! this.options.momentary)
+                return;
+
+            const previous = this.value;
+            this.value = false;
+            this.render();
+            // `pointerup` dispara tambien `pointerleave`: solo avisa la primera vez.
+            announceTransition(this.options.onChange, previous, false);
         };
 
         this.bind(this.button, 'click', onClick);
@@ -133,7 +149,10 @@ export class Toggle
         this.button.setAttribute('aria-pressed', this.value ? 'true' : 'false');
     }
 
-    /** @brief Programmatic update: does NOT fire onChange (user toggles do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user toggles do).
+     * @param {boolean} value  estado nuevo del toggle.
+     */
     setValue (value)
     {
         this.value = Boolean(value);

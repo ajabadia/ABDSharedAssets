@@ -8,9 +8,14 @@
  *     the implicit default);
  *   - XYPad is role=slider (its keyboard MOVES the value) with min/max/now;
  *   - Toggle accepts ariaLabel for icon-only / anonymous uses;
- *   - Segmented names its radiogroup from the label when there is no id;
- *   - NumberBox fields are nameable and its +/- buttons are named in English;
+ *   - Segmented names its radiogroup from the label when there is no id and
+ *     keeps its state on each radio's aria-checked (never on the group);
+ *   - NumberBox fields are nameable, its +/- buttons are named in English, and
+ *     its aria-valuetext sits on the spinbutton field (formatted value + unit);
  *   - LcdPanel glyph buttons carry explicit names ('‹' reads as "less than").
+ *   - Segmented announces a divergent value instead of only flagging it: the
+ *     vetoed radio is aria-disabled (still focusable), keeps the roving tab
+ *     stop and carries the reason as its aria-describedby description.
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -84,9 +89,36 @@ describe('accessibility: accessible names', () =>
         expect(t.button.getAttribute('aria-label')).toBeNull();
     });
 
-    it('numberbox buttons are named increase/decrease (family language)', () =>
+    it('numberbox field is named from the label even without an id', () =>
     {
-        const n = new NumberBox(host, { label: 'BPM', min: 20, max: 400 });
+        // Sin id no hay <label for> que asocie el texto visible: el campo lleva
+        // nombre propio para que role=spinbutton no quede mudo.
+        const box = new NumberBox(host, { label: 'Master BPM', min: 20, max: 400 });
+
+        expect(box.labelEl.tagName).toBe('SPAN');
+        expect(box.field.getAttribute('aria-label')).toBe('Master BPM');
+    });
+
+    it('numberbox field prefers the real <label for> when an id is given', () =>
+    {
+        const box = new NumberBox(host, { id: 'bpm-box', label: 'Master BPM', min: 20, max: 400 });
+
+        expect(box.labelEl.htmlFor).toBe('bpm-box');
+        // Sin duplicar el nombre: ya lo aporta el <label for>.
+        expect(box.field.getAttribute('aria-label')).toBeNull();
+    });
+
+    it('numberbox buttons name the parameter they belong to', () =>
+    {
+        const n = new NumberBox(host, { label: 'Master BPM', min: 20, max: 400 });
+        const buttons = n.box.querySelectorAll('button');
+        expect(buttons[0].getAttribute('aria-label')).toBe('Master BPM: decrease');
+        expect(buttons[1].getAttribute('aria-label')).toBe('Master BPM: increase');
+    });
+
+    it('numberbox buttons fall back to the bare verb without a label', () =>
+    {
+        const n = new NumberBox(host, { min: 20, max: 400 });
         const buttons = n.box.querySelectorAll('button');
         expect(buttons[0].getAttribute('aria-label')).toBe('decrease');
         expect(buttons[1].getAttribute('aria-label')).toBe('increase');
@@ -147,5 +179,110 @@ describe('accessibility: roles and value semantics', () =>
         const s = new Segmented(host, { id: 'wave', label: 'Wave', options: ['Saw', 'Sqr'] });
         expect(s.group.getAttribute('aria-labelledby')).toBe('wave-label');
         expect(s.group.getAttribute('aria-label')).toBeNull();
+    });
+
+    it('segmented keeps its state on the radios, never on the group', () =>
+    {
+        const s = new Segmented(host, { label: 'Wave', options: ['Saw', 'Sqr', 'Tri'], value: 1 });
+
+        // Un radiogroup no tiene semantica de valor: aria-valuenow/aria-valuetext
+        // no estan soportados en el, y en el wrapper (un <div> sin rol) eran
+        // inertes. El estado se anuncia por el aria-checked de cada radio.
+        for (const node of [s.group, s.wrapper])
+        {
+            expect(node.getAttribute('aria-valuenow')).toBeNull();
+            expect(node.getAttribute('aria-valuetext')).toBeNull();
+        }
+
+        expect(s.buttons.map((b) => b.getAttribute('role'))).toEqual(['radio', 'radio', 'radio']);
+        expect(s.buttons.map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
+        // Cada radio se nombra con su propio texto visible.
+        expect(s.buttons.map((b) => b.textContent.trim())).toEqual(['Saw', 'Sqr', 'Tri']);
+    });
+
+    it('segmented moves the checked state and the tab stop with the value', () =>
+    {
+        const s = new Segmented(host, { label: 'Wave', options: ['Saw', 'Sqr'] });
+
+        expect(s.buttons[0].getAttribute('aria-checked')).toBe('true');
+
+        s.buttons[1].click();
+
+        expect(s.buttons[0].getAttribute('aria-checked')).toBe('false');
+        expect(s.buttons[1].getAttribute('aria-checked')).toBe('true');
+        expect(s.buttons[0].tabIndex).toBe(-1);
+        expect(s.buttons[1].tabIndex).toBe(0);
+    });
+
+    it('segmented announces a divergent value and why the option is vetoed', () =>
+    {
+        const s = new Segmented(host, {
+            label: 'Engine',
+            options: ['NEURONiK', { label: 'Neurotik', note: 'Requiere el motor Neurotik' }],
+            value: 1,
+            disabled: [1],
+        });
+
+        const vetoed = s.buttons[1];
+
+        // El estado divergente no es solo un [data-divergent] pintado: el radio
+        // checked sigue enfocable (aria-disabled, NO el `disabled` nativo, que lo
+        // sacaria del foco y del anuncio) y lleva el motivo como descripcion, no
+        // solo en el title que se ve con el raton.
+        expect(s.isDivergent()).toBe(true);
+        expect(vetoed.getAttribute('aria-checked')).toBe('true');
+        expect(vetoed.getAttribute('aria-disabled')).toBe('true');
+        expect(vetoed.hasAttribute('disabled')).toBe(false);
+        expect(vetoed.tabIndex).toBe(0);
+
+        const describedBy = vetoed.getAttribute('aria-describedby');
+        expect(document.getElementById(describedBy).textContent).toBe('Requiere el motor Neurotik');
+        // La descripcion no ensucia el nombre accesible del radio.
+        expect(vetoed.textContent.trim()).toBe('Neurotik');
+    });
+
+    it('numberbox valuetext reaches the reader: it lives on the spinbutton field', () =>
+    {
+        // El rol vive en el campo, asi que ahi tiene que ir el texto accesible.
+        // En el wrapper (un <div> sin rol) el atributo era inerte y el lector
+        // anunciaba el numero crudo: MIDI channel 0 se lee "Omni", no "0".
+        const box = new NumberBox(host, {
+            label: 'MIDI Channel',
+            min: 0,
+            max: 16,
+            format: (v) => (v === 0 ? 'Omni' : `${v + 1}`),
+        });
+
+        expect(box.field.getAttribute('role')).toBe('spinbutton');
+        expect(box.field.getAttribute('aria-valuenow')).toBe('0');
+        expect(box.field.getAttribute('aria-valuetext')).toBe('Omni');
+        // Guardia: el wrapper no debe volver a llevarlo (ahi no significa nada).
+        expect(box.wrapper.getAttribute('aria-valuetext')).toBeNull();
+    });
+
+    it('numberbox valuetext appends the unit to the formatted readout', () =>
+    {
+        const box = new NumberBox(host, { label: 'Master BPM', value: 30, min: 20, max: 400, unit: 'bpm' });
+
+        expect(box.field.getAttribute('aria-valuenow')).toBe('30');
+        expect(box.field.getAttribute('aria-valuetext')).toBe('30 bpm');
+    });
+
+    it('numberbox valuetext follows programmatic setValue', () =>
+    {
+        const box = new NumberBox(host, {
+            label: 'Mix',
+            value: 0.5,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            format: (v) => `${Math.round(v * 100)}%`,
+        });
+        expect(box.field.getAttribute('aria-valuetext')).toBe('50%');
+
+        box.setValue(0.75);
+        // valuenow sigue siendo el numero crudo; solo cambia el texto formateado.
+        expect(box.field.getAttribute('aria-valuenow')).toBe('0.75');
+        expect(box.field.getAttribute('aria-valuetext')).toBe('75%');
     });
 });

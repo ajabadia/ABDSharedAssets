@@ -266,6 +266,24 @@ describe('Toggle', () =>
     toggle.destroy();
   });
 
+  it('el aviso es de TRANSICION: un release repetido (o sin press) no re-notifica', () =>
+  {
+    const changes = [];
+    const toggle = new Toggle(host, { momentary: true, onChange: (v) => changes.push(v) });
+
+    // pointerup sin pointerdown: el valor ya estaba en false, no hay transicion.
+    toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    expect(changes).toEqual([]);
+
+    toggle.button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));   // repetido
+    toggle.button.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true })); // release de mas
+    expect(changes).toEqual([true, false]);   // una vez por transicion, no por evento
+
+    toggle.destroy();
+  });
+
   it('state is carried by aria-pressed, not by JS-only classes', () =>
   {
     const toggle = new Toggle(host, { value: false });
@@ -337,15 +355,142 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('takes { label, disabled, note } entries and puts the note on the option', () =>
+  it('takes { label, disabled, note } entries and makes the note the option description', () =>
   {
+    // El motivo del veto NO va en un title (solo lo ve el ratón): va como
+    // descripción accesible del option, y el nodo con el texto vive FUERA de él
+    // (dentro se tragaría en el nombre accesible de la opción).
+    // Y el veto lo aplica el flag `disabled` de la entrada: sin lista ni spec.
     const select = new Select(host, {
       options: ['Off', { label: 'Pitch Quantize', disabled: true, note: 'Requires the Neurotik engine' }],
     });
 
+    const option = select.field.options[1];
+    const note = document.getElementById(option.getAttribute('aria-describedby'));
+
     expect(select.getLabels()).toEqual(['Off', 'Pitch Quantize']);
-    expect(select.field.options[1].title).toBe('Requires the Neurotik engine');
-    expect(select.field.options[1].textContent).toBe('Pitch Quantize');
+    expect(option.textContent).toBe('Pitch Quantize');
+    expect(option.hasAttribute('title')).toBe(false);
+    expect(option.disabled).toBe(true);
+    expect(note.textContent).toBe('Requires the Neurotik engine');
+    expect(option.contains(note)).toBe(false);          // fuera del option
+    expect(select.field.options[0].hasAttribute('aria-describedby')).toBe(false);
+    select.destroy();
+  });
+
+  it('el motivo del veto llega al campo cuando la opcion vetada es el valor actual', () =>
+  {
+    // Paridad con el estado divergente de Segmented: nadie enfoca un <option>, asi
+    // que con el valor en una opcion vetada quien anuncia el motivo es el campo.
+    // Medido en Chromium: antes el combobox soltaba description="" y la nota solo
+    // estaba en el option.
+    const select = new Select(host, {
+      options: ['Off', { label: 'Pitch Quantize', note: 'Requires the Neurotik engine' }],
+      value: 1,
+      disabled: [1],
+    });
+
+    expect(select.isDivergent()).toBe(true);
+
+    const noteId = select.field.getAttribute('aria-describedby');
+
+    expect(noteId).toBeTruthy();
+    expect(document.getElementById(noteId).textContent).toBe('Requires the Neurotik engine');
+
+    // Una opcion sin motivo deja el campo sin descripcion...
+    select.setValue(0);
+    expect(select.field.hasAttribute('aria-describedby')).toBe(false);
+
+    // ...pero una descripcion del host no se pisa: conviven las dos.
+    select.field.setAttribute('aria-describedby', 'host-note');
+    select.setValue(1);
+    expect(select.field.getAttribute('aria-describedby')).toBe(`host-note ${noteId}`);
+
+    select.setValue(0);
+    expect(select.field.getAttribute('aria-describedby')).toBe('host-note');
+
+    select.destroy();
+  });
+
+  it('setNote cambia el motivo en caliente y el campo sigue al valor actual', () =>
+  {
+    // setDisabled dice QUE esta vetado; setNote, POR QUE. Y como un <option> no
+    // recibe foco, el campo tiene que seguir al valor actual cuando el motivo cambia.
+    const select = new Select(host, {
+      options: ['Off', { label: 'Pitch Quantize', note: 'Requires the Neurotik engine' }],
+      value: 1,
+      disabled: [1],
+    });
+
+    const option = select.field.options[1];
+    const firstId = option.getAttribute('aria-describedby');
+
+    expect(select.field.getAttribute('aria-describedby')).toBe(firstId);
+
+    select.setNote(1, 'Requires the Neurotik engine (running)');
+
+    expect(option.getAttribute('aria-describedby')).toBe(firstId);      // misma nota
+    expect(document.getElementById(firstId).textContent).toBe('Requires the Neurotik engine (running)');
+    expect(select.field.getAttribute('aria-describedby')).toBe(firstId);
+
+    // Retirar el motivo lo retira de las dos via: option y campo.
+    select.setNote(1, '');
+    expect(option.hasAttribute('aria-describedby')).toBe(false);
+    expect(select.field.hasAttribute('aria-describedby')).toBe(false);
+    expect(host.querySelector('.abd-select__notes')).toBeNull();
+
+    // Y el valor actual puede ganar un motivo que antes no tenia.
+    select.setNote(1, 'Solo con Neurotik');
+
+    const newId = option.getAttribute('aria-describedby');
+
+    expect(select.field.getAttribute('aria-describedby')).toBe(newId);
+    expect(document.getElementById(newId).textContent).toBe('Solo con Neurotik');
+    expect(option.textContent).toBe('Pitch Quantize');    // el motivo no entra en el nombre
+    // El contenedor de notas vive DETRAS del control: fuera del orden de lectura.
+    expect([...select.wrapper.children].map((el) => el.className))
+      .toEqual(['abd-select__field', 'abd-select__notes']);
+
+    // Indices imposibles y notas vacias no rompen nada.
+    select.setNote(99, 'fantasma');
+    select.setNote(1, null);
+    expect(select.getNotes()).toEqual(['', '']);
+    expect(select.field.hasAttribute('aria-describedby')).toBe(false);
+
+    select.destroy();
+  });
+
+  it('una entrada marcada disabled veta por si misma, sin repetir el indice en la lista', () =>
+  {
+    // El flag se documentaba ({ label, disabled, note }) pero isIndexDisabled solo
+    // miraba la lista: se anotaba el veto y no vetaba nada.
+    const select = new Select(host, {
+      options: ['Off', { label: 'Pitch Quantize', disabled: true }],
+      value: 0,
+    });
+
+    expect(select.isIndexDisabled(1)).toBe(true);
+    expect(select.field.options[1].disabled).toBe(true);
+    expect(select.field.options[0].disabled).toBe(false);
+    expect(select.isDivergent()).toBe(false);
+
+    // Y el veto es real: el pick se rechaza.
+    pick(select, 1);
+    expect(select.getValue()).toBe(0);
+
+    // La lista suma vetos encima; quitarlos no resucita el flag.
+    select.setDisabled([0]);
+    expect(select.isIndexDisabled(0)).toBe(true);
+
+    select.setDisabled([]);
+    expect(select.isIndexDisabled(0)).toBe(false);
+    expect(select.isIndexDisabled(1)).toBe(true);
+
+    // Un valor que cae en una entrada vetada por flag sigue siendo divergente.
+    select.setValue(1);
+    expect(select.isDivergent()).toBe(true);
+    expect(select.getValue()).toBe(1);
+
     select.destroy();
   });
 

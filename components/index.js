@@ -26,6 +26,11 @@ export { registerSkin, getSkin, applySkin, skinNames } from './skins/index.js';
 export { WAVEFORM_GLYPHS, WAVEFORM_NAMES, waveformName } from './waveforms.js';
 export { NumberBox } from './numberbox.js';
 export { createDrawer } from './drawer.js';
+// La matriz de modulacion NO es un control: no tiene parametro propio ni
+// escribe valores. Es una VISTA de las rutas, y por eso vive aqui y no en
+// la familia de controles (ver la cabecera de modMatrix.js).
+export { ModMatrix } from './modMatrix.js';
+export { createOverlayFocus, focusableWithin } from './overlayFocus.js';
 export { createLcdMachine, formatValue } from './lcdMachine.js';
 export { createLcdScreen } from './lcdScreen.js';
 export { createLcdPanel } from './lcdPanel.js';
@@ -36,3 +41,21 @@ export { SilverFilmstripKnob } from './silverFilmstripKnob.js';
 export { EffectLEDButton } from './effectLEDButton.js';
 export { PeakLED } from './peakLED.js';
 export { TapeEchoVisual } from './tapeEchoVisual.js';
+// Contrato compartido de AVISOS DE TRANSICION: un cambio real avisa una vez;
+// una intencion sin cambio, no (lo hablan Toggle, Segmented y XYPad).
+export { sameControlValue, transitioned, announceTransition } from './transitionNotices.js';
+export { announceMovement, announceSettled, createContinuousNotices } from './continuousNotices.js';
+
+// Temas de los modulos de efecto del rack FX: el tema va por FAMILIA
+// (reverb, tape, space...) y no por efecto, porque hay 57 ids y once
+// familias. El aspecto de verdad esta en styles/components/fx.css y un
+// test ata las dos mitades para que no se separen.
+export {
+  FX_THEME_TOKENS,
+  registerFxTheme,
+  getFxTheme,
+  getNeutralFxTheme,
+  fxThemeNames,
+  fxThemeStyle,
+  buildFxThemeIndex,
+} from './fxTheme.js';

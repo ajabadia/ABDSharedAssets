@@ -10,10 +10,18 @@
  *
  * Family contract (see COMPONENTS.md): constructor(container, options),
  * setValue/getValue/destroy, onChange on user edits only, themed via tokens.
+ *
+ * Usage:
+ *   const knob = new Knob(el, { skin: 'ms2000', value: 0.5 });
+ *   knob.setValue(0.75);        // programatico: no dispara onChange
+ *   knob.setModulation(0.2);    // anillo de modulacion: pinta, no cambia el valor
+ *   knob.getValue();
+ *   new Knob(el).destroy();   // de un solo uso: sin guardar referencia
  */
 
 import { attachDrag } from './drag-core.js';
 import { applySkin, CONTROL_KIND } from './skins/index.js';
+import { announceSettled, createContinuousNotices } from './continuousNotices.js';
 
 const SWEEP_DEGREES = 270;   // classic knob sweep: -135..+135
 const START_ANGLE = -135;
@@ -31,6 +39,7 @@ const START_ANGLE = -135;
  *   format      (normalised) => string for the readout, default percent.
  *   step        keyboard step, default 0.01.
  *   onChange    (normalised) => void, fires on user edits (not on setValue).
+ *   onSettled   (normalised) => void, fires ONCE per gesture when the value settles (pointerup / drag end); only if the final value differs from the value at gesture start — the commit for undo and automation. A drag that ends where it started (clamped against the edge, or released without moving) does not settle, and programmatic setValue never settles. Keyboard steps and wheel notches are not gestures: each transitioning step settles immediately.
  *   onDragStart / onDragEnd  for host gesture bridging.
  *
  * MODULATION RING (telemetry-driven, real-time only): setModulation(normalised)
@@ -59,6 +68,7 @@ export class Knob
             step: 0.01,
             format: (v) => `${Math.round(v * 100)}%`,
             onChange: null,
+            onSettled: null,
             onDragStart: null,
             onDragEnd: null,
             ...options,
@@ -67,6 +77,10 @@ export class Knob
         this.value = clamp01(this.options.value);
         this.dragDetach = null;
         this.modAmount = 0;   // signed, normalised against the parameter range
+        this.notices = createContinuousNotices({
+            onMovement: (v) => this.options.onChange?.(v),
+            onSettled: (v) => this.options.onSettled?.(v),
+        });
         this[CONTROL_KIND] = 'knob';
 
         this.buildDom();
@@ -116,20 +130,35 @@ export class Knob
             onDelta: (turns) => clamp01(this.value + turns * 0.75),
             onValue: (newValue) =>
             {
+                const previous = this.value;
                 this.value = newValue;
                 this.render();
-                this.options.onChange?.(this.value);
+                const moved = this.notices.announceMovement(previous, newValue);
+                if (moved && ! this.notices.isActive())
+                    announceSettled(this.options.onSettled, previous, newValue);
             },
-            onDragStart: () => this.options.onDragStart?.(),
-            onDragEnd: () => this.options.onDragEnd?.(),
+            onDragStart: () =>
+            {
+                this.notices.begin(this.value);
+                this.options.onDragStart?.();
+            },
+            onDragEnd: () =>
+            {
+                this.notices.end(this.value);
+                this.options.onDragEnd?.();
+            },
             onStep: (direction) => clamp01(this.value + direction * this.options.step),
         });
 
         // Double-click to reset to default value
-        this.dial.addEventListener('dblclick', () => {
+        this.dial.addEventListener('dblclick', () =>
+        {
+            const previous = this.value;
             this.value = clamp01(this.options.value ?? 0);
             this.render();
-            this.options.onChange?.(this.value);
+            const moved = this.notices.announceMovement(previous, this.value);
+            if (moved && ! this.notices.isActive())
+                announceSettled(this.options.onSettled, previous, this.value);
         });
     }
 
@@ -138,6 +167,7 @@ export class Knob
      * to the parameter's range — native semantics ((mod - rangeStart) /
      * rangeLength), negative with bidirectional LFOs. Updates the skin only.
      * NaN/undefined mean "no data this frame" and clear rather than poison.
+     * @param {number} modAmount  signed normalised offset, -1..1.
      */
     setModulation (modAmount)
     {
@@ -165,7 +195,10 @@ export class Knob
         this.dial.setAttribute('aria-valuetext', this.options.format(this.value));
     }
 
-    /** @brief Programmatic update: does NOT fire onChange (user edits do). */
+    /**
+     * @brief Programmatic update: does NOT fire onChange (user edits do).
+     * @param {number} value  normalised 0..1.
+     */
     setValue (value)
     {
         this.value = clamp01(Number(value) || 0);

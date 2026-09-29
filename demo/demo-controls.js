@@ -107,6 +107,8 @@ mount('demo-selects-gated', (host) =>
 
     // The pattern NEURONiK needs: availability depends on ANOTHER parameter.
     // A value landing on a disabled entry is kept and flagged, never rewritten.
+    // El veto lo lleva el SPEC, no el flag de la entrada: el flag veta SIEMPRE, y
+    // aqui la lista tiene que abrirse al cambiar de motor.
     const gated = new Select(host, {
         label: 'DESTINATION',
         value: 3,                     // sits on a Neurotik-only entry
@@ -114,8 +116,8 @@ mount('demo-selects-gated', (host) =>
         options: [
             'Off',
             'LFO 1',
-            { label: 'Pitch Quantize', disabled: true, note: 'Requires the Neurotik engine' },
-            { label: 'Spectral Blur', disabled: true, note: 'Requires the Neurotik engine' },
+            { label: 'Pitch Quantize', note: 'Requires the Neurotik engine' },
+            { label: 'Spectral Blur', note: 'Requires the Neurotik engine' },
             'Filter Cutoff',
         ],
         onChange: (index) => { log.textContent = `index ${index}`; },
