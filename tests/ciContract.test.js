@@ -77,21 +77,58 @@ const WORKFLOW = join(root, '.github', 'workflows', 'docs-audit.yml');
 const DOC = join(root, 'COMPONENTS.md');
 const SUBCOMMANDS = ['exec', 'install', 'add', 'dlx', 'create'];
 
-/** El numero de reglas en palabras, como lo proclama la cabecera de la auditoria. */
-const RULE_WORDS = {
-  2: 'Dos',
-  3: 'Tres',
-  4: 'Cuatro',
-  5: 'Cinco',
-  6: 'Seis',
-  7: 'Siete',
-  8: 'Ocho',
-  9: 'Nueve',
-  10: 'Diez',
-  11: 'Once',
-  12: 'Doce',
-  13: 'Trece',
-};
+/** Los numeros del 1 al 19 en palabras, con la mayuscula que lleva la cabecera. */
+const UNIDADES = [
+  'Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis', 'Siete', 'Ocho', 'Nueve',
+  'Diez', 'Once', 'Doce', 'Trece', 'Catorce', 'Quince', 'Dieciséis',
+  'Diecisiete', 'Dieciocho', 'Diecinueve',
+];
+
+/** Los del 21 al 29, que son los unicos con tilde propia: veintiseis, no «veinte y
+ *  seis». Del 31 en adelante ya no la llevan: treinta y seis se escribe sin tilde. */
+const VEINTIS = [
+  'Veintiuno', 'Veintidós', 'Veintitrés', 'Veinticuatro', 'Veinticinco',
+  'Veintiséis', 'Veintisiete', 'Veintiocho', 'Veintinueve',
+];
+
+/** Las decenas, indexadas por su digito: el hueco del 20 lo cubre `VEINTIS`. */
+const DECENAS = [
+  '', '', 'Veinte', 'Treinta', 'Cuarenta', 'Cincuenta', 'Sesenta', 'Setenta',
+  'Ochenta', 'Noventa',
+];
+
+/** El numero en palabras, como lo escribe la cabecera de la auditoria: `Trece`, no `13`.
+ *  Sale del numero y no de una tabla: una tabla de once entradas es una lista mas que
+ *  hay que acordarse de ampliar en el commit que anade la regla doce, y basta con
+ *  olvidarse para que la puerta compare la cabecera contra `undefined` —que sale en
+ *  rojo de chiripa, no porque haya visto nada—.
+ *
+ *  Solo llega a 99. Por encima el numero en palabras son tres (`Cien uno`) y la
+ *  cabecera tendria que reescribirse entera; en vez de inventar una palabra que no
+ *  existe, `null`: lo que esta puerta no sabe decir sale en ROJO, no callado. */
+function numberInWords(n) {
+  if (!Number.isInteger(n) || n < 1 || n > 99)
+    return null;
+
+  if (n < 20)
+    return UNIDADES[n - 1];
+
+  const decena = DECENAS[Math.floor(n / 10)];
+  const resto = n % 10;
+
+  // El 20 se queda con su decena (`Veinte`) como las otras: `VEINTIS` arranca en
+  // el 21, y mandarlo ahi por rango lo hacia disappear en silencio.
+  if (resto === 0)
+    return decena;
+
+  // Aqui `resto` es el 1..9 que sigue a la decena, y `VEINTIS` empieza en el 21:
+  // el indice es lo que sobra del uno. Escribirse `resto - 21` tambien compila y
+  // solo falla en el borde, que es donde lo pilla el mordisco.
+  if (decena === 'Veinte')
+    return VEINTIS[resto - 1];
+
+  return `${decena} y ${UNIDADES[resto - 1].toLowerCase()}`;
+}
 
 /** El fichero, o cadena vacia si no existe: el test que lo echa en falta lo dice. */
 const readOrEmpty = (path) => (existsSync(path) ? readFileSync(path, 'utf-8') : '');
@@ -1340,8 +1377,12 @@ describe('el CI corre la auditoría de documentación', () => {
 
   it('la cabecera proclama ese número con la palabra que toca', () => {
     const count = auditedRules(audit).length;
+    const palabra = numberInWords(count);
 
-    expect(declaredRuleWord(audit)).toBe(RULE_WORDS[count]);
+    // El yardaje: si las dos cosas dieran null, el `toBe` de abajo pasaria sin
+    // mirar. Que la puerta sepa decir el numero es parte de lo que vigila.
+    expect(palabra, 'el yardaje: la puerta no sabe decir cuántas reglas hay').not.toBeNull();
+    expect(declaredRuleWord(audit)).toBe(palabra);
   });
 
   it('el workflow nombra la puerta con el número de reglas que tiene', () => {
@@ -1882,6 +1923,23 @@ describe('auto-tests del contrato del CI', () => {
       'corto.js ya cabe en 120 lineas: borralo de las excepciones',
       'fantasma.js esta en las excepciones y no existe',
     ]);
+  });
+
+  it('el número en palabras sale del número, y dice null lo que no sabe decir', () => {
+    expect([13, 16, 20, 21, 26, 29, 30, 40, 42, 99].map(numberInWords)).toEqual([
+      'Trece', 'Dieciséis', 'Veinte', 'Veintiuno', 'Veintiséis', 'Veintinueve',
+      'Treinta', 'Cuarenta', 'Cuarenta y dos', 'Noventa y nueve',
+    ]);
+
+    // Del 21 al 29 sin «y», del 31 en adelante con «y»: los dos cortes son los que
+    // se olvidan al escribir el generador, y los dos se ven aqui.
+    expect(numberInWords(22)).toBe('Veintidós');
+    expect(numberInWords(36)).toBe('Treinta y seis');
+
+    // Y lo que no sabe decir no lo inventa: una palabra inventada haria pasar una
+    // cabecera que no cuadra, que es justo lo contrario de lo que esta puerta vigila.
+    expect([0, 100, 123, -1, 2.5, '13', NaN].map(numberInWords))
+      .toEqual([null, null, null, null, null, null, null]);
   });
 
   it('lee la palabra y el comando que promete la documentación', () => {
