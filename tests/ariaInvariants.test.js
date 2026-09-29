@@ -686,6 +686,18 @@ const NOT_CONTROLS = new Set([
     // control de verdad, que SI esta auditado. Igual que `buildFxThemeIndex`.
     'buildS950Catalogue', 'formatS950Name', 'isS950Bipolar',
     'S950_ENCODINGS', 'S950_GROUPS',
+    // Las curvas de calibracion del S950: indice de unidades y de ejes. Tampoco
+    // pinta NADA por si solo —no crea un elemento, no pone un rol, no engancha
+    // un listener—: devuelve la geometria de un eje y si ese eje se puede
+    // dibujar, y quien pinta es un control de verdad. El mismo argumento que el
+    // catalogo de patches, y por eso van declarados aqui y no auditados.
+    //
+    // Y con una razon EXTRA que el catalogo no tiene: `valueAt()` devuelve
+    // siempre `null` porque no hay ni una curva medida en este repo. Un modulo
+    // que no pinta no puede tener un fallo de ARIA, y uno que no puede tener un
+    // fallo de ARIA no debe hacer que se repase el catalogo entero cada vez que
+    // el contrato gane una columna.
+    'buildS950Calibration', 's950AxisFor', 's950Coverage', 'S950_UNITS',
 ]);
 
 /* ---------------------------------------------------------------------------

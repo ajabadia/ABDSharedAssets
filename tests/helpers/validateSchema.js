@@ -44,16 +44,51 @@ export function validate(instance, schema, pathPrefix = '') {
   const errors = [];
   const where = pathPrefix || '(raíz)';
 
-  if (schema.type === 'object') {
+  // El TIPO se resuelve antes de mirar el nodo, y no después. Con `type: 'object'`
+  // las dos cosas coincidían, así que daba igual; con una unión (`['object',
+  // 'null']`) NO: si se comparara `schema.type === 'object'` contra la lista,
+  // un nodo unión se trataría como una hoja y sus `properties` no se mirarían.
+  //
+  // Y eso no es un detalle: es como un esquema con cosas que nadie ejecuta, que
+  // es la falta que este fichero existe para cazar. El caso que lo motivó es
+  // `s950_calibration.json`, cuyo `measuredRange` es `null` mientras no haya
+  // medición y un `{lo, hi}` cuando la haya: un contrato cuyo hueco declarado
+  // no se comprueba es exactamente el tipo de esquema que parece que avisa.
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const isObject = types.includes('object');
+  const isArray = types.includes('array');
+
+  if (isObject) {
     // El HIJO se cuelga de `where`, que ya es `(raíz)` en el primer nivel. Sin
     // esto el error de abajo salia como `.effects[0].id`, que se entiende pero
     // parece un campo que empieza por punto. El nombre del campo es lo unico
     // que este validador da, asi que tiene que salir limpio.
     const child = (key) => `${where}.${key}`;
 
-    if (typeof instance !== 'object' || instance === null || Array.isArray(instance)) {
-      return [`${where}: se esperaba un objeto`];
+    // El `null` NO se descarta en esta guarda, y es el fallo que motivó todo
+    // este bloque: `instance === null` estaba aqui, devolvía "se esperaba un
+    // objeto" y dejaba la comprobación de tipo de más abajo como CÓDIGO MUERTO
+    // para el caso que existe precisamente por eso. O sea: el esquema declaraba
+    // `["object","null"]`, el validador lo aceptaba, y `measuredRange: null` —el
+    // hueco que el contrato entero existe para representar— salía en rojo.
+    //
+    // Un esquema que parece comprobar el hueco declarado y no lo comprueba es
+    // justo lo que `unsupportedKeywords()` existe para cazar, y lo cazaba por
+    // el otro lado: la palabra estaba soportada pero el camino no.
+    if (instance !== null && (typeof instance !== 'object' || Array.isArray(instance))) {
+      const actual = Array.isArray(instance) ? 'array' : typeof instance;
+      return [`${where}: se esperaba ${types.join('|')}, hay ${actual}`];
     }
+    // Y aquí, con el nodo UNION ya resuelto, solo se comparan TIPOS si la
+    // instancia no llegó a ser un objeto —es decir, si es un `null`—. Un
+    // objeto de verdad cae de largo y lo que se ejecuta son sus `properties`.
+    if (instance === null) {
+      if (!types.includes('null')) {
+        return [`${where}: se esperaba ${types.join('|')}, hay null`];
+      }
+      return errors;
+    }
+
     for (const key of schema.required ?? []) {
       if (!(key in instance)) errors.push(`${where}.${key}: obligatorio`);
     }
@@ -70,7 +105,15 @@ export function validate(instance, schema, pathPrefix = '') {
     return errors;
   }
 
-  if (schema.type === 'array') {
+  if (isArray) {
+    // Un `null` en un `['array','null']` es legal, y no tiene items que mirar:
+    // es un hueco declarado, no un fallo. Se comprueba aqui y no antes para que
+    // la lista vacía y el null sigan rutas distintas, que es lo que un panel
+    // necesita distinguir: cero ejes, o ningun eje.
+    if (instance === null) {
+      return types.includes('null') ? errors : [`${where}: se esperaba ${types.join('|')}, hay null`];
+    }
+
     if (!Array.isArray(instance)) return [`${where}: se esperaba un array`];
     if (schema.minItems !== undefined && instance.length < schema.minItems) {
       errors.push(`${where}: al menos ${schema.minItems} elementos, hay ${instance.length}`);
@@ -101,8 +144,6 @@ export function validate(instance, schema, pathPrefix = '') {
     }
     return errors;
   }
-
-  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
 
   let actual = Array.isArray(instance) ? 'array'
              : instance === null ? 'null'

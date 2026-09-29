@@ -61,6 +61,19 @@ export {
   S950_ENCODINGS,
   S950_GROUPS,
 } from './s950PatchFields.js';
+// Y las CURVAS de calibracion del S950 son el otro indice que no es un control:
+// dicen en que unidad esta cada magnitud y sobre que rango de panel, que es
+// justo lo que un panel necesita para dibujar los ejes. El JSON sale del mismo
+// sitio autoritativo del catalogo (SynthCore/S950Calibration.h via
+// scripts/generate_s950_calibration_contract.py), y comparte su argumento:
+// `valueAt()` devuelve SIEMPRE null porque nadie ha medido una sola curva en este
+// repo, y un panel tiene que poder ENSENAR eso en vez de inventar un 0.
+export {
+  buildS950Calibration,
+  s950AxisFor,
+  s950Coverage,
+  S950_UNITS,
+} from './s950Calibration.js';
 export { enhanceRangeInputs, destroyEnhancedRangeInputs } from '../utils/index.js';
 export { WAVE_ICONS, FILTER_ICONS } from './icons.js';
 export { SevenSegmentDisplay } from './sevenSegmentDisplay.js';
