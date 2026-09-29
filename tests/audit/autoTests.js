@@ -23,6 +23,7 @@ import {
   enumeratedValues,
   exampleMemberAccesses,
   exampleMethodCalls,
+  exportedFunctions,
   inertOptions,
   memberDeclarations,
   mismatchedExampleAccesses,
@@ -37,6 +38,7 @@ import {
   undocumentedDefaults,
   undocumentedReads,
   undocumentedExampleCalls,
+  undocumentedExports,
   textChainedMembers,
   unreadEntryKeys,
   unusedMembers,
@@ -68,6 +70,16 @@ describe('auto-tests del detector', () => {
 
     expect([...optionReads(source).keys()]).toEqual(['skin', 'glow']);
     expect(undocumentedReads(source)).toEqual(['glow']);
+  });
+
+  it('ve las lecturas de un `handlers` que no abre la firma', () => {
+    // Regresion: el `handlers` de en medio (o de cola) se perdia al comerse la coma, y
+    // con el todas sus lecturas. `wire(el, handlers, n)` es el caso real de drag-core.
+    const source = '/**\n * @param {HTMLElement} el\n * @param {object} handlers\n * @param {number} n\n'
+      + ' */\nexport function wire(el, handlers, n) {\n  return handlers.onSave + n;\n}\n';
+
+    expect([...optionReads(source).keys()]).toEqual(['onSave']);
+    expect(undocumentedReads(source)).toEqual(['onSave']);
   });
 
   it('cuenta como lectura el destructuring, en la firma y en el cuerpo', () => {
@@ -319,13 +331,34 @@ describe('auto-tests de los ejemplos de uso', () => {
     expect(staleUsageOptions(bound, modules)).toEqual(['Knob.zzzGhost']);
   });
 
-  it('el encadenado con el objeto anidado en un wrapper no despista el escaneo', () => {
-    // Ese objeto vive DETRAS de un wrapper: no es el segundo argumento del `new` y la
-    // regla 6 no lo juzga (limite escrito en la cabecera), pero el `new` se sigue viendo.
-    const wrapped = "/**\n * Usage:\n *   new Knob(el, wrap({ skin: 'ms2000' })).setValue(0.5);\n */\n";
+  it('la regla 6 lee el objeto de opciones que vive tras un envoltorio transparente', () => {
+    // El objeto vive DETRAS de un envoltorio (`wrap({ ... })`), pero sigue siendo el
+    // argumento de opciones que el ejemplo promete: la regla 6 mira a traves de un
+    // envoltorio cuyo UNICO argumento es un objeto literal, atado o encadenado.
+    const chained = "/**\n * Usage:\n *   new Knob(el, wrap({ skin: 'ms2000' })).setValue(0.5);\n */\n";
+    const bound = "/**\n * Usage:\n *   const k = new Knob(el, withDefaults({ skin: 'ms2000' }));\n */\n";
 
-    expect(constructedWith(wrapped)[0].keys).toEqual([]);
-    expect(staleUsageOptions(wrapped, modules)).toEqual([]);
+    expect(constructedWith(chained)[0].keys).toEqual(['skin']);
+    expect(constructedWith(bound)[0].keys).toEqual(['skin']);
+    expect(staleUsageOptions(chained, modules)).toEqual([]);
+  });
+
+  it('una clave fantasma tras el envoltorio la caza la regla 6', () => {
+    const wrapped = "/**\n * Usage:\n *   new Knob(el, wrap({ skin: 'ms2000', zzzGhost: 1 })).setValue(0.5);\n */\n";
+
+    expect(staleUsageOptions(wrapped, modules)).toEqual(['Knob.zzzGhost']);
+  });
+
+  it('un envoltorio que el audit no puede leer se calla (antes mudo que un falso positivo)', () => {
+    // Mas de un argumento (`merge(base, { ... })`) o un argumento por variable: el audit
+    // no sabe si ese envoltorio pasa las claves tal cual, asi que no juzga.
+    const twoArgs = "/**\n * Usage:\n *   new Knob(el, merge(base, { skin: 'ms2000' })).setValue(0.5);\n */\n";
+    const byVariable = "/**\n * Usage:\n *   new Knob(el, wrap(opts)).setValue(0.5);\n */\n";
+
+    expect(constructedWith(twoArgs)[0].keys).toEqual([]);
+    expect(constructedWith(byVariable)[0].keys).toEqual([]);
+    expect(staleUsageOptions(twoArgs, modules)).toEqual([]);
+    expect(staleUsageOptions(byVariable, modules)).toEqual([]);
   });
 
   it('resuelve la clase construida en OTRO módulo (index.js -> knob.js)', () => {
@@ -1215,5 +1248,65 @@ describe('auto-tests de la forma de los accesos', () => {
     expect(mismatchedExampleAccesses(usage('f.value();'), asModules('pad.js', factory)))
       .toEqual(['createPad.value: el ejemplo lo llama, la clase lo declara getter']);
     expect(mismatchedExampleAccesses(usage('f.count = 1;'), asModules('pad.js', factory))).toEqual([]);
+  });
+
+  it('caza el método que el ejemplo lee como dato en la API de una fábrica', () => {
+    // El caso de fabrica de la 11, el que su receta documenta: los ejemplos reales solo
+    // LLAMAN a lo que una fabrica devuelve, asi que leer un metodo como dato no se ve en el
+    // inventario. Aqui no hay mutacion: la fabrica declara el metodo y el ejemplo lo lee.
+    const factory = 'export function createPad(container) {\n'
+      + '  const count = 0;\n\n'
+      + '  return {\n'
+      + '    count,\n'
+      + '    setValue(v) {\n'
+      + '      return v;\n'
+      + '    },\n'
+      + '  };\n'
+      + '}\n';
+    const usage = (line) => `/**\n * Usage:\n *   const f = createPad(el);\n *   ${line}\n */\n${factory}`;
+
+    expect([...memberDeclarations(factory, 'createPad').keys()]).toEqual(['count', 'setValue']);
+    expect(exampleMemberAccesses(usage('f.setValue;'))
+      .map(({ className, member, access }) => `${className}.${member}:${access}`))
+      .toEqual(['createPad.setValue:read']);
+    expect(mismatchedExampleAccesses(usage('f.setValue;'), asModules('pad.js', factory)))
+      .toEqual(['createPad.setValue: el ejemplo lo lee, la clase lo declara metodo']);
+    expect(mismatchedExampleAccesses(usage('f.count;'), asModules('pad.js', factory))).toEqual([]);
+  });
+});
+
+
+/* ---------------------------------------------------------------------------
+ * Auto-tests de las funciones exportadas
+ * ------------------------------------------------------------------------- */
+
+describe('auto-tests de las funciones exportadas', () => {
+  it('caza una funcion exportada que ningun bloque documenta', () => {
+    const source = 'export function huerfana(a, b) { return a + b; }\n';
+
+    expect(exportedFunctions(source).map(({ name }) => name)).toEqual(['huerfana']);
+    expect(undocumentedExports(source)).toEqual(['huerfana']);
+  });
+
+  it('no delata la que documenta su propio bloque', () => {
+    const source = '/** Suma dos numeros. */\nexport function suma(a, b) { return a + b; }\n';
+
+    expect(undocumentedExports(source)).toEqual([]);
+  });
+
+  it('acepta la cabecera del modulo cuando su `Usage:` nombra la funcion', () => {
+    // El caso real de lcdScreen.js: la cabecera documenta la fabrica, y la tabla de
+    // defaults se cuela entre el bloque y la declaracion.
+    const source = '/**\n * Fabrica.\n *\n * Usage:\n *   const lcd = createLcd(el);\n */\n'
+      + 'const DEFAULTS = {};\n\nexport function createLcd(el) { return DEFAULTS; }\n';
+
+    expect(undocumentedExports(source)).toEqual([]);
+  });
+
+  it('lee `export async function` y no la funcion interna', () => {
+    const source = 'export async function carga(url) { return url; }\nfunction interna() {}\n';
+
+    expect(exportedFunctions(source).map(({ name }) => name)).toEqual(['carga']);
+    expect(undocumentedExports(source)).toEqual(['carga']);
   });
 });

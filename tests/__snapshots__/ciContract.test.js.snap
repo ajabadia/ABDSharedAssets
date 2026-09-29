@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`el CI corre la auditoría de documentación > los bloques de mensaje de la guía se generan desde las recetas (snapshot) 1`] = `
+[
+  "themeSwitcher.js: todo miembro documentado se menciona en el código
+expected [ 'zzzGhost' ] to deeply equal []",
+  "effectLEDButton.js: toda opción que el código lee está documentada
+expected [ 'zzzGhost' ] to deeply equal []",
+  "select.js: toda clave que normalizeEntry guarda se lee fuera del normalizador
+expected [ 'zzzGhostKey' ] to deeply equal []",
+  "effectLEDButton.js: todo default literal del código está documentado
+expected [ 'size=gigante' ] to deeply equal []",
+  "effectLEDButton.js: toda opción guardada se vuelve a leer
+expected [ 'zzzGhost' ] to deeply equal []",
+  "xypad.js: las opciones del ejemplo existen de verdad
+expected [ 'XYPad.zzzGhost' ] to deeply equal []",
+  "wheel.js: el código y los ejemplos usan valores de la lista documentada
+expected [ 'type=zzzGhost' ] to deeply equal []",
+  "wheel.js: todo método que llama el ejemplo existe en la clase
+expected [ 'Wheel.zzzGhost()' ] to deeply equal []",
+  "wheel.js: el ejemplo llama y construye con la aridad de la firma
+expected [ 'Wheel.setValue(): recibe 3, la firma acepta 1..2' ] to deeply equal []",
+  "wheel.js: el ejemplo pasa argumentos del tipo que promete la documentación
+expected [ 'Wheel.setValue(): el argumento 1 es string y la firma promete number' ] to deeply equal []",
+  "wheel.js: el ejemplo toca cada miembro como la clase lo declara
+expected [ 'Wheel.destroy: el ejemplo lo lee, la clase lo declara metodo' ] to deeply equal []",
+  "drawer.js: el ejemplo toca cada miembro como la clase lo declara
+expected [ 'createDrawer.close: el ejemplo lo lee, la clase lo declara metodo' ] to deeply equal []",
+  "drag-core.js: toda clave prometida en un registro (@param, typedef o @returns) se usa en el código
+expected [ 'handlers.zzzGhost (el registro inline lo promete y el código no lo lee)' ] to deeply equal []",
+  "xypad.js: el objeto de opciones va después de otro parámetro
+expected [ 'constructor(options = {}, container): el objeto de opciones va en el primer parametro y la firma declara 2 parametros' ] to deeply equal []",
+]
+`;
