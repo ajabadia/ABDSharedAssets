@@ -308,6 +308,34 @@ function documentedRuleCount(source) {
   return match == null ? null : Number(match[1]);
 }
 
+/** Todos los numeros que el WORKFLOW escribe a mano sobre cuantas reglas tiene la
+ *  puerta: el comentario de su cabecera y el nombre de su paso. Se busca el numero
+ *  que precede a la palabra y no el parentesis, porque las dos formas lo llevan
+ *  distinto: `Audit documentation (13 rules)` y
+ *  `(tests/documentedOptions.test.js, 13 reglas)`. Castellano o Ingles, da igual:
+ *  lo que no puede pasar es que uno de los dos se quede viejo. */
+function declaredRuleCounts(source) {
+  return [...source.matchAll(/\b(\d+)\s+(?:reglas|rules)\b/g)].map((match) => Number(match[1]));
+}
+
+/** Lo que el workflow dice de la puerta contra lo que la puerta es. El numero va
+ *  escrito a mano en el yml, que es el unico sitio del contrato donde nadie lo
+ *  deriva: la guia lo comprueba contra el catalogo y la cabecera del audit tambien,
+ *  pero el nombre del paso no lo comprueba nadie. Un job que ejecuta trece reglas
+ *  y se llama doce no rompe la puerta —la puerta esta bien—, solo miente sobre lo
+ *  que ejecuta, y eso se nota cuando alguien busca un fallo en la CI y lee el
+ *  nombre del paso para saber que estaba corriendo. */
+function workflowCountOffenses({ workflow, count }) {
+  const declarados = declaredRuleCounts(workflow);
+
+  if (declarados.length === 0)
+    return ['el workflow no dice cuantas reglas tiene la puerta'];
+
+  return declarados
+    .filter((dicho) => dicho !== count)
+    .map((dicho) => `el workflow dice ${dicho} reglas y la puerta tiene ${count}`);
+}
+
 /** El comando que COMPONENTS.md documenta para correr la auditoria, a secas. */
 function documentedAuditCommand(source) {
   return /`([^`]*vitest run tests\/documentedOptions\.test\.js[^`]*)`/.exec(source)?.[1] ?? null;
@@ -490,6 +518,62 @@ function guideMessageBlocks() {
 /* ---------------------------------------------------------------------------
  * El contrato
  * ------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+ * EL LIMITE DE TAMANO: lo que la guia promete y nadie miraba
+ * ------------------------------------------------------------------------- */
+
+/** Las lineas que la guia se pone por encima a cada fichero de `components/`. */
+const LIMITE_LINEAS = 300;
+
+/** Los controles que HOY no caben en ese limite. No es una lista donde crecer:
+ *  es la foto de una deuda, y una entrada que se queda sin motivo (el fichero ya
+ *  cabe) es un fallo del contrato, que lo dice para que se borre. */
+const EXCEPCIONES_DE_TAMANO = new Set([
+  'segmented.js',
+  'select.js',
+  'modMatrix.js',
+  'numberbox.js',
+  'xypad.js',
+]);
+
+/** Cuantas lineas tiene un texto: los saltos de linea, mas el trozo final solo si
+ *  no acaba en salto. Es lo que cuenta `wc -l`, que es como se cuenta de verdad;
+ *  un `split('\n').length` de mas dice que un fichero de 300 lineas tiene 301 y
+ *  manda en rojo a un control que esta justo en el limite. */
+const linesOf = (text) => text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+
+/** Los `components/*.js` que existen, con sus lineas. `index.js` fuera: es el
+ *  barrel, y su tamano lo manda cuantos controles haya, no el criterio de uno. */
+function controlSizes(dir) {
+  const archivos = readdirSync(dir)
+    .filter((name) => name.endsWith('.js') && name !== 'index.js');
+
+  return new Map(archivos.map((name) =>
+    [name, linesOf(readOrEmpty(join(dir, name)))]));
+}
+
+/** Lo que el limite delata: una deuda sin motivo (el fichero ya cabe, o el
+ *  nombre ya no existe) y un control que se ha pasado sin apuntarse. Las dos
+ *  mitades en una lista porque son el mismo contrato: la lista de excepciones
+ *  solo es una foto de la deuda si lo que se pasa sin estar en ella tambien
+ *  salta. */
+function sizeOffenses({ sizes, excepciones, limite = LIMITE_LINEAS }) {
+  const off = [];
+
+  for (const nombre of excepciones) {
+    if (!sizes.has(nombre))
+      off.push(`${nombre} esta en las excepciones y no existe`);
+    else if (sizes.get(nombre) <= limite)
+      off.push(`${nombre} ya cabe en ${sizes.get(nombre)} lineas: borralo de las excepciones`);
+  }
+
+  for (const [nombre, lineas] of sizes)
+    if (!excepciones.has(nombre) && lineas > limite)
+      off.push(`${nombre} esta en ${lineas} lineas y no esta en las excepciones`);
+
+  return off;
+}
 
 describe('el CI corre la auditoría de documentación', () => {
   it('la auditoría, el workflow y la guía existen', () => {
@@ -1262,6 +1346,14 @@ describe('el CI corre la auditoría de documentación', () => {
     expect(declaredRuleWord(audit)).toBe(RULE_WORDS[count]);
   });
 
+  it('el workflow nombra la puerta con el número de reglas que tiene', () => {
+    const count = auditedRules(audit).length;
+
+    expect(declaredRuleCounts(workflow).length, 'el yardaje: el yml declara su número')
+      .toBeGreaterThanOrEqual(2);
+    expect(workflowCountOffenses({ workflow, count })).toEqual([]);
+  });
+
   it('el workflow que cita la guía es el que existe', () => {
     const cited = [...doc.matchAll(/`([\w-]+\.yml)`/g)].map((match) => match[1]);
 
@@ -1696,6 +1788,20 @@ describe('el CI corre la auditoría de documentación', () => {
  * Auto-tests del contrato: sus detectores tienen que MORDER
  * ------------------------------------------------------------------------- */
 
+describe('el límite de tamaño que promete la guía', () => {
+  it('los controles que se pasan están fichados, y solo se pasan los fichados', () => {
+    const sizes = controlSizes(join(root, 'components'));
+
+    // El yardaje: sin esto, una carpeta vacía o una lista de excepciones vacía
+    // dan un contrato en verde que no ha mirado nada.
+    expect(sizes.size, 'el yardaje: no hay controles que medir').toBeGreaterThanOrEqual(10);
+    expect(EXCEPCIONES_DE_TAMANO.size, 'el yardaje: nadie ha fichado la deuda')
+      .toBeGreaterThanOrEqual(1);
+
+    expect(sizeOffenses({ sizes, excepciones: EXCEPCIONES_DE_TAMANO })).toEqual([]);
+  });
+});
+
 describe('auto-tests del contrato del CI', () => {
   it('caza el `paths:` que deja el check sin correr', () => {
     const source = 'on:\n  pull_request:\n    paths:\n      - "components/**"\n  push:\n    branches:\n      - main\n';
@@ -1742,6 +1848,42 @@ describe('auto-tests del contrato del CI', () => {
     expect(auditedRules(header)).toEqual([1, 2]);
     expect(documentedRuleCount(guide)).toBe(2);
     expect(documentedRules(guide)).toEqual([1, 2]);
+  });
+
+  it('la guardia del workflow muerde: el número viejo y el número que no está', () => {
+    const yml = '      - name: Audit documentation (12 rules)\n'
+      + '# la auditoria (tests/documentedOptions.test.js, 13 reglas)\n';
+
+    expect(workflowCountOffenses({ workflow: yml, count: 13 }))
+      .toEqual(['el workflow dice 12 reglas y la puerta tiene 13']);
+    expect(declaredRuleCounts(yml)).toEqual([12, 13]);
+    expect(workflowCountOffenses({ workflow: 'on: push\n', count: 13 }))
+      .toEqual(['el workflow no dice cuantas reglas tiene la puerta']);
+  });
+
+  it('la guardia del tamaño muerde: el control que se pasa y la deuda ya pagada', () => {
+    const sizes = new Map([
+      ['corto.js', 120], ['justo.js', 300], ['al-limite.js', 301], ['largo.js', 412],
+    ]);
+
+    // El limite son 300 lineas: 300 cabe y 301 no. Los numeros van en el mapa ya
+    // contados, que es lo que hace `controlSizes` con `linesOf` sobre el disco. El que se pasa sin apuntarse
+    // es el offense, y el que esta justo en el limite no aparece en la lista
+    // aunque lo sirva de cerca.
+    expect(sizeOffenses({ sizes, excepciones: new Set() })).toEqual([
+      'al-limite.js esta en 301 lineas y no esta en las excepciones',
+      'largo.js esta en 412 lineas y no esta en las excepciones',
+    ]);
+
+    // Y las dos formas de deuda sin motivo: el fichero que ya cabe y el nombre
+    // que ya no existe. Sin esto, la lista crece sola y no dice nada.
+    expect(sizeOffenses({
+      sizes: new Map([['corto.js', 120]]),
+      excepciones: new Set(['corto.js', 'fantasma.js']),
+    })).toEqual([
+      'corto.js ya cabe en 120 lineas: borralo de las excepciones',
+      'fantasma.js esta en las excepciones y no existe',
+    ]);
   });
 
   it('lee la palabra y el comando que promete la documentación', () => {

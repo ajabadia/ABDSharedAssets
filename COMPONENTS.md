@@ -304,7 +304,14 @@ cd ABDSharedAssets && npx vite . --port 5199   # o cualquier servidor estático
 El bootstrap de la sección vive en `demo/demo-controls.js` (HTML declarativo, controles
 instanciados desde el módulo).
 
-Todo fichero se mantiene por debajo de ~300 líneas; si un control crece, se divide.
+Todo control **nuevo** se mantiene por debajo de 300 líneas; si un control crece, se divide.
+
+Los que hoy no caben no se parten de un día para otro: están fichados uno a uno en
+`EXCEPCIONES_DE_TAMANO` (`tests/ciContract.test.js`), y el contract lo comprueba en las dos
+direcciones — un sexto por encima del límite sale en rojo, y una excepción cuyo fichero ya
+cabe también, para que la lista se vaya vaciando sola en vez de crecer en silencio. Los
+nombres no se cuentan aquí a propósito: una segunda lista en la guía sería otra cosa que se
+queda vieja sin que nadie lo note.
 
 ## Consumo sin NTFS junctions
 
