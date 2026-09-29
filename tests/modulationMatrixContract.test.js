@@ -23,17 +23,15 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-const CONTRACTS = path.join(ROOT, 'contracts');
+import {
+  validate,
+  unsupportedKeywords,
+  readContract as readContractFile,
+  readSchema,
+} from './helpers/validateSchema.js';
 
-const SCHEMA = JSON.parse(
-  fs.readFileSync(path.join(CONTRACTS, 'modulation_matrix.schema.json'), 'utf8'),
-);
+const SCHEMA = readSchema('modulation_matrix.schema.json');
 
 const CONTRACTS_BY_ID = {
   abdeep: 'abdeep_modulation_matrix.json',
@@ -42,88 +40,20 @@ const CONTRACTS_BY_ID = {
 };
 
 function readContract(id) {
-  return JSON.parse(fs.readFileSync(path.join(CONTRACTS, CONTRACTS_BY_ID[id]), 'utf8'));
+  return readContractFile(CONTRACTS_BY_ID[id]);
 }
 
-/**
- * Validador mínimo de JSON Schema, solo para lo que este esquema usa.
- *
- * No se añade una dependencia al paquete compartido por tres contratos: lo que
- * hace falta es comprobar required, type, enum, minimum/maximum, items y
- * additionalProperties, y fallar NOMBRANDO el campo. Si algún día el esquema usa
- * algo que esta función no cubre, el test lo dice en vez de pasar en silencio.
- */
-function validate(instance, schema, pathPrefix = '') {
-  const errors = [];
-  const where = pathPrefix || '(raíz)';
-
-  if (schema.type === 'object') {
-    if (typeof instance !== 'object' || instance === null || Array.isArray(instance)) {
-      return [`${where}: se esperaba un objeto`];
-    }
-    for (const key of schema.required ?? []) {
-      if (!(key in instance)) errors.push(`${where}.${key}: obligatorio`);
-    }
-    for (const [key, value] of Object.entries(instance)) {
-      const sub = schema.properties?.[key];
-      if (!sub) {
-        if (schema.additionalProperties === false) {
-          errors.push(`${where}.${key}: propiedad no permitida por el esquema`);
-        }
-        continue;
-      }
-      errors.push(...validate(value, sub, `${pathPrefix}.${key}`));
-    }
-    return errors;
-  }
-
-  if (schema.type === 'array') {
-    if (!Array.isArray(instance)) return [`${where}: se esperaba un array`];
-    if (schema.minItems !== undefined && instance.length < schema.minItems) {
-      errors.push(`${where}: al menos ${schema.minItems} elementos, hay ${instance.length}`);
-    }
-    if (schema.items) {
-      instance.forEach((item, index) => {
-        errors.push(...validate(item, schema.items, `${pathPrefix}[${index}]`));
-      });
-    }
-    return errors;
-  }
-
-  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
-
-  let actual = Array.isArray(instance) ? 'array'
-             : instance === null ? 'null'
-             : typeof instance;
-
-  // JSON Schema distingue `integer` de `number`: `3.5` NO es un integer. En JS
-  // ambos son `number`, asi que el tipo real se calcula aqui; sin esto, un
-  // campo declarado integer aceptaria 3.5 en silencio.
-  if (actual === 'number' && types.includes('integer') && !types.includes('number')) {
-    actual = Number.isInteger(instance) ? 'integer' : 'number';
-  }
-
-  if (!types.includes(actual)) {
-    return [`${where}: se esperaba ${types.join('|')}, hay ${actual}`];
-  }
-
-  if (schema.enum && !schema.enum.includes(instance)) {
-    return [`${where}: "${instance}" no está en [${schema.enum.join(', ')}]`];
-  }
-  if (schema.minimum !== undefined && instance < schema.minimum) {
-    errors.push(`${where}: ${instance} < mínimo ${schema.minimum}`);
-  }
-  if (schema.maximum !== undefined && instance > schema.maximum) {
-    errors.push(`${where}: ${instance} > máximo ${schema.maximum}`);
-  }
-  if (schema.minLength !== undefined && String(instance).length < schema.minLength) {
-    errors.push(`${where}: más corto que ${schema.minLength}`);
-  }
-  return errors;
-}
 
 describe('modulationMatrixContract — el contrato de la matriz de modulación', () => {
   describe('el esquema', () => {
+    it('se ejecuta ENTERO: ninguna palabra clave que el validador no mire', () => {
+      // ESTE esquema ya se habia descolgado una vez: `replacesNote` se anadio al
+      // contrato de NEURONiK y no al esquema, asi que `additionalProperties:
+      // false` lorejectaba sin que nadie entendiera por que. Un esquema del que
+      // solo se mira el `type` es un esquema que parece validar y no valida.
+      expect(unsupportedKeywords(SCHEMA)).toEqual([]);
+    });
+
     it('declara la forma que los tres contratos comparten', () => {
       expect(SCHEMA.required).toContain('sources');
       expect(SCHEMA.required).toContain('destinations');
