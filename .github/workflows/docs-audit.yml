@@ -1,6 +1,6 @@
 name: Docs audit
 
-# La auditoria de documentacion (tests/documentedOptions.test.js, 12 reglas) es una
+# La auditoria de documentacion (tests/documentedOptions.test.js, 13 reglas) es una
 # puerta, no un recordatorio: si una regla falla, este job falla y el PR no se mergea.
 on:
   pull_request:
@@ -50,7 +50,7 @@ jobs:
 
       # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
       # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
-      - name: Audit documentation (12 rules)
+      - name: Audit documentation (13 rules)
         run: pnpm exec vitest run tests/documentedOptions.test.js
 
       - name: Run full Vitest suite
