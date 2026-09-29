@@ -98,6 +98,9 @@ components/slider.js        slider horizontal/vertical, thumb filmstrip opcional
 components/toggle.js        botón LED (latched o momentary), estado en [aria-pressed]
 components/wheel.js         rueda pitch/mod filmstrip (la original de la familia)
 components/xypad.js         pad 2D absoluto ({x,y}, y-up) — morphing, filtros XY
+components/envelopeCurve.js  geometria pura de la curva ADSR + la vista de fabrica
+components/envelopeGestures.js  la matematica del gesto de las asas (la usa el pad)
+components/envelopePad.js   curva ADSR con TRES ASAS arrastrables (A · D+S · R)
 components/drawer.js        cajón lateral fijo a la derecha (createDrawer): contenido
                             estable (sin re-render al abrir), ESC/fondo/botón, dialog
 components/optionIndex.js      el indice como valor compartido: recorte del
@@ -126,12 +129,23 @@ components/tapeEchoVisual.js     visual de cinta y eco
 components/waveforms.js          nombres y glifos de onda
 components/fxTheme.js            tema de un modulo de efecto, POR FAMILIA
                                 (el aspecto, styles/components/fx.css)
+components/s950PatchFields.js    el catalogo de patches del S950 INDEXADO para un
+                                panel (buildS950Catalogue, formatS950Name,
+                                isS950Bipolar). No pinta nada: dice que hay que
+                                pintar y con que limites, leyendo el contrato
+                                GENERADO desde el C++ del motor
 components/skins/index.js   SKINS: cómo se dibuja cada control (registry + 3 skins)
 components/index.js         barrel: controles + registerSkin/getSkin/applySkin
 styles/components/widgets.css     estilos base de knob/slider/toggle/select
 styles/components/skins-junio.css   estilos de la skin 'junio'
 styles/components/fx.css        estilos de los modulos de efecto y sus temas
+styles/components/envelope.css  estilos del EnvelopePad (curva, aguja, asas)
 contracts/fx-effects.json       catalogo de efectos del rack (57 ids, 11 familias)
+contracts/s950_patch_fields.json  catalogo de patches del S950 (38 campos, 18
+                                trims, 11 salidas). GENERADO desde
+                                ABDSharedCode/SynthCore/S950PatchFields.h con
+                                `pnpm generate:s950-contract`; se verifica con
+                                `pnpm check:s950-contract`
 smoke/                          arnes de accesibilidad (pnpm smoke:a11y)
 tests/audit/                    la auditoria de documentacion (ver mas abajo)
 tests/controls.test.js      vitest: contrato, clamping, semántica, gestos, skins, cleanup
@@ -168,6 +182,50 @@ Despacho: `applySkin()` etiqueta cada instancia con `CONTROL_KIND` (knob | slide
 toggle | select) y elige `map[kind]`; si la skin no define ese tipo, usa el renderer
 'vector' del mismo tipo (skins parciales siguen siendo utilizables).
 Nombre de skin desconocido → la skin entera es 'vector'.
+
+### El knob bipolar: `bipolar: true`
+
+Un mando con recorrido a los dos lados del cero (un offset, un trim, un balance) no es
+un mando normal con el valor centrado: se ha de leer de otra manera. Con
+`bipolar: true` el arco **se llena desde el centro** en vez de desde el extremo izquierdo, y
+aparece una **marca de reposo** en el punto medio del recorrido, para que el cero sea un
+sitio y no una suposición.
+
+```js
+// el host lo declara, porque el host es quien sabe el rango real:
+new Knob(el, { bipolar: true, value: 0.5, format: (v) => signed((v - 0.5) * 2) });
+```
+
+Lo que **no** cambia, y es lo importante: el puntero se mueve igual, el valor sigue siendo
+0..1, `aria-valuenow` sigue siendo el mismo, y el gesto es el mismo. Bipolar es cómo se
+**pinta** el relleno, no un modelo de datos nuevo — si lo fuera, cada host tendría dos
+caminos para el mismo parámetro. El knob solo ve 0..1; un 0.5 normalizado no es un cero
+hasta que alguien con el rango dice que lo es.
+
+Solo lo pinta la skin `vector` (que es la que tiene arco de valor). Las demás aceptan la
+opción sin romperse, pero el `ms2000` no cambia de aspecto porque no dibuja arco, y el
+wrapper lo declara igual en `data-bipolar` para que un tema o un skin propio puedan
+enterarse.
+
+**La receta del relleno, y por qué está escrita así.** El arco se pinta con **un** trazo:
+el `stroke-dasharray` lleva la **longitud** de lo encendido y el `stroke-dashoffset` lleva
+el **ángulo de arranque**, en negativo. Con el `dasharray` fijo de los 270° y solo el
+offset moviéndose —que es como estaba— el offset no puede *acortar* un trazo, solo
+*desplazarlo*, y el arco salía de 0° con el valor a 0.25, de 50° con 0.5 y de 180° con 1
+(en vez de 0 / 67.5 / 135 / 202.5 / 270), con la luz cayéndole en el hueco de abajo con los
+valores bajos. Todo eso está medido en el navegador, no deducido: los tests comparan los
+grados pintados contra los que se esperan, y `paintedDegrees()` lee el `dasharray` a
+propósito, que es donde vive la longitud.
+
+Dos cosas más que se pagan una vez:
+
+- **La rotación va en el CSS, no en el atributo `transform`.** Poner `style.transformOrigin`
+  sobre un elemento SVG hace que la propiedad `transform` del CSS mande sobre el
+  atributo, y el atributo se ignora: el arco se dibujaba girado y, medido, **no pintaba
+  nada** (0 píxeles). Con la rotación en CSS no se pelean.
+- **Sin relleno, el arco se oculta.** Un trazo de largo cero con `stroke-linecap: round` no
+  es invisible: el navegador pinta el remate. En bipolar ese punto cae en el centro, justo
+  encima de la marca del cero, y ahí un punto se lee como un valor.
 
 
 Origen de las skins incluidas:
@@ -280,6 +338,55 @@ preview con timeout (LcdDisplay nativo) y cola de mensajes con prioridad (ABDEep
 panel (`createLcdPanel`) anade el D-pad MENU/OK/cursores con hold-repeat (initial 400ms,
 repeat 120ms). Guia completa con el plan de adopcion por synth: `docs/LCD_GUIDE.md`. El
 port C++ vive en ABDSharedCode/LcdDisplay (`ABDShared::LcdDisplay`, INTERFACE, gate WASM).
+
+### EnvelopePad — `components/envelopePad.js` (`EnvelopePad`, `createEnvelopeCurve`)
+
+**La curva ADSR de la familia, en dos modos.** VISTA (`editable: false` o la
+fabrica `createEnvelopeCurve`): pinta la curva y la aguja de nivel en vivo,
+cero gestos — es lo que consume NEURONiK en su ficha de ENVOLVENTES (migrada
+desde su `envelopeCurve.js` local, 2026-09-29: cero copia). CONTROL (default):
+anade **TRES ASAS arrastrables** — el gesto del editor de envolventes del Mz950
+reimplementado desde cero (el original es AGPLv3): el pico arrastra el ATTACK
+(X), la esquina del decay arrastra DECAY (X) y SUSTAIN (Y) a la vez, y la
+ultima arrastra el RELEASE (X). Hit-test generoso, asa activa resaltada.
+
+El valor es `{ attack, decay, sustain, release }` **normalizado 0..1 por
+segmento** (regla 1 de la familia): el mapeo a segundos es del llamador. La
+generacion se divide en tres ficheros bajo el limite de tamano: la geometria
+pura y la vista (`envelopeCurve.js`), el gesto (`envelopeGestures.js`) y el
+control (`envelopePad.js`). El mapeo del gesto se captura AL EMPEZAR
+(inversa de la raiz con `k` fija): el asa no acelera sobre si misma.
+
+```js
+import { EnvelopePad, createEnvelopeCurve } from '@abdsynths/shared/components';
+
+// CONTROL: edita por asas; onChange solo con ediciones de usuario.
+const pad = new EnvelopePad(el, { label: 'ENV 1', editable: true });
+pad.setValue({ attack: 0.01, decay: 0.2, sustain: 0.6, release: 0.1 });   // silencioso
+pad.setLevel(0.8);                                                        // aguja en vivo
+
+// VISTA: pinta desde valores REALES; el skew normalizado->real es del host.
+const curve = createEnvelopeCurve({ controls, prefix: 'env', toReal: realFromNormalized });
+host.append(curve.element);
+curve.paint(parameters);
+curve.destroy();
+```
+
+Tema: `styles/components/envelope.css` con `--abd-envelope-line`,
+`--abd-envelope-area`, `--abd-envelope-needle`, `--abd-envelope-handle` (y su
+`-active`) sobre los tokens de la casa. Teclado: cada asa es `role=slider`
+enfocable; flechas = paso (en la asa central, arriba/abajo llevan el SUSTAIN),
+Shift/PageUp/PageDown x10, Home/End al tope.
+
+**Dos trampas que ya se pagaron una vez** (las miden tests y la referencia visual de
+NEURONiK; estan aqui para que el siguiente host no las vuelva a descubrir):
+
+- **El caption se monta SIEMPRE, aunque este vacio.** Un `span` sin texto mide 0, pero el
+  `gap: 2px` de su flex-column no. Un host que lo quite "porque no tiene titulo" baja el alto
+  del `svg` en 2 px y su fotografia se aparta, sin que ninguna asercion falle.
+- **La vista se pinta en unidades REALES.** `toReal` es del host porque el mapeo
+  normalizado→segundos es suyo; sin el, la vista pinta bien y con otra forma (0..1 contra
+  segundos), que es un fallo que no se ve en ningun test de texto.
 
 ### Segmented — `components/segmented.js` (`Segmented`)
 

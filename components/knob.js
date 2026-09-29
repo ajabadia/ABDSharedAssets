@@ -34,6 +34,13 @@ const START_ANGLE = -135;
  *   label       text above the knob, optional. Doubles as the slider's
  *               accessible name (see ariaLabel).
  *   skin        skin name (see components/skins), default 'vector'.
+ *   bipolar     if true the value arc fills from the CENTRE (normalised 0.5)
+ *               instead of from the left end, and a tick marks the rest
+ *               position: a centred parameter reads as ZERO instead of as a
+ *               guess. Default false (unipolar, arc from the left end).
+ *               Quien lo declara es el HOST, porque el host es quien sabe el
+ *               rango real: el knob solo ve 0..1, y un 0.5 normalizado no es un
+ *               cero hasta que alguien con el rango dice que lo es.
  *   ariaLabel   explicit accessible name for the role=slider dial, when the
  *               visible label is absent or must differ from it.
  *   format      (normalised) => string for the readout, default percent.
@@ -65,6 +72,7 @@ export class Knob
             label: '',
             ariaLabel: null,
             skin: 'vector',
+            bipolar: false,
             step: 0.01,
             format: (v) => `${Math.round(v * 100)}%`,
             onChange: null,
@@ -93,6 +101,10 @@ export class Knob
         this.wrapper = document.createElement('div');
         this.wrapper.className = 'abd-knob';
         this.wrapper.style.setProperty('--abd-knob-size', `${this.options.size}px`);
+        // En el wrapper, y NO solo en la piel: es la UNICA seña que ve un host
+        // que_no_ skin (un tema, un test de accesibilidad, un CSS propio) para
+        // saber que este mando tiene el cero en el centro.
+        this.wrapper.dataset.bipolar = this.options.bipolar ? 'true' : 'false';
 
         if (this.options.label)
         {

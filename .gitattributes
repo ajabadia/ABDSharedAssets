@@ -1,0 +1,54 @@
+# Normalizar line endings. C++ cross-platform.
+# Copiado de ABDSharedCode/.gitattributes, con las extensiones propias de este
+# repositorio: aqui no hay C++, hay contratos JSON, componentes JS, estilos
+# CSS e iconos SVG, y son justo los que entraban con CRLF de un checkout en
+# Windows y se guardaban con el CR duplicado en el siguiente commit.
+* text=auto
+
+# Contratos y datos. Este repo es la FUENTE UNICA DE LA VERDAD de la suite, asi
+# que un contrato guardado con CRLF hace que el `diff` entre dos maquinas no
+# enseñe el cambio sino el fin de linea.
+*.json text eol=lf
+*.schema text eol=lf
+*.svg text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# Componentes y utilidades
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.ts text eol=lf
+
+# Build
+*.cmake text eol=lf
+CMakeLists.txt text eol=lf
+
+# C++ (este repo lo comparte con el modulo de efectos)
+*.cpp text eol=lf
+*.h text eol=lf
+
+# Documentacion
+*.md text eol=lf
+
+# Herramientas
+*.py text eol=lf
+*.sh text eol=lf
+*.bat text eol=lf
+*.ps1 text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+
+# Los dos ficheros que se auto-referencian
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# Binarios
+*.lib binary
+*.a binary
+*.so binary
+*.dll binary
+*.dylib binary
+*.exe binary
+*.pdb binary
+*.ilk binary

@@ -4,7 +4,26 @@
  * (containers here, controls instantiated below with the three built-in skins).
  */
 
-import { Knob, NumberBox, Segmented, Select, Slider, Toggle, XYPad, createLcdPanel } from '../components/index.js';
+import {
+    EffectLEDButton,
+    EnvelopePad,
+    Knob,
+    ModMatrix,
+    NumberBox,
+    PeakLED,
+    Segmented,
+    Select,
+    SevenSegmentDisplay,
+    SilverFilmstripKnob,
+    Slider,
+    TapeEchoVisual,
+    Toggle,
+    Wheel,
+    XYPad,
+    createDrawer,
+    createEnvelopeCurve,
+    createLcdPanel,
+} from '../components/index.js';
 
 import { WAVEFORM_GLYPHS, WAVEFORM_NAMES } from '../components/waveforms.js';
 
@@ -164,6 +183,83 @@ mount('demo-xypads', (host) =>
     host.appendChild(log);
 });
 
+/* ── Knob BIPOLAR: el mismo mando, con el cero en el CENTRO ─────────────── */
+
+mount('demo-knobs-bipolar', (host) =>
+{
+    const log = document.getElementById('demo-bipolar-log');
+    const signed = (v) => `${v > 0 ? '+' : ''}${Math.round((v - 0.5) * 2 * 100)}`;
+
+    // Los cinco valores que delatan cualquier fallo de la geometria: con el
+    // centro vacio, los dos extremos a media vuelta y la simetria de 0.25/0.75.
+    for (const [value, name] of [[0, '-1'], [0.25, '-0.5'], [0.5, '0'], [0.75, '+0.5'], [1, '+1']])
+    {
+        const cell = document.createElement('div');
+        cell.className = 'demo-knob-cell';
+        host.appendChild(cell);
+
+        new Knob(cell, {
+            size: 72,
+            value,
+            bipolar: true,
+            label: name,
+            format: signed,   // el host es quien sabe que 0.5 es el cero
+            onChange: (v) => { if (log) log.textContent = `arrastrado a ${signed(v)} (0.50 normalizado = el cero)`; },
+        });
+    }
+});
+
+/* ── EnvelopePad: el control editable y la vista, con aguja en vivo ───────── */
+
+mount('demo-envelopes', (host) =>
+{
+    const log = document.createElement('div');
+    log.className = 'demo-label';
+
+    const pad = new EnvelopePad(host, { label: 'ENV' });
+    pad.wrapper.style.width = '240px';
+    pad.wrapper.style.height = '120px';
+
+    pad.options.onChange = (value) =>
+    {
+        log.textContent = `A ${value.attack.toFixed(2)} · D ${value.decay.toFixed(2)}`
+            + ` · S ${value.sustain.toFixed(2)} · R ${value.release.toFixed(2)}`;
+    };
+
+    // La aguja de nivel, como si llegara del motor: un lazo que respira.
+    let phase = 0;
+    setInterval(() =>
+    {
+        phase += 0.08;
+        pad.setLevel(Math.abs(Math.sin(phase)) * (1 - pad.getValue().sustain) + 0.05);
+    }, 60);
+
+    host.appendChild(log);
+});
+
+mount('demo-envelopes-view', (host) =>
+{
+    const curve = createEnvelopeCurve({
+        controls: [
+            { id: 'envAttack' }, { id: 'envDecay' },
+            { id: 'envSustain' }, { id: 'envRelease' },
+        ],
+        label: 'AMP ENV',
+        title: 'La vista de fabrica: pinta desde valores reales, sin gesto',
+    });
+
+    curve.element.style.width = '240px';
+    curve.element.style.height = '120px';
+    host.appendChild(curve.element);
+
+    let phase = 0;
+    setInterval(() =>
+    {
+        phase += 0.05;
+        curve.setLevel(Math.abs(Math.sin(phase)) * 0.7 + 0.1);
+    }, 60);
+});
+
 // ── LCD (pantalla + maquina + D-pad) ────────────────────────────────────────
 const lcdHost = document.getElementById('demo-lcd');
 if (lcdHost) {
@@ -241,3 +337,197 @@ mount('demo-nb-gated', (host) =>
 {
     new NumberBox(host, { value: 7, min: 0, max: 16, label: 'Deshabilitado', disabled: true });
 });
+
+/* ── 9. Instrumentos: lo que exporta el barrel y no cabia en la seccion 8 ───── */
+
+/* Los sprites viven un nivel arriba: demo/ esta un nivel por debajo de la raiz
+   del repo, igual que hace el Knob de la seccion 8. */
+const SPRITES = '../assets/junio/';
+
+mount('demo-led-buttons', (host) =>
+{
+    for (const color of ['orange', 'yellow', 'beige', 'patch-blue', 'grey', 'red'])
+    {
+        new EffectLEDButton(host, { color, label: color, value: color === 'orange' });
+    }
+
+    // El 'tiny' es el que va en la tira de un modulo, y el momentary el PANIC:
+    // encendido mientras se pulsa, nunca enclava.
+    new EffectLEDButton(host, { color: 'red', size: 'tiny', label: 'tiny' });
+    new EffectLEDButton(host, { color: 'orange', momentary: true, label: 'PANIC' });
+});
+
+mount('demo-peak-leds', (host) =>
+{
+    // El del rack (sprite del Juno-60) y el de CSS, que es el que se usa cuando
+    // el synth no trae foto: los dos con el MISMO contrato.
+    const sprite = new PeakLED(host, { spriteUrl: `${SPRITES}re201_peak_led.png` });
+    const css = new PeakLED(host, { useSprite: false, color: '#ff4400' });
+
+    // Destello: lo que hace el motor al saturar un pico. Cada uno con su fase,
+    // para que se vea el patron (destello -> fijo -> apagado) y no un parpadeo.
+    let phase = 0;
+    setInterval(() =>
+    {
+        phase = (phase + 0.06) % (Math.PI * 2);
+        const hot = Math.sin(phase);
+
+        if (hot > 0.6) { sprite.trigger(); css.trigger(); }
+        else if (hot > 0.2) { sprite.setState(true); css.setState(true); }
+        else { sprite.setState(false); css.setState(false); }
+    }, 80);
+});
+
+mount('demo-seven-seg', (host) =>
+{
+    const bpm = new SevenSegmentDisplay(host, { digits: 3, value: '120', fontSize: '28px' });
+    new SevenSegmentDisplay(host, { digits: 6, value: '000128', fontSize: '20px' });
+
+    // Cuenta arriba como la haria el host con un parametro, para ver el recorte
+    // a `digits` y el guion de los huecos.
+    let value = 0;
+    setInterval(() =>
+    {
+        value = (value + 1) % 1000;
+        bpm.setValue(String(value).padStart(3, '0'));
+    }, 200);
+});
+
+mount('demo-silver-knobs', (host) =>
+{
+    const log = document.createElement('div');
+    log.className = 'demo-label';
+
+    new SilverFilmstripKnob(host, {
+        variant: 'preset',
+        value: 0.3,
+        label: 'preset (12)',
+        spriteUrl: `${SPRITES}silver_re201_preset.png`,
+        onChange: (v) => { log.textContent = `preset ${Math.round(v * 11) + 1} / 12`; },
+    });
+
+    new SilverFilmstripKnob(host, {
+        variant: 'normal',
+        value: 0.6,
+        label: 'normal (31)',
+        spriteUrl: `${SPRITES}silver_re201_normal.png`,
+        onChange: (v) => { log.textContent = `normal ${Math.round(v * 30) + 1} / 31`; },
+    });
+
+    host.appendChild(log);
+});
+
+mount('demo-wheels', (host) =>
+{
+    // PITCH vuelve al centro al soltar; MOD se queda donde lo dejes. La misma
+    // clase con distinto `type`, que es todo lo que las distingue.
+    new Wheel(host, { type: 'pitch', spriteUrl: '../assets/bender.png' });
+    new Wheel(host, { type: 'mod', spriteUrl: '../assets/bender.png' });
+});
+
+mount('demo-tape', (host) =>
+{
+    const tape = new TapeEchoVisual(host, { width: 240, height: 92 });
+
+    // Sync y division de tempo encadenadas, como las llama el host: un control
+    // gobierna ladivision, y el valor se refleja en el nombre de la cabecera.
+    tape.setBPM(124);
+    tape.setSyncEnabled(true);
+    tape.setSyncDivision(2);
+
+    // Un cabezal encendido y otro en el limite: el estado que pinta cada uno.
+    tape.setHeadActive(0, true);
+    tape.setHeadActive(2, true);
+
+    // Los picos de la barra, como los que manda el motor.
+    let phase = 0;
+    setInterval(() =>
+    {
+        phase = (phase + 0.11) % (Math.PI * 2);
+        if (Math.sin(phase) > 0.75) tape.triggerPeak();
+    }, 90);
+});
+
+mount('demo-mod-matrix', async (host) =>
+{
+    // El estado vive FUERA del contenedor de la matriz a proposito: ModMatrix es
+    // dueno de el (`replaceChildren`), asi que un nodo que le anadas antes
+    // desaparece. El aviso vive al lado, en su propio hueco.
+    const status = document.getElementById('demo-mod-matrix-status');
+    const say = (text) => { if (status) status.textContent = text; };
+
+    say('leyendo el contrato...');
+
+    // La vista NO lleva la tabla escrita a mano: lee el contrato, que es la
+    // misma fuente que leen el motor y el host. Sin servidor (abrir el fichero
+    // con file://) el fetch no puede, y el motivo se dice en vez de callar.
+    let contract;
+
+    try
+    {
+        const response = await fetch('../contracts/neuronik_modulation_matrix.json');
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        contract = await response.json();
+    }
+    catch (error)
+    {
+        say(`No se pudo leer el contrato (${error.message}). `
+            + 'Sirve la demo por HTTP (demo/start.bat), no con doble clic.');
+        return;
+    }
+
+    const matrix = new ModMatrix(host, {
+        contract,
+        onAnnounce: (message) => { say(message); },
+    });
+
+    // Rutas de ejemplo con ÍNDICES del contrato, no con etiquetas: es lo que
+    // llega del host. La última es inerte (destino 0 a 0), y la vista NO la
+    // cuenta: la misma regla que el motor.
+    matrix.paint([
+        { source: 1, destination: 4, amount: 0.6 },
+        { source: 2, destination: 0, amount: 0.35 },
+        { source: 6, destination: 1, amount: 0.9 },
+        { source: 0, destination: 0, amount: 0 },
+    ]);
+
+    // La contribucion VIVA, que llega a ~15 Hz y solo repinta las barras: por
+    // eso tiene su propio metodo y no vuelve a pintar la lista.
+    let phase = 0;
+    setInterval(() =>
+    {
+        phase += 0.09;
+        matrix.setLive({ 4: 0.5 + Math.sin(phase) * 0.4, 0: 0.3 });
+    }, 70);
+
+    say(`${matrix.slotCount} huecos · ${contract.sources.length} fuentes · `
+        + `${contract.destinations.length} destinos (contrato NEURONiK)`);
+});
+
+/* El cajon: el disparador va en la pagina y el cajon se crea aqui, con el
+   contrato de foco entero (Tab atrapado, foco al abrir, vuelta al disparador). */
+const drawerLog = document.getElementById('demo-drawer-log');
+const drawerOpen = document.getElementById('demo-drawer-open');
+
+if (drawerOpen)
+{
+    const drawer = createDrawer({
+        id: 'demo-drawer',
+        title: 'RUTAS',
+        badge: '4 RUTAS',
+        onOpen: () => { if (drawerLog) drawerLog.textContent = 'abierto'; },
+        onClose: () => { if (drawerLog) drawerLog.textContent = 'cerrado'; },
+    });
+
+    // Contenido minimo: los avisos de transicion son del cajon, no del host, y
+    // aqui solo se enseña que el boton de cerrar tambien esta.
+    const line = document.createElement('p');
+    line.style.padding = '16px';
+    line.textContent = 'Contenido del cajon. Prueba el Tab: el foco no sale de aqui '
+        + 'mientras esta abierto, y al cerrar vuelve al boton que lo abrio.';
+    drawer.body.appendChild(line);
+
+    drawerOpen.addEventListener('click', () => drawer.toggle());
+}
+

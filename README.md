@@ -19,13 +19,46 @@ Para evitar duplicacion de archivos, desincronizaciones accidentales o sobreescr
 D:desarrollosABDSynthsABDSharedAssets+-- brands/       <- Logotipos vectoriales SVG de fabricantes
 +-- models/       <- Renders e imagenes (WebP / PNG / SVG) de sintetizadores
 +-- icons/        <- Iconografia vectorial monocromatica (currentColor)
-+-- contracts/    <- Contratos JSON: hardware Y tablas de modulacion
++-- contracts/    <- Contratos JSON: hardware, tablas de modulacion Y catalogos
+                    de patch GENERADOS desde el motor en C++
 +-- styles/       <- Sistema de diseno, tokens CSS globales, temas y componentes
 +-- components/   <- Modulos JS reutilizables (wheel.js, ...)
 +-- assets/       <- Assets binarios compartidos (bender.png, ...)
 +-- demo/         <- Demo interactiva para QA visual de componentes
 +-- docs/         <- Guias oficiales de integracion, estilos e iconografia
 ```
+
+### Catalogo de patches del S950 (GENERADO, no escrito a mano)
+
+`contracts/s950_patch_fields.json` es una cosa distinta a los contratos de
+arriba, y la distincion es lo que hay que tener clara: **este no se escribe, se
+genera**. Sale de `ABDSharedCode/SynthCore/S950PatchFields.h`, que es la tabla
+que gobierna el importador de patches y los tests en C++.
+
+| | |
+|---|---|
+| De donde sale | `pnpm generate:s950-contract` |
+| Verificar sin escribir | `pnpm check:s950-contract` (sale 1 si esta desfasado, para el CI) |
+| Que trae | 38 campos de keygroup + 18 trims de Perform + las 11 salidas |
+| Quien lo consume | `components/s950PatchFields.js`, que lo indexa |
+
+El problema que resuelve es de los que no se ven: un panel que escribe los
+nombres y los rangos a mano tiene **dos copias**, y las copias se separan sin
+ruido. Alguien anade un campo al motor, el panel sigue enseñando 38, y el
+desfase aparece el dia que un patch importado suena raro. Con el JSON
+generado, panel y motor no pueden discrepar sobre el mismo byte: si discrepan,
+es que el generador no se ha corrido, y `check:s950-contract` lo dice.
+
+**El parser no se traga un fallo en silencio.** Dos cortes explicitos, los dos
+copiados del generador de los contratos de modulacion: si la tabla sale VACIA
+—el parser ha dejado de entender el codigo— no se escribe nada y el contrato
+commiteado se queda como estaba; y si el numero de filas no es el que dicen los
+tests de C++, el script avisa en vez de generar un contrato con 39 campos.
+
+Un detalle que se decidio aqui y no en el dato: los nombres de salida se
+guardan **crudos** (`ALL`, `MONO1`), y la tipografia la pone
+`formatS950Name()`. Un contrato que maqueta se queda viejo el dia que el panel
+cambie su estilo, y entonces el desfase parece del panel cuando es del dato.
 
 ### Contratos de matriz de modulacion
 
@@ -89,7 +122,7 @@ en `<html>` o `<body>`, persiste opcionalmente y el fondo tintable (`--abd-bg-ti
 tema solo. Principio: un synth define SOLO tokens de color y elige tipos de elemento; lo demas
 (widgets, skins de forma, mecanismos) es universal en este paquete.
 
-### Componentes (10 archivos)
+### Componentes (11 archivos)
 | Componente | Archivo | Contenido |
 |---|---|---|
 | Panels | components/panels.css | .chassis, .panel, .module, .module-header |
@@ -97,6 +130,7 @@ tema solo. Principio: un synth define SOLO tokens de color y elige tipos de elem
 | Controls | components/controls.css | .abd-select, .abd-slider, .param-val |
 | Navbar | components/navbar.css | .navbar, .mode-selector, .mode-tab |
 | LCD | components/lcd.css | .lcd-container, .lcd-line-1, .lcd-nav-btn |
+| Envelope | components/envelope.css | Curva ADSR y su aguja (.abd-envpad, .abd-envpad__line, __area, __needle, __handle, __values, __caption, __stage) |
 | Scope | components/scope.css | ABDScope display (especifico) |
 | Keyboard | components/keyboard.css | Piano keyboard (especifico) |
 | Wheels | components/wheels.css | Ruedas PITCH/MOD filmstrip (reutilizable, .kbd-wheel-wrapper) |
@@ -108,6 +142,11 @@ tema solo. Principio: un synth define SOLO tokens de color y elige tipos de elem
 | Modulo | Export | Descripcion |
 |---|---|---|
 | components/wheel.js | `Wheel`, `createWheel(opts)` | Rueda filmstrip (bender.png u otro sprite). opts: `type` ('pitch'/'mod'), `spriteUrl`, `frameWidth/Height`, `totalFrames`, `initialFrame`, `minValue/maxValue`, `onChange(val)`, `container`, `label`, `valueFormatter`. `renderInto(el)`, `destroy()`. |
+| components/envelopePad.js | `EnvelopePad` | Editor ADSR con tres asas arrastrables (la central mueve decay y sustain a la vez). Mismo contrato de familia que `Knob`/`XYPad`: `setValue`/`getValue`/`destroy`/`onChange`/`onDragStart`/`onDragEnd`, y `editable:false` lo convierte en vista. |
+| components/envelopeCurve.js | `createEnvelopeCurve`, `envelopePoints`, `envelopeLinePath`, `envelopeAreaPath`, `envelopeNeedlePath`, `ENVELOPE_SEGMENTS`, `ENVELOPE_VIEWBOX`, `DEFAULT_ENVELOPE`, `NEEDLE_FLOOR` | La geometria pura y la vista de fabrica, **sin asas**: sirve para pintar la curva de solo lectura (la del cajon) y para testear la geometria sin DOM. |
+
+`envelopeGestures.js` (el gesto) NO se exporta por el barrel a proposito: lo consume el pad y
+nadie mas. Si alguna vez hace falta, se exporta con el resto.
 
 ---
 
@@ -122,6 +161,7 @@ tema solo. Principio: un synth define SOLO tokens de color y elige tipos de elem
 @import './shared/components/lcd.css';
 @import './shared/components/wheels.css';
 @import './shared/components/kbd-buttons.css';
+@import './shared/components/envelope.css';
 ```
 
 ```js
@@ -165,8 +205,15 @@ Ver `docs/INTEGRATION_GUIDE.md` §5 bis.
 
 Para visualizar los componentes, abre demo/demo.html en un navegador.
 Incluye selector de temas interactivo, todos los componentes documentados y la
-familia JS de controles (Knob/Slider/Toggle/Select/Segmented/XYPad con skins,
-sección 8).
+familia JS de controles (Knob/Slider/Toggle/Select/Segmented/XYPad/**EnvelopePad**
+con skins, sección 8) más los instrumentos que no caben ahí (**EffectLEDButton,
+PeakLED, SevenSegmentDisplay, SilverFilmstripKnob, Wheel, TapeEchoVisual,
+ModMatrix y el cajón**, sección 9).
+
+`FilmstripFader` no está en la demo a propósito: exige un sprite de tira
+(`ST_Fader_*.png`) que vive en el repo del MS-2000, no en este. Por lo mismo, los
+sliders con skin `ms2000` piden ese sprite y salen vacíos aquí: es un 404
+preexistente, no una rotura.
 
 ```cmd
 npm run demo        # sirve la raíz del paquete en http://localhost:5199

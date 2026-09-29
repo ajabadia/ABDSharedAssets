@@ -136,6 +136,46 @@ Nota (2026-09-05): los modulos (scope, keyboard) ya NO embeben paletas por tema 
 - .lcd-line-2: Segunda linea (subtitulo/pequena)
 - .lcd-nav-btn: Boton de navegacion LCD
 
+### 4.6b Knob bipolar (widgets.css)
+
+El knob de la familia acepta `bipolar: true`, y entonces el arco se llena desde el
+centro del recorrido en vez de desde el extremo izquierdo.
+
+- `.abd-knob__rest`: la marca del reposo, el punto que dice donde esta el cero. Solo
+  existe en el DOM cuando el mando es bipolar (la skin `vector` la pinta), asi que no
+  hay ninguna regla que la esconda. Va en el hueco entre la punta del puntero y el borde
+  interior del arco: encima del arco desapareceria justo en el valor que la hace util.
+
+El wrapper lleva `data-bipolar="true|false"` para que un tema o una skin propia (que no
+sean la `vector`) puedan enterarse sin tener que preguntar al control.
+
+Un knob bipolar **sigue siendo 0..1**: el puntero, el `aria-valuenow` y el gesto no
+cambian. Lo que cambia es de donde crece el relleno. El `format` que lo muestre con
+signo es del host, que es quien sabe el rango real.
+
+### 4.6 Envelope (envelope.css)
+
+La curva ADSR y su aguja. La misma hoja sirve para el **control** (con asas) y para la
+**vista** de solo lectura, por eso las reglas del `svg` son de descendiente y no de clase:
+quien las monte no necesita saber en que modo esta.
+
+- .abd-envpad: contenedor del editor
+- .abd-envpad--view: la variante de solo lectura (sin asas, sin captura)
+- .abd-envpad__stage: el lienzo donde caen las coordenadas del gesto
+- .abd-envpad__line / __area: el trazo y su relleno
+- .abd-envpad__needle: la aguja de nivel (la que lee el needle-probe de NEURONiK)
+- .abd-envpad__handle: las tres asas arrastrables
+- .abd-envpad__values: la lectura de los cuatro tramos
+- .abd-envpad__caption: el titulo de la curva
+
+Dos cosas que el host tiene que respetar, y que se midieron:
+
+- **El caption se monta siempre**, aunque este vacio. Un `span` sin texto mide 0, pero el
+  `gap` de su contenedor flex-column no; si el consumidor lo quita "porque no tiene texto",
+  el alto del `svg` baja 2 px y la referencia visual se aparta.
+- **La vista se pinta en unidades reales**, no normalizadas: el host que pinte con 0..1
+  dibujara una forma distinta sin que nada falle.
+
 ---
 
 ## 4b. Fondo tintable por tema (backgrounds.css)
@@ -197,6 +237,10 @@ dist; la variante `--full` sigue disponible como asset externo, no embebido.
 @import './shared/themes/ms2000.css';
 @import './shared/components/panels.css';
 @import './shared/components/buttons.css';
+
+/* Si tu synth tiene envolventes, la hoja va DESPUÉS de la del tema: el
+   componente se lleva el color, el tema solo pone los tokens. */
+@import './shared/components/envelope.css';
 
 ### Opcion C: Custom host tokens
 @import './shared/tokens.css';

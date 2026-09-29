@@ -39,6 +39,10 @@
       ],
       "description": "De dónde sale la tabla. 'hardware': los índices son índices de BYTE de un dispositivo emulado y su orden es el del manual — no se puede reordenar sin romper la compatibilidad de patches. 'design': el synth es propio y su tabla es el formato de preset; también se appendea, porque los presets guardados guardan el índice."
     },
+    "replacesNote": {
+      "type": "string",
+      "description": "Explica, en el propio contrato, la decisión de qué destinos `replaces` y cuáles no, cuando esa decisión no se deduce de la tabla. Es OPCIONAL a proposito: un contrato donde `replaces` es uniforme no tiene nada que explicar. Pero en cuanto hay destinos `perNote` que suman encima de un factor con neutro, la tabla sola dice «esto es distinto de aquello» sin decir POR QUE, y esa es la clase de decisión que se vuelve a discutir cada seis meses con el mismo resultado. ESTA era justo esa nota, y estaba en el contrato de NEURONiK desde el 2026-09-29 sin que el esquema la declarara, de modo que `additionalProperties: false` la rechazaba. Un campo que el esquema no conoce no es un campo: es un comentario que se pierde en la primera pasada de formato."
+    },
     "byteRange": {
       "type": "object",
       "description": "Rango del byte que la trama reserva a la matriz, si esta tabla corresponde a un byte real (authority: 'hardware').",

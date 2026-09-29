@@ -41,3 +41,4 @@
 @import './components/scope.css';
 @import './components/keyboard.css';
 @import './components/fx.css';   /* modulos de efecto del rack, temas por familia */
+@import './components/envelope.css';  /* EnvelopePad: curva ADSR compartida */

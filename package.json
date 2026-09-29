@@ -34,7 +34,9 @@
     "audit:barrel": "node tests/audit/barrel.js",
     "smoke:a11y": "node smoke/a11y-smoke.mjs",
     "generate:mod-contracts": "python scripts/generate_modulation_contracts.py",
-    "check:mod-contracts": "python scripts/generate_modulation_contracts.py --check"
+    "generate:s950-contract": "python scripts/generate_s950_patch_contract.py",
+    "check:mod-contracts": "python scripts/generate_modulation_contracts.py --check",
+    "check:s950-contract": "python scripts/generate_s950_patch_contract.py --check"
   },
   "devDependencies": {
     "vite": "^5.4.0",

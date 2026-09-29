@@ -26,11 +26,12 @@ import { describe, expect, it } from 'vitest';
 import * as family from '../components/index.js';
 
 import {
-    EffectLEDButton, FilmstripFader, Knob, ModMatrix, NumberBox, PeakLED, Segmented,
+    EffectLEDButton, EnvelopePad, FilmstripFader, Knob, ModMatrix, NumberBox, PeakLED,
+    Segmented,
     Select,
     SevenSegmentDisplay, SilverFilmstripKnob, Slider, TapeEchoVisual, ThemeSwitcher,
     Toggle, Wheel, XYPad,
-    createDrawer, createLcdPanel, createLcdScreen,
+    createDrawer, createEnvelopeCurve, createLcdPanel, createLcdScreen,
     enhanceRangeInputs, skinNames,
     WAVEFORM_GLYPHS, WAVEFORM_NAMES,
 } from '../components/index.js';
@@ -598,6 +599,36 @@ const CASES = [
     },
 
     {
+        covers: ['EnvelopePad'],
+        label: 'EnvelopePad editable (las tres asas son sliders)',
+        mount: (host) => new EnvelopePad(host, { label: 'ENV 1' }),
+    },
+    {
+        covers: ['EnvelopePad'],
+        label: 'EnvelopePad anonimo y en modo vista',
+        mount: (host) => new EnvelopePad(host, { editable: false }),
+    },
+    {
+        covers: ['EnvelopePad'],
+        label: 'EnvelopePad con aguja viva (setLevel)',
+        mount: (host) =>
+        {
+            const pad = new EnvelopePad(host, { label: 'ENV 2', showValues: false });
+            pad.setLevel(0.8);
+            return pad;
+        },
+    },
+    {
+        covers: ['createEnvelopeCurve'],
+        label: 'createEnvelopeCurve (la vista de fabrica, con caption)',
+        mount: (host) => createEnvelopeCurve({
+            controls: [
+                { id: 'envAttack' }, { id: 'envDecay' },
+                { id: 'envSustain' }, { id: 'envRelease' },
+            ],
+        }),
+    },
+    {
         covers: ['enhanceRangeInputs'],
         label: 'enhanceRangeInputs sobre un <input type=range>',
         mount: (host) =>
@@ -618,11 +649,12 @@ const CASES = [
 
 /** Exports del barrel que SÍ producen DOM y por eso tienen que estar auditados. */
 const AUDITED = new Set([
-    'EffectLEDButton', 'FilmstripFader', 'Knob', 'ModMatrix', 'NumberBox', 'PeakLED',
+    'EffectLEDButton', 'EnvelopePad', 'FilmstripFader', 'Knob', 'ModMatrix', 'NumberBox',
+    'PeakLED',
     'Segmented',
     'Select', 'SevenSegmentDisplay', 'SilverFilmstripKnob', 'Slider', 'TapeEchoVisual',
     'ThemeSwitcher', 'Toggle', 'Wheel', 'XYPad',
-    'createDrawer', 'createLcdPanel', 'createLcdScreen',
+    'createDrawer', 'createEnvelopeCurve', 'createLcdPanel', 'createLcdScreen',
     'enhanceRangeInputs',
 ]);
 
@@ -639,11 +671,21 @@ const NOT_CONTROLS = new Set([
     'announceMovement', 'announceSettled', 'createContinuousNotices', // avisos continuos: no pintan DOM
     'createOverlayFocus',             // contrato de foco/inert de overlays: no es un control
     'focusableWithin',                // util de tabulacion: no pinta DOM
+    // EnvelopePad: la geometria pura y sus constantes no pintan DOM (los
+    // pintan el pad y la vista de fabrica, que SI estan auditados arriba).
+    'DEFAULT_ENVELOPE', 'ENVELOPE_SEGMENTS', 'ENVELOPE_VIEWBOX', 'NEEDLE_FLOOR',
+    'envelopeAreaPath', 'envelopeLinePath', 'envelopeNeedlePath', 'envelopePoints',
     // Temas de efecto: pintan UNA custom property como texto de estilo, no un
     // control. El atributo y el nombre los pone el modulo (.fx-module) y el
     // anillo, no estas funciones, asi que no tienen rol ARIA que auditar.
     'FX_THEME_TOKENS', 'registerFxTheme', 'getFxTheme', 'getNeutralFxTheme',
     'fxThemeNames', 'fxThemeStyle', 'buildFxThemeIndex',
+    // El catalogo de patches del S950: indice de nombres y rangos. No pinta
+    // NADA por si solo —no crea un elemento, no pone un rol, no engancha un
+    // listener—: dice que hay que pintar y con que limites, y quien pinta es un
+    // control de verdad, que SI esta auditado. Igual que `buildFxThemeIndex`.
+    'buildS950Catalogue', 'formatS950Name', 'isS950Bipolar',
+    'S950_ENCODINGS', 'S950_GROUPS',
 ]);
 
 /* ---------------------------------------------------------------------------

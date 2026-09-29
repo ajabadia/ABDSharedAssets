@@ -16,9 +16,11 @@
 <link rel="stylesheet" href="../styles/components/buttons.css">
 <link rel="stylesheet" href="../styles/components/controls.css">
 <link rel="stylesheet" href="../styles/components/widgets.css">
+<link rel="stylesheet" href="../styles/components/envelope.css">
 <link rel="stylesheet" href="../styles/components/skins-junio.css">
 <link rel="stylesheet" href="../styles/components/backgrounds.css">
 <link rel="stylesheet" href="../styles/components/navbar.css">
+<link rel="stylesheet" href="../styles/components/wheels.css">
 <link rel="stylesheet" href="../components/lcd.css">
 
 <style>
@@ -303,7 +305,7 @@ body {
 
 <!-- ===== 8. JS CONTROL FAMILY (Knob / Slider / Toggle + skins) ===== -->
 <div class="demo-section">
-<h2>8. JS Control Family — Knob · Slider · Toggle · Select · XYPad</h2>
+<h2>8. JS Control Family — Knob · Slider · Toggle · Select · XYPad · EnvelopePad</h2>
 <p class="note">New shared components (components/). One contract, three swappable skins per synth: 'vector' (default), 'ms2000' (Korg vector), 'junio' (Roland photo sprites). Behaviour is skin-independent.</p>
 <div class="demo-row">
 <div class="demo-box" style="min-width: 320px;">
@@ -329,6 +331,23 @@ body {
 <div class="demo-box" style="min-width: 320px;">
 <div class="demo-label">XYPad — absolute 2D surface (click/drag, arrows/Page/Home/End)</div>
 <div style="display: flex; gap: 20px; flex-wrap: wrap;" id="demo-xypads"></div>
+</div>
+</div>
+<div class="demo-row">
+<div class="demo-box" style="min-width: 320px;">
+<div class="demo-label">Knob bipolar — el arco llena desde el CENTRO y una marca dice donde esta el cero</div>
+<div class="demo-controls-grid" id="demo-knobs-bipolar"></div>
+<div class="demo-label" id="demo-bipolar-log" style="margin-top: 8px;">—</div>
+</div>
+</div>
+<div class="demo-row">
+<div class="demo-box" style="min-width: 320px;">
+<div class="demo-label">EnvelopePad — ADSR con asas arrastrables (A en X · D+S en X/Y · R en X, aguja de nivel)</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap;" id="demo-envelopes"></div>
+</div>
+<div class="demo-box" style="min-width: 320px;">
+<div class="demo-label">EnvelopePad en modo VISTA (la curva que consumen los paneles, con aguja)</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap;" id="demo-envelopes-view"></div>
 </div>
 </div>
 <div class="demo-row">
@@ -411,6 +430,66 @@ body {
 <section class="demo-section">
   <h2>LCD universal (pantalla + máquina + D-pad)</h2>
   <div id="demo-lcd" style="max-width: 420px;"></div>
+</section>
+
+<!-- ===== 9. INSTRUMENTOS Y SUPERFICIES (lo que no cabe en la familia basica) ===== -->
+<section class="demo-section">
+<h2>9. Instrumentos — LED de efecto · pico · 7 segmentos · knob de presets · rueda · cinta · matriz · cajón</h2>
+<p class="note">Lo que exporta el barrel y <strong>no</strong> cabía en la sección 8. Todos con el
+mismo contrato (<code>setValue</code> silencioso, <code>destroy</code>, teclado, ARIA). El
+<code>FilmstripFader</code> queda fuera a propósito: exige un sprite de tira que este repo no
+trae, y apuntarlo con otro sprite sería enseñar una mentira.</p>
+
+<div class="demo-row" style="align-items: flex-start;">
+<div class="demo-box" style="min-width: 340px;">
+<div class="demo-label">EffectLEDButton — el botón del rack de fx (6 sprite sets + tiny + momentary)</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;" id="demo-led-buttons"></div>
+</div>
+<div class="demo-box" style="min-width: 240px;">
+<div class="demo-label">PeakLED — destello (trigger) y fijo (setState)</div>
+<div style="display: flex; gap: 18px; align-items: center;" id="demo-peak-leds"></div>
+</div>
+</div>
+
+<div class="demo-row" style="align-items: flex-start;">
+<div class="demo-box" style="min-width: 260px;">
+<div class="demo-label">SevenSegmentDisplay — 3 y 6 dígitos (bpm / número de parte)</div>
+<div style="display: flex; gap: 24px; align-items: center;" id="demo-seven-seg"></div>
+</div>
+<div class="demo-box" style="min-width: 300px;">
+<div class="demo-label">SilverFilmstripKnob — preset (12 posiciones) y normal (31)</div>
+<div style="display: flex; gap: 24px; align-items: flex-end;" id="demo-silver-knobs"></div>
+</div>
+</div>
+
+<div class="demo-row" style="align-items: flex-start;">
+<div class="demo-box" style="min-width: 300px;">
+<div class="demo-label">Wheel — PITCH (vuelve al centro al soltar) y MOD (se queda)</div>
+<div style="display: flex; gap: 28px; align-items: flex-start;" id="demo-wheels"></div>
+</div>
+<div class="demo-box" style="min-width: 260px;">
+<div class="demo-label">TapeEchoVisual — 3 cabezales + bobinas + barra de tempo (anima sola)</div>
+<div id="demo-tape"></div>
+</div>
+</div>
+
+<div class="demo-row" style="align-items: flex-start;">
+<div class="demo-box" style="min-width: 520px;">
+<div class="demo-label">ModMatrix — VISTA de las rutas, desde el contrato (<code>neuronik_modulation_matrix.json</code>)</div>
+<div class="demo-label" id="demo-mod-matrix-status">leyendo el contrato...</div>
+<div id="demo-mod-matrix"></div>
+</div>
+</div>
+
+<div class="demo-row" style="align-items: flex-start;">
+<div class="demo-box" style="min-width: 420px;">
+<div class="demo-label">createDrawer — el cajón lateral, con su contrato de foco (Tab no se escapa)</div>
+<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+  <button class="btn" id="demo-drawer-open" type="button">Abrir el cajón</button>
+  <span class="demo-label" id="demo-drawer-log">cerrado</span>
+</div>
+</div>
+</div>
 </section>
 
 <script type="module" src="./demo-controls.js"></script>

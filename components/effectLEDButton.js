@@ -11,6 +11,21 @@
  *   button.destroy();
  */
 /**
+ * El color que ve el host, y el color con el que se llaman los sprites.
+ *
+ * Los seis sets se nombran por como se ven en la maquina (`beige`,
+ * `patch-blue`), pero los ficheros de la foto se llaman por el color del
+ * sprite (`button_white_*`, `button_blue_*`). Los otros cuatro coinciden.
+ *
+ * Va ANTES del JSDoc de la clase, no entre el JSDoc y la clase: el audit exige
+ * que la firma documentada sea la que de verdad declara el modulo.
+ */
+const SPRITE_NAME = {
+    beige: 'white',
+    'patch-blue': 'blue',
+};
+
+/**
  * @param {HTMLElement|string} container
  * @param {object} options
  *   color      sprite set: orange | yellow | beige | patch-blue | grey | red,
@@ -49,6 +64,13 @@ export class EffectLEDButton {
     buildDom() {
         const { color, size } = this.options;
         const isTiny = size === 'tiny';
+        // El NOMBRE que ve el host y el NOMBRE del fichero no son lo mismo: los
+        // seis sets se llaman por su color en la maquina (beige, patch-blue) y
+        // los sprites por el color de la foto (white, blue). Sin el mapa de
+        // SPRITE_NAME, `beige` pedia `button_beige_off.png`, que no existe, y
+        // salia un boton vacio en silencio: el 404 no lo ve nadie en un test
+        // de jsdom. El resto de rutas usan el mismo helper.
+        const sprite = SPRITE_NAME[color] ?? color;
 
         this.button = document.createElement('button');
         this.button.className = `abd-effect-led-btn abd-effect-led-btn--${color} ${isTiny ? 'abd-effect-led-btn--tiny' : ''}`;
@@ -62,7 +84,7 @@ export class EffectLEDButton {
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: url('../../assets/junio/button_${color}_off.png');
+            background-image: url('../../assets/junio/button_${sprite}_off.png');
             background-repeat: no-repeat;
             background-size: contain;
             background-position: center;
@@ -134,8 +156,18 @@ export class EffectLEDButton {
 
     render() {
         const state = this.value ? 'on' : 'off';
-        this.button.style.backgroundImage = `url('../../assets/junio/button_${this.options.color}_${state}.png')`;
+        this.button.style.backgroundImage = `url('../../assets/junio/button_${this.#spriteName()}_${state}.png')`;
         this.button.setAttribute('data-active', this.value ? 'true' : 'false');
+    }
+
+    /**
+     * El nombre del sprite de ESTE boton: el del alias, no el que pidio el host.
+     * Vive en un sitio solo porque las tres rutas que pintan (al construir, al
+     * pulsar y al restaurar) tienen que pintar el mismo fichero: con el
+     * nombre a pelo, el boton nacia bien y se vaciaba en la primera pulsacion.
+     */
+    #spriteName() {
+        return SPRITE_NAME[this.options.color] ?? this.options.color;
     }
 
     /**
@@ -155,7 +187,7 @@ export class EffectLEDButton {
     setValueSilent(value) {
         this.value = Boolean(value);
         const state = this.value ? 'on' : 'off';
-        this.button.style.backgroundImage = `url('../../assets/junio/button_${this.options.color}_${state}.png')`;
+        this.button.style.backgroundImage = `url('../../assets/junio/button_${this.#spriteName()}_${state}.png')`;
         this.button.setAttribute('data-active', this.value ? 'true' : 'false');
     }
 

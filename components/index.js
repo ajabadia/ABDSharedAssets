@@ -24,6 +24,21 @@ export { ThemeSwitcher } from './themeSwitcher.js';
 export { computeFit, mountFitStage } from './fitStage.js';
 export { registerSkin, getSkin, applySkin, skinNames } from './skins/index.js';
 export { WAVEFORM_GLYPHS, WAVEFORM_NAMES, waveformName } from './waveforms.js';
+// El EnvelopePad (control editable), la VISTA de fabrica y la geometria
+// pura: el consumidor pinta curvas sin montar DOM. El gesto vive aparte
+// (envelopeGestures) y solo lo consume el pad: no es API del barrel.
+export {
+    DEFAULT_ENVELOPE,
+    ENVELOPE_SEGMENTS,
+    ENVELOPE_VIEWBOX,
+    NEEDLE_FLOOR,
+    createEnvelopeCurve,
+    envelopeAreaPath,
+    envelopeLinePath,
+    envelopeNeedlePath,
+    envelopePoints,
+} from './envelopeCurve.js';
+export { EnvelopePad } from './envelopePad.js';
 export { NumberBox } from './numberbox.js';
 export { createDrawer } from './drawer.js';
 // La matriz de modulacion NO es un control: no tiene parametro propio ni
@@ -34,6 +49,18 @@ export { createOverlayFocus, focusableWithin } from './overlayFocus.js';
 export { createLcdMachine, formatValue } from './lcdMachine.js';
 export { createLcdScreen } from './lcdScreen.js';
 export { createLcdPanel } from './lcdPanel.js';
+// El catalogo de patches del S950 tampoco es un control: es un INDICE de lo que
+// hay que pintar y con que rango, y lo mismo que modMatrix.js, vive aqui y no
+// en la familia de controles. El JSON que indexa se genera desde el C++ del
+// motor (scripts/generate_s950_patch_contract.py), asi que un panel y el motor
+// no pueden dejar de decir lo mismo del mismo byte.
+export {
+  buildS950Catalogue,
+  formatS950Name,
+  isS950Bipolar,
+  S950_ENCODINGS,
+  S950_GROUPS,
+} from './s950PatchFields.js';
 export { enhanceRangeInputs, destroyEnhancedRangeInputs } from '../utils/index.js';
 export { WAVE_ICONS, FILTER_ICONS } from './icons.js';
 export { SevenSegmentDisplay } from './sevenSegmentDisplay.js';

@@ -53,6 +53,17 @@
 /* dasharray/offset are set inline by knob.js from the value */
 .abd-knob__arc { stroke: var(--color-accent, #00c3ff); }
 
+/* The REST MARK of a bipolar knob: the dot that says where zero is, so a
+   centred parameter reads as a place and not as a guess. It only exists in the
+   DOM when the knob was born with `bipolar: true` (the vector skin), which is
+   why there is no rule to hide it. It sits in the gap between the pointer tip
+   and the inner edge of the arc, not on the arc itself: painted over the band
+   it would vanish the moment the arc reached zero. Muted text colour, because
+   it is a reference mark and not a value. */
+.abd-knob__rest {
+    fill: var(--color-text-muted, #7e9bb5);
+}
+
 /* Modulation ring (telemetry): double stroke like the native LookAndFeel —
    wide translucent halo under a thin solid arc. Colour is the theme's
    --color-mod-ring, falling back to the accent. */

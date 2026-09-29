@@ -228,14 +228,31 @@ describe('modulationMatrixContract — el contrato de la matriz de modulación',
   describe('la política de reemplazo de ABDNeural', () => {
     const contract = readContract('neuronik');
 
-    it('los destinos que reemplazan son los que el switchDeclaration hacía', () => {
-      // Estos son exactamente los casos del switch de NeuronikEngine que
-      // preguntan por la fuente y, si es ENV, reemplazan en vez de sumar. La
-      // Fase 4 no puede perderlos al sacar el switch a la tabla.
+    it('solo reemplazan los dos destinos cuyo parámetro ES la señal', () => {
+      // ESTA LISTA CAMBIO EL 2026-09-29, y no por tastes. Antes eran siete
+      // (1, 10 y los cinco 12..16) porque asi los sacaba el switch de
+      // NeuronikEngine; ahora son dos. La razon la tiene el motor, y son tres
+      // cosas que se pueden comprobar sin el oido:
+      //
+      //   - `IVoice.h` declara los cinco como ACUMULADORES A CERO y los llama
+      //     aditivos, y el sustain lleva "clamp 0..1 en la voz", que solo
+      //     significa algo si se suma a un factor con neutro.
+      //   - `resetModulations()` los pone a cero ANTES de cada aplicacion, asi
+      //     que sumar y asignar dan EL MISMO numero, siempre. Medido: los 41
+      //     hashes de ModulationParityDump no se mueven ni un ULP. Por eso no
+      //     habia nada que decidir por el oido: es una etiqueta, no un sonido.
+      //   - el neutro de 1.0, que es lo que hace que "reemplazar" sea distinto
+      //     de "sumar", solo lo tienen el 1 (ENV 1 -> VCA) y el 10 (ENV 2 ->
+      //     cutoff), donde la envolvente ES la senal y no una profundidad.
+      //
+      // QUIEN LO MANTIE VERDE: NEURONiK_ModulationContractTest, en ABDNeural,
+      // compara estas mismas filas contra la tabla de C++ del motor. Aqui no se
+      // puede, porque este repo no ve el motor; por eso esta lista se escribe
+      // y el otro test la confirma.
       const replacing = contract.destinations
         .map((d, i) => (d.replaces ? i : null))
         .filter((i) => i !== null);
-      expect(replacing).toEqual([1, 10, 12, 13, 14, 15, 16]);
+      expect(replacing).toEqual([1, 10]);
     });
 
     it('un destino que reemplaza es siempre por voz', () => {
@@ -248,12 +265,54 @@ describe('modulationMatrixContract — el contrato de la matriz de modulación',
       }
     });
 
-    it('el destino 12 no conduce parámetro pero sí modula', () => {
+    it('el destino 12 no conduce parámetro pero sí modula encima', () => {
       // "Filter Env Amt": el parámetro se retiró y su PROFUNDIDAD vive en la
-      // ruta. parameterId null con replaces true es un caso válido y real.
+      // ruta. parameterId null NO es un destino inerte: es un destino cuya
+      // señal no es un parámetro del APVTS sino el factor de la ruta, y la
+      // envolvente se le SUMA encima.
       const twelve = contract.destinations[12];
       expect(twelve.parameterId).toBeNull();
-      expect(twelve.replaces).toBe(true);
+      expect(twelve.replaces, 'el 12 acumula sobre el factor, no lo pisa').toBe(false);
+      expect(twelve.perNote).toBe(true);
+    });
+
+    it('los cinco que acumulan siguen siendo por voz: eso NO se cambió', () => {
+      // Lo que se decidió el 29-09 fue `replaces`, no `perNote`. Una envolvente
+      // es por voz porque es una envolvente, y eso no se toca. Si alguien lo
+      // pasara a global creyendo que corrige lo anterior, este rojo lo dice.
+      const acumuladores = contract.destinations
+        .map((d, i) => (d.perNote && !d.replaces ? i : null))
+        .filter((i) => i !== null);
+      expect(acumuladores).toEqual([12, 13, 14, 15, 16]);
+      for (const index of acumuladores) {
+        expect(contract.destinations[index].perNote, `destino ${index}`).toBe(true);
+      }
+    });
+
+    it('una tabla que reparte `replaces` TIENE que decir por qué', () => {
+      // LA NOTA ATADA AL DATO. `replacesNote` no se declara en el esquema por
+      // cortesia: se exige cuando existe al menos un destino que suma sobre un
+      // factor con neutro, porque en ese caso la tabla sola dice "esto es
+      // distinto de aquello" sin decir por que, y esa es la clase de decision
+      // que se vuelve a discutir cada seis meses con el mismo resultado.
+      // Atarla al dato es lo que impide que la nota se quede huerfana: el dia
+      // que se cambien los flags y ya no haga falta, este test lo dice; y el
+      // dia que vuelvan a hacer falta sin nota, tambien.
+      const hayQuienAcumule = contract.destinations.some((d) => d.perNote && !d.replaces);
+
+      expect(hayQuienAcumule, 'si nadie acumula, esta nota sobra y habria que borrarla').toBe(true);
+      expect(contract.replacesNote, 'con acumuladores a cero hace falta la nota').toBeTruthy();
+
+      // Y el inverso, que es lo que hace la regla general: una tabla donde
+      // `replaces` es uniforme no tiene nada que explicar y no carga con una
+      // nota que ya no explica nada.
+      for (const id of ['abdeep', 'abdms2000']) {
+        const otra = readContract(id);
+        const acumula = otra.destinations.some((d) => d.perNote && !d.replaces);
+        if (!acumula) {
+          expect(otra.replacesNote, `${id} no acumula: su replacesNote sobra`).toBeUndefined();
+        }
+      }
     });
   });
 });

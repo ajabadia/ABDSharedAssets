@@ -116,9 +116,14 @@ describe('Knob modulation ring — vector skin', () =>
 
         expect(Math.abs(backSpan - (67.5 / 360) * C)).toBeLessThan(1.0e-9);
         expect(backRest).toBeCloseTo(C, 6);
-        // begin = value - |mod| in degrees = 0.25*270 - 0.25*270 = 0 here, so
-        // offset equals the full circumference (arc begins at sweep start).
-        expect(backOffset).toBeCloseTo(C, 6);
+        // begin = value - |mod| en grados = 0.25*270 - 0.25*270 = 0 aqui, asi
+        // que el anillo arranca en el inicio del recorrido y el offset es 0.
+        //
+        // El offset va en NEGATIVO a proposito: es lo que desplaza el trazo
+        // HACIA DELANTE. Con el signo contrario (la circunferencia menos el
+        // angulo) el anillo se pintaba en el lado equivocado del arco de valor,
+        // y no encima. Medido en el navegador, no deducido.
+        expect(backOffset).toBeCloseTo(0, 6);
 
         knob.destroy();
         container.remove();

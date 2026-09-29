@@ -86,17 +86,20 @@ registerSkin('vector', {
         const size = control.options?.size ?? 64;
         const sweep = 270;
         const start = -135;   // classic knob sweep: -135..+135 degrees
+        // El cero de un mando bipolar es el CENTRO del recorrido, y el arco se
+        // llena desde ahi. El puntero NO cambia de sitio: bipolar es como se
+        // PINTA el relleno, no donde esta el mando.
+        const bipolar = control.options?.bipolar === true;
+        const origin = bipolar ? 0.5 : 0;
 
         root.innerHTML = `
             <svg class="abd-knob__svg" viewBox="0 0 50 50" width="${size}" height="${size}"
                  aria-hidden="true">
                 <circle class="abd-knob__track" cx="25" cy="25" r="20.5"></circle>
-                <circle class="abd-knob__arc" cx="25" cy="25" r="20.5"
-                        transform="rotate(135 25 25)"></circle>
-                <circle class="abd-knob__mod-halo" cx="25" cy="25" r="20.5"
-                        transform="rotate(135 25 25)"></circle>
-                <circle class="abd-knob__mod-ring" cx="25" cy="25" r="20.5"
-                        transform="rotate(135 25 25)"></circle>
+                <circle class="abd-knob__arc" cx="25" cy="25" r="20.5"></circle>
+                <circle class="abd-knob__mod-halo" cx="25" cy="25" r="20.5"></circle>
+                <circle class="abd-knob__mod-ring" cx="25" cy="25" r="20.5"></circle>
+                ${bipolar ? '<circle class="abd-knob__rest" cx="25" cy="10" r="1.3"></circle>' : ''}
                 <line class="abd-knob__pointer" x1="25" y1="25" x2="25" y2="12"></line>
             </svg>`;
 
@@ -106,9 +109,28 @@ registerSkin('vector', {
         const modRing = root.querySelector('.abd-knob__mod-ring');
         const circumference = 2 * Math.PI * 20.5;
 
-        // Only 270/360 of the circle is the interactive sweep.
-        arc.style.strokeDasharray = `${(sweep / 360) * circumference} ${circumference}`;
-        arc.style.transformOrigin = '25px 25px';
+        /*
+         * LA VENTANA DE 270 GRADOS, en CSS y no en el atributo `transform`.
+         *
+         * Estaba como atributo (`transform="rotate(135 25 25)"`) y ademas se
+         * ponia `style.transformOrigin` en el mismo elemento. Poner CUALQUIER
+         * propiedad CSS de transform sobre un elemento SVG hace que la propiedad
+         * `transform` CSS mande sobre el atributo, asi que el atributo se
+         * ignoraba: el arco de valor se dibujaba en su sitio pero girado, y de
+         * hecho medido en el navegador no pintaba nada (0 pixeles). Ahora la
+         * rotacion va por CSS, con su origen, como el puntero.
+         */
+        for (const el of [arc, modHalo, modRing])
+        {
+            // El circulo de SVG arranca en las tres en punto y avanza en sentido
+            // horario, asi que la ventana de 270 grados tiene que GIRARSE 135
+            // grados para empezar a las siete y media y dejar el hueco de 90
+            // ABAJO, que es donde el ojo ya sabe que no hay mando. Es el mismo
+            // 135 que llevaba antes el atributo, con el signo cambiado porque
+            // ahora la rotacion se aplica en el CSS.
+            el.style.transform = `rotate(${-start}deg)`;
+            el.style.transformOrigin = '25px 25px';
+        }
 
         host.appendChild(root);
 
@@ -117,9 +139,38 @@ registerSkin('vector', {
             update ()
             {
                 const v = typeof control.getValue === 'function' ? control.getValue() : 0;
-                const len = (v * sweep / 360) * circumference;
+                /*
+                 * EL RELLENO, y por que las dos lineas van juntas.
+                 *
+                 * El arco se pinta con UN trazo cuyo largo es lo encendido y
+                 * cuyo angulo de arranque es el origen: el `dasharray` lleva la
+                 * LONGITUD y el `dashoffset` lleva el ARRANQUE (en negativo, que
+                 * es lo que desplaza el trazo hacia delante).
+                 *
+                 * Antes el `dasharray` era fijo (los 270 grados de la ventana) y
+                 * solo se movia el `dashoffset`, y eso NO puede acortar un
+                 * trazo: solo lo desplaza. Medido en el navegador, el arco salia
+                 * de 0 grados con el valor a 0.25, de 50 con 0.5 y de 180 con
+                 * 1 (en vez de 0 / 67.5 / 135 / 202.5 / 270), y con valores
+                 * bajos la luz caia en el hueco de abajo, que es justo donde no
+                 * hay mando. El puntero siempre estuvo bien: lo que estaba mal
+                 * era el relleno.
+                 *
+                 * En unipolar el origen es el extremo izquierdo; en bipolar, el
+                 * CENTRE, y entonces el mismo tramo se dibuja hacia los dos
+                 * lados segun la senal.
+                 */
+                const from = Math.min(v, origin) * sweep;
+                const len = Math.abs(v - origin) * sweep;
 
-                arc.style.strokeDashoffset = `${circumference - len}`;
+                // Un trazo de largo cero con `stroke-linecap: round` NO es
+                // invisible: el navegador pinta el remate, un punto. En unipolar
+                // cae en el inicio del recorrido y en bipolar EN EL CENTRO, justo
+                // donde esta la marca del cero, y ahi un punto se lee como un
+                // valor. Sin relleno, sin arco.
+                arc.style.display = len < 1.0e-6 ? 'none' : '';
+                arc.style.strokeDasharray = `${(len / 360) * circumference} ${circumference}`;
+                arc.style.strokeDashoffset = `${-(from / 360) * circumference}`;
                 pointer.style.transform = `rotate(${start + v * sweep}deg)`;
                 pointer.style.transformOrigin = '25px 25px';
 
@@ -128,7 +179,7 @@ registerSkin('vector', {
                 // native LookAndFeel strokes; halo first, ring on top.
                 const mod = typeof control.getModulation === 'function'
                     ? control.getModulation() : 0;
-                const from = v * sweep;
+                const modFrom = v * sweep;
                 const to = Math.min(1, Math.max(-1, mod)) * sweep;
 
                 if (Math.abs(to) < 1.0e-3)
@@ -138,14 +189,17 @@ registerSkin('vector', {
                 }
                 else
                 {
-                    const begin = Math.min(from, from + to);
+                    const begin = Math.min(modFrom, modFrom + to);
                     const span = Math.abs(to);
 
                     for (const el of [modHalo, modRing])
                     {
                         el.style.display = '';
+                        // Misma receta que el arco de valor, y por el MISMO
+                        // motivo: si el anillo se pintara con la convencion
+                        // contraria, caeria al lado del arco en vez de encima.
                         el.style.strokeDasharray = `${(span / 360) * circumference} ${circumference}`;
-                        el.style.strokeDashoffset = `${circumference - (begin / 360) * circumference}`;
+                        el.style.strokeDashoffset = `${-(begin / 360) * circumference}`;
                     }
                 }
             },
