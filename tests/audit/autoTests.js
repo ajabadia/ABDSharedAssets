@@ -10,12 +10,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   arityMismatches,
+  baseChain,
+  baseClassName,
+  baseSources,
   classMembers,
   comparedExampleArguments,
   constructedWith,
   docBlocks,
   docParamTypes,
   documentedMembers,
+  contractText,
   documentedParamTypes,
   documentsOptionsObject,
   entryKeyIsRead,
@@ -26,12 +30,15 @@ import {
   exportedFunctions,
   inertOptions,
   memberDeclarations,
+  membersWithBases,
   mismatchedExampleAccesses,
   missingExampleMethods,
   mistypedExampleArguments,
   moduleExporting,
+  MODULES,
   normaliseEol,
   offListValues,
+  docBlockBefore,
   optionReads,
   readableType,
   staleUsageOptions,
@@ -1308,5 +1315,102 @@ describe('auto-tests de las funciones exportadas', () => {
 
     expect(exportedFunctions(source).map(({ name }) => name)).toEqual(['carga']);
     expect(undocumentedExports(source)).toEqual(['carga']);
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * La HERENCIA: cuando un control extiende a otro, de quien es el codigo
+ * ------------------------------------------------------------------------- */
+
+describe('auto-tests de la herencia', () => {
+  const control = (label) => MODULES.find((modulo) => modulo.label === label);
+
+  it('la cadena de bases resuelve el `extends` y se corta con un bucle', () => {
+    expect(baseClassName('export class Hija extends Base { }', 'Hija')).toBe('Base');
+    expect(baseClassName('export class Sola { }', 'Sola')).toBeNull();
+    expect(baseClassName('export class Otra { }', 'Hija')).toBeNull();
+
+    // Dos clases que se extienden entre si: la cadena se corta en vez de dar
+    // vueltas, que aqui seria un test colgado y no un fallo.
+    const a = 'export class A extends B { }';
+    const b = 'export class B extends A { }';
+    const modules = [
+      { label: 'a.js', source: a },
+      { label: 'b.js', source: b },
+    ];
+
+    expect(baseChain(a, 'A', modules).map(({ nombre }) => nombre)).toEqual(['B']);
+
+    // Y una base que no esta en el inventario no inventa nada.
+    expect(baseChain('export class Cuda extends Missing { }', 'Cuda', modules)).toEqual([]);
+  });
+
+  it('el bloque de la clase se encuentra con `extends` en medio, y sin él sigue habiendo peaje', () => {
+    const source = '/**\n * U.\n * @param {object} options\n */\n'
+      + 'export class Hija extends Base\n{\n  constructor (container, options) { }\n}\n';
+    const constructor = source.indexOf('constructor');
+
+    expect(docBlockBefore(source, constructor, true)).toContain('@param');
+
+    // El peaje sigue siendo un peaje: un hueco que no es la declaracion de la
+    // clase no vale, o un miembro se quedaria con el JSDoc del de antes.
+    const conRuido = source.replace('export class Hija extends Base', 'const otro = 1;\nexport class Hija extends Base');
+
+    expect(docBlockBefore(conRuido, conRuido.indexOf('constructor'), true)).toBeNull();
+  });
+
+  it('el contrato de un modulo es su fichero y el de sus bases, y el de un modulo sin clase es su fichero', () => {
+    const segmentado = control('segmented.js').source;
+
+    expect(baseSources(segmentado, MODULES).map((texto) => texto.includes('export class IndexControl')))
+      .toEqual([true]);
+    expect(contractText(segmentado, MODULES).length).toBeGreaterThan(segmentado.length);
+
+    // Un modulo que no exporta una clase no hereda de nadie: su contrato es el.
+    const suelto = 'export function panel(el) { return el; }\n';
+
+    expect(baseSources(suelto, MODULES)).toEqual([]);
+    expect(contractText(suelto, MODULES)).toBe(suelto);
+  });
+
+  it('la regla 3 cuenta la clave que se lee en la base y delata la que no se lee en ninguna parte', () => {
+    // El caso real: `disabled` la lee el veto de IndexControl, no el control.
+    expect(unreadEntryKeys(control('select.js').source)).toEqual([]);
+
+    // Y el contrario: una clave que NADIE de la familia lee se delata igual.
+    const original = control('select.js').source;
+    const literal = original.indexOf('return {', original.indexOf('function normalizeEntry'));
+    const sinLeer = original.slice(0, literal + 8)
+      + '\n        zzzGhostKey: true,'
+      + original.slice(literal + 8);
+
+    expect(unreadEntryKeys(sinLeer)).toEqual(['zzzGhostKey']);
+  });
+
+  it('la regla 6 da por usada la opción que la base consume, y delata la que no consume nadie', () => {
+    // El caso real: `skin` se pasa a `super` y lo aplica la base.
+    expect(inertOptions(control('segmented.js').source)).toEqual([]);
+
+    // Y el contrario: una opción que se guarda y no la usa ni el control ni la
+    // base sigue siendo inerte, que es lo que la regla tenía que cazar.
+    const huerfana = control('segmented.js').source.replace(
+      '    constructor (container, options = {})',
+      '    constructor (container, options = {}) { this.zzzGhost = options.zzzGhost; }\n    otro (options) {');
+
+    expect(inertOptions(huerfana)).toContain('zzzGhost');
+  });
+
+  it('la regla 8 acepta el método que solo hereda y delata el fantasma', () => {
+    const segmentado = control('segmented.js').source;
+    const conHeredados = membersWithBases(segmentado, 'Segmented', MODULES);
+
+    expect(conHeredados.has('destroy')).toBe(true);      // vive en IndexControl
+    expect(conHeredados.has('render')).toBe(true);        // y este en el control
+    expect(conHeredados.has('zzzGhost')).toBe(false);
+
+    // El fantasma se delata igual: heredar no perdona un metodo que no existe.
+    const conFantasma = segmentado.replace(' *   seg.destroy();', ' *   seg.zzzGhost();\n *   seg.destroy();');
+
+    expect(missingExampleMethods(conFantasma, MODULES)).toEqual(['Segmented.zzzGhost()']);
   });
 });

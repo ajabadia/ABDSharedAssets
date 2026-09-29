@@ -67,6 +67,7 @@ export {
 export {
   OPTION_NAMES,
   codeOnly,
+  docBlockBefore,
   docBlocks,
   docParamTypes,
   documentedMembers,
@@ -99,6 +100,10 @@ export {
 
 /** members */
 export {
+  baseChain,
+  baseClassName,
+  baseSources,
+  contractText,
   memberDeclarations,
 } from './members.js';
 
@@ -198,6 +203,7 @@ export {
 /** la regla missingExampleMethods */
 export {
   classMembers,
+  membersWithBases,
   missingExampleMethods,
 } from './rules/missingExampleMethods.js';
 

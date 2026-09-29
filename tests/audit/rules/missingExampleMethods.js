@@ -14,6 +14,7 @@ import {
 
 import {
   CLASS_MEMBER,
+  baseChain,
   classBody,
 } from '../members.js';
 
@@ -64,6 +65,22 @@ export function classMembers(source, className) {
   return members;
 }
 
+/**
+ * Los miembros que la clase DECLARA, y los que HEREDA: los de sus clases base,
+ * de la mas cercana a la mas lejana. Un metodo heredado es tan del receptor como
+ * uno declarado, y sin esta suma un ejemplo que llama a `seg.destroy()` —que
+ * vive en `IndexControl`— pareceria llamar a un metodo que la clase no tiene.
+ */
+export function membersWithBases (source, className, modules = MODULES) {
+  const members = new Set(classMembers(source, className));
+
+  for (const { nombre, modulo } of baseChain(source, className, modules))
+    for (const name of classMembers(modulo.source, nombre))
+      members.add(name);
+
+  return members;
+}
+
 /** Metodos que un ejemplo promete y la clase construida NO declara. */
 export function missingExampleMethods(source, modules = MODULES) {
   const missing = new Set();
@@ -74,7 +91,7 @@ export function missingExampleMethods(source, modules = MODULES) {
     if (target == null)
       continue;                        // clase desconocida: no hay cuerpo que mirar
 
-    if (!classMembers(target.source, className).has(method))
+    if (!membersWithBases(target.source, className, modules).has(method))
       missing.add(`${className}.${method}()`);
   }
 

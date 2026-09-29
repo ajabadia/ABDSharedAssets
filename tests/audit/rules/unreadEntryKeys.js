@@ -7,6 +7,14 @@
  * solo usa esta regla se quedan aqui (privados); los que comparte, en las capas.
  */
 
+import {
+  contractText,
+} from '../members.js';
+
+import {
+  MODULES,
+} from '../modules.js';
+
 /** Claves que `normalizeEntry` guarda en cada entrada (null si no hay normalizador). */
 export function entryShapeKeys(source) {
   const start = source.indexOf('function normalizeEntry');
@@ -61,9 +69,17 @@ export function entryKeyIsRead(source, key) {
   return new RegExp(`entry\\??\\.${key}\\b`).test(rest);
 }
 
-/** Claves registradas que nadie lee. */
+/** Claves registradas que nadie lee.
+ *
+ * La lectura se busca en el CONTRATO, no en el fichero: un control que hereda el
+ * veto no vuelve a escribir `entry.disabled`, pero la clave se lee igual y la
+ * regla no tiene por que punishir a la familia por haber partido el codigo. Lo
+ * que la regla sigue contando es el mismo de siempre: la clave tiene que LEERSE
+ * en algun sitio de la familia, y sin leer se delata igual. */
 export function unreadEntryKeys(source) {
-  return (entryShapeKeys(source) ?? []).filter((key) => !entryKeyIsRead(source, key));
+  const contrato = contractText(source, MODULES);
+
+  return (entryShapeKeys(source) ?? []).filter((key) => !entryKeyIsRead(contrato, key));
 }
 
 /* ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
 
 import {
   factoryApiMembers,
+  moduleExporting,
 } from './api.js';
 
 import {
@@ -24,6 +25,80 @@ function classBodyStart(source, className) {
   const open = source.indexOf('{', declaration.index + declaration[0].length);
 
   return open < 0 ? -1 : open + 1;
+}
+
+/** El nombre de la clase de la que esta otra hereda (`class Hija extends Base`), o
+ *  null si no extiende a nadie. Es lo que hace falta para saber de QUIEN es un
+ *  miembro o una lectura: un metodo que el ejemplo llama sobre el objeto puede
+ *  venir declarado en la clase base, y sin esto la puerta lo diria fantasma. */
+export function baseClassName(source, className) {
+  const declaration = new RegExp(
+    `\\bexport\\s+(?:default\\s+)?class\\s+${className}\\s+extends\\s+([A-Za-z_$][\\w$]*)`,
+  ).exec(source);
+
+  return declaration == null ? null : declaration[1];
+}
+
+/** Los modulos de los que una clase hereda, de la clase base mas CERCANA a la
+ *  mas lejana (que es el orden en que un `extends` se resuelve: lo de mas abajo
+ *  pisa a lo de mas arriba). Un nombre repetido se corta, porque dos clases que
+ *  se extienden entre si mismas no tienen una cadena: tienen un bucle, y un
+ *  bucle aqui seria un test colgado en vez de un fallo. */
+export function baseChain(source, className, modules) {
+  const chain = [];
+  const vistos = new Set([className]);
+
+  for (let nombre = baseClassName(source, className); nombre != null;) {
+    if (vistos.has(nombre))
+      break;
+
+    vistos.add(nombre);
+
+    // Por el modulo que EXPORTA esa clase, no por un nombre de fichero derivado
+    // del nombre de la clase: `IndexControl` vive en `indexControl.js`, y la
+    // diferencia de mayusculas dejaba la cadena vacia sin avisar.
+    const modulo = moduleExporting(nombre, modules);
+
+    if (modulo == null)
+      break;
+
+    chain.push({ nombre, modulo });
+    nombre = baseClassName(modulo.source, nombre);
+  }
+
+  return chain;
+}
+
+/** El nombre de la clase que un modulo exporta, o null si no exporta ninguna. */
+export function exportedClassName(source) {
+  return /\bexport\s+(?:default\s+)?class\s+([A-Za-z_$][\w$]*)/.exec(source)?.[1] ?? null;
+}
+
+/**
+ * Los TEXTOS de los ficheros de los que hereda la clase de un modulo (vacio si
+ * no herda de nadie). Es el «resto de la familia»: lo que un detector tiene que
+ * mirar ADEMAS de su fichero cuando la pregunta es si algo se usa, y no si el
+ * fichero cumple su palabra.
+ */
+export function baseSources(source, modules) {
+  const className = exportedClassName(source);
+
+  if (className == null)
+    return [];
+
+  return baseChain(source, className, modules).map(({ modulo }) => modulo.source);
+}
+
+/** El TEXTO DEL CONTRATO de un modulo: su propio fichero y los de las clases que
+ *  extiende. Para las preguntas de la familia que abarcan el conjunto —¿se lee
+ *  esta clave de la entrada?— y no solo las de lo que pasa a la base, que para
+ *  eso esta `baseSources`.
+ *
+ *  Las reglas de DOCUMENTACION se quedan en su fichero a proposito: una clase
+ *  base es un modulo mas, con sus propias promesas, y juntarlas haria que la
+ *  base se juzgara dos veces. */
+export function contractText(source, modules) {
+  return [source, ...baseSources(source, modules)].join('\n');
 }
 
 /** El cuerpo de la clase que un modulo exporta (null si no la declara asi). */

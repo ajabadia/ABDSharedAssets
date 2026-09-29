@@ -76,7 +76,8 @@ import { RULES } from './detectors.js';
 
 /** Registra una regla del catalogo: un `describe` con su titulo y, por modulo, el `it`
  *  `${label}: ${assertion}` que corre SU detector y exige `[]`. Una regla que no juzga
- *  TODO el inventario trae su `modules` en el catalogo (el subconjunto que si juzga). */
+ *  TODO el inventario trae su `modules` en el catalogo (el subconjunto que si juzga).
+ */
 function registerRule({ title, assertion, detector, modules }) {
   describe(title, () => {
     for (const { label, source } of (modules ?? ((all) => all))(MODULES))

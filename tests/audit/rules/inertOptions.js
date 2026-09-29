@@ -12,6 +12,14 @@ import {
 } from '../docs.js';
 
 import {
+  baseSources,
+} from '../members.js';
+
+import {
+  MODULES,
+} from '../modules.js';
+
+import {
   copiedOptions,
   destructuredDefaults,
 } from '../options.js';
@@ -21,13 +29,18 @@ function countWord(code, name) {
   return [...code.matchAll(new RegExp(`\\b${name}\\b`, 'g'))].length;
 }
 
-/** Opciones que el codigo guarda y nunca vuelve a leer. */
+/** Opciones que el codigo guarda y nunca vuelve a leer.
+ *
+ * El uso se busca en el CONTRATO: un control que pasa `skin: options.skin` al
+ * `super` no lo vuelve a leer en su fichero, pero lo esta usando —lo consume la
+ * base—, y sin esto la regla acusaria de inerte una opcion que funciona. Lo que
+ * sigue contando es lo mismo: si no la usa NADIE de la familia, se delata. */
 export function inertOptions(source) {
   const code = codeOnly(source);
   const inert = new Set();
 
   for (const copy of copiedOptions(source).values()) {
-    if (!copy.used)
+    if (! copy.used && ! seUsaEnLaFamilia(copy.name, source))
       inert.add(copy.name);
   }
 
@@ -43,6 +56,16 @@ export function inertOptions(source) {
 /* ---------------------------------------------------------------------------
  * Detectores de la regla 6: los ejemplos de uso de la documentacion
  * ------------------------------------------------------------------------- */
+
+/** El nombre se menciona en el CODIGO de algun fichero de la familia (las bases del
+ *  control), y no en un comentario: un `skin` nombrado de pasada en un comentario
+ *  de la base no consume la opcion de nadie. El propio fichero no se mira aqui:
+ *  eso lo dice `copiedOptions`, que excluye la declaracion con precision. */
+function seUsaEnLaFamilia (name, source) {
+  const familia = baseSources(source, MODULES).map((texto) => codeOnly(texto)).join('\n');
+
+  return new RegExp(`\\b${name}\\b`).test(familia);
+}
 
 /** La entrada del catalogo: titulo, asercion, flecha y receta. Su NOMBRE sale
  *  del detector (`detector.name`), y el barrel los ordena por `number`. */

@@ -27,6 +27,11 @@ export const cleanDocText = (text) =>
  *  `constructor`, que en este repo se documenta encima del `export class`— la
  *  cabecera de la clase. Ese peaje es lo que impide que un miembro sin doc propio
  *  herede el JSDoc del miembro anterior. */
+/** `export class X`, `export class X extends Base` y `export default class X`:
+ *  lo que puede separa el final de un `/**` del principio del cuerpo de una clase. */
+const DECLARACION_DE_CLASE =
+  /^export\s+(?:default\s+)?class\s+[A-Za-z_$][\w$]*(?:\s+extends\s+[A-Za-z_$][\w$.]*)?\s*\{\s*$/;
+
 export function docBlockBefore(source, index, allowClass = false) {
   const end = source.lastIndexOf('*/', index - 1);
 
@@ -35,7 +40,12 @@ export function docBlockBefore(source, index, allowClass = false) {
 
   const gap = source.slice(end + 2, index).trim();
 
-  if (gap !== '' && !(allowClass && /^export\s+(?:default\s+)?class\s+[A-Za-z_$][\w$]*\s*\{\s*$/.test(gap)))
+  // El hueco puede ser la DECLARACION de la clase, con lo que va entre el
+  // nombre y la llave: un `extends Base` y el `{` de la clase que lo hereda.
+  // Sin esa parte, una subclase que documenta su constructor en el bloque de
+  // la clase se queda sin `@param` y la puerta acusa al ejemplo de no
+  // documentar los argumentos que si documenta.
+  if (gap !== '' && !(allowClass && DECLARACION_DE_CLASE.test(gap)))
     return null;
 
   const start = source.lastIndexOf('/**', end);
