@@ -7,6 +7,10 @@
  *   - silent setValue, onChange only on user edits — y solo en una TRANSICION
  *     real: elegir el segmento ya activo no avisa (transitionNotices.js).
  *
+ * WHAT IS SHARED: the value, the notes, the veto, the divergence and the
+ * teardown are IndexControl (indexControl.js); el indice que no necesita DOM,
+ * optionIndex.js. Here queda la radiogroup: el grupo, sus botones y el estado.
+ *
  * VALUE MODEL: the option INDEX (integer) — identical to the Select. It is the
  * compact SIBLING of the Select for short, always-visible lists: the native
  * <select> stays the right tool for long or occasionally-huge lists (28
@@ -22,22 +26,12 @@
  * A radiogroup has no value semantics - `aria-valuenow`/`aria-valuetext` are not
  * supported on it, and on the role-less wrapper they reached no one.
  *
- * DISABLED OPTIONS: same contract as Select — a segment can be unavailable by its
- * own `disabled` flag or by the `disabled` spec, with a `note` explaining why, and
- * `setDisabled()` recomputes the spec at runtime when another parameter gates the
- * list. A value landing on a disabled option is KEPT and flagged
- * (`isDivergent()`, `[data-divergent]`) so the UI can show host state it cannot
- * offer instead of silently rewriting it.
- *
- * ANNOUNCED, NOT JUST SEEN: availability is `aria-disabled`, NEVER the native
- * attribute. A natively disabled radio leaves the tab order and the arrow walk,
- * so it is never announced: its `checked` state and the `note` explaining the
- * veto (a `title` shows on hover only) reached the eye and nobody else. With
- * `aria-disabled` the vetoed radio stays FOCUSABLE, so the roving tabindex keeps
- * its single stop on the CHECKED radio even when that radio is the vetoed one:
- * the reader lands on it and announces "checked, unavailable" together with the
- * note, wired as the radio's `aria-describedby` description. Picking is still
- * refused in the handlers, so nothing vetoed becomes selectable.
+ * DISABLED OPTIONS: same contract as the Select; here only what is THIS
+ * control's, the availability as `aria-disabled` and NEVER the native attribute.
+ * A natively disabled radio leaves the tab order and the arrow walk, so it is
+ * never announced. With `aria-disabled` the vetoed radio stays FOCUSABLE, y el
+ * tabindex rotatorio conserva su unica parada en el radio MARCADO aunque ese
+ * sea el vetado. Elegir sigue prohibido en los manejadores.
  *
  * WIDTH: segments share the row (`flex: 1 1 0`), so N options fill the cell —
  * the grid maths of a synth page decide the cell, never the control. Long
@@ -59,9 +53,9 @@
  * (`.abd-segmented--led`).
  */
 
-import { applySkin, CONTROL_KIND } from './skins/index.js';
+import { IndexControl } from './indexControl.js';
 import { transitioned, announceTransition } from './transitionNotices.js';
-import { arrowStepFor, clampIndex, createNotes, nextEnabledIndex } from './optionIndex.js';
+import { arrowStepFor, clampIndex, nextEnabledIndex } from './optionIndex.js';
 
 /**
  * Usage:
@@ -87,53 +81,32 @@ import { arrowStepFor, clampIndex, createNotes, nextEnabledIndex } from './optio
  *             only when the pick changes the value (re-picking the active segment
  *             is an intention without transition, see transitionNotices.js).
  */
-export class Segmented
+export class Segmented extends IndexControl
 {
     constructor (container, options = {})
     {
-        this.container = typeof container === 'string'
-            ? document.querySelector(container)
-            : container;
+        super(container, {
+            name: 'Segmented',
+            kind: 'segmented',
+            entries: (options.options ?? []).map(normalizeEntry),
+            disabledSpec: options.disabled ?? [],
+            value: clampTo(options.value, options.options),
+            skin: options.skin,
+            options,
+        });
+    }
 
-        if (this.container == null)
-            throw new Error('ABD Segmented: container not found');
-
-        this.options = {
-            options: [],
-            value: 0,
-            label: '',
-            id: null,
-            disabled: [],
-            skin: 'vector',
-            onChange: null,
-            ...options,
-        };
-
-        this.entries = this.options.options.map(normalizeEntry);
+    prepareEntries ()
+    {
+        this.variant = this.options.variant === 'led' ? 'led' : 'strip';
 
         // Glyphs: per-entry wins; the aligned array fills the gaps.
         if (Array.isArray(this.options.glyphs))
-        {
             this.options.glyphs.forEach((glyph, index) =>
             {
                 if (this.entries[index] && this.entries[index].glyph === '')
                     this.entries[index].glyph = String(glyph ?? '');
             });
-        }
-
-        this.variant = this.options.variant === 'led' ? 'led' : 'strip';
-        this.disabledSpec = this.options.disabled;
-        this.value = this.clampIndex(this.options.value);
-        this.listeners = [];
-        this[CONTROL_KIND] = 'segmented';
-
-        this.buildDom();
-        this.attachInteraction();
-
-        if (this.options.skin)
-            this.skin = applySkin(this.options.skin, this.wrapper, this);
-
-        this.render();
     }
 
     buildDom ()
@@ -146,17 +119,7 @@ export class Segmented
 
         // Same <label for> deal as Select: reachable by name when the caller
         // gives an id. The target is the ACTIVE button, so focus/label agree.
-        this.labelEl = null;
-
-        if (this.options.label)
-        {
-            this.labelEl = document.createElement(this.options.id ? 'label' : 'span');
-            this.labelEl.className = 'abd-segmented__label';
-            this.labelEl.textContent = this.options.label;
-
-            this.wrapper.appendChild(this.labelEl);
-            this.wrapper.classList.add('abd-segmented--labelled');
-        }
+        this.createLabel('abd-segmented', this.options.label, this.options.id);
 
         this.group = document.createElement('div');
         this.group.className = 'abd-segmented__group';
@@ -165,29 +128,24 @@ export class Segmented
         if (this.options.id)
         {
             this.group.id = this.options.id;
-            this.group.setAttribute('aria-labelledby', `${this.options.id}-label`);
-            this.labelEl.id = `${this.options.id}-label`;
-            this.labelEl.htmlFor = this.options.id;
+
+            if (this.labelEl != null)
+            {
+                this.group.setAttribute('aria-labelledby', `${this.options.id}-label`);
+                this.labelEl.id = `${this.options.id}-label`;
+            }
         }
         else if (this.options.label)
-        {
-            // No id -> no <label for> wiring; the group still needs a name.
             this.group.setAttribute('aria-label', this.options.label);
-        }
 
         // El grupo se cuelga ANTES del bucle: asi el contenedor de notas (creado al
         // primer motivo) queda detras de los radios, donde se lee.
         this.wrapper.appendChild(this.group);
 
         // Reasons for the vetoes: one hidden description per entry carrying a
-        // `note`, wired to its radio with aria-describedby. They live OUTSIDE the
-        // buttons on purpose - a hidden node INSIDE one would be swallowed into
-        // its accessible NAME. The wiring is optionIndex.js, shared with Select.
-        this.notes = createNotes({
-            wrapper: this.wrapper,
-            prefix: 'abd-segmented',
-            target: (index) => this.buttons[index],
-        });
+        // `note`, wired to its radio with aria-describedby OUTSIDE the buttons — a
+        // hidden node inside would be swallowed into the radio's accessible NAME.
+        this.notes = this.createNotes('abd-segmented', (index) => this.buttons[index]);
 
         this.buttons = [];
 
@@ -234,14 +192,7 @@ export class Segmented
             if (this.isIndexDisabled(index))
                 return;   // a refused value reports nothing, like Select
 
-            const previous = this.value;
-
-            if (! transitioned(previous, index))
-                return;   // picking the active segment is an intention, not a transition
-
-            this.value = index;
-            this.render();
-            announceTransition(this.options.onChange, previous, index);
+            this.commit(index);
         };
 
         const onKey = (event) =>
@@ -261,94 +212,31 @@ export class Segmented
             if (! transitioned(previous, next) || this.isIndexDisabled(next))
                 return;
 
-            this.value = next;
-            this.render();
-            announceTransition(this.options.onChange, previous, next);
+            this.commit(next);
             this.buttons[this.value]?.focus();
         };
 
         for (const button of this.buttons)
-        {
-            button.addEventListener('click', onActivate);
-            this.listeners.push([button, 'click', onActivate]);
-        }
+            this.listen(button, 'click', onActivate);
 
         // Keys live on the GROUP with delegation: focus follows the roving
         // tabindex (it sits on the active segment), and one listener covers
         // every focused segment.
-        this.group.addEventListener('keydown', onKey);
-        this.listeners.push([this.group, 'keydown', onKey]);
-    }
-
-    /** @brief Is this index unavailable under its flag or the disabled spec? */
-    isIndexDisabled (index)
-    {
-        const entry = this.entries[index];
-
-        if (entry == null)
-            return true;
-
-        // El flag de la PROPIA entrada veta por si mismo: el motivo suele estar ahi
-        // al lado (`note`) y obligar a repetir el indice en la lista era una trampa
-        // silenciosa. Manda el flag: ningun spec permisivo lo levanta.
-        if (entry.disabled)
-            return true;
-
-        if (typeof this.disabledSpec === 'function')
-            return Boolean(this.disabledSpec(entry, index));
-
-        return (this.disabledSpec ?? []).includes(index);
+        this.listen(this.group, 'keydown', onKey);
     }
 
     /**
-     * @brief Current value sits on an option the UI cannot offer (host state).
-     * The value is deliberately KEPT: see the class note on disabled options.
+     * @brief Un gesto del usuario que cambia el valor: el cambia, se pinta y se
+     *   avisa. Que no haya TRANSICION se decide antes de llamar (transitioned),
+     *   porque una intencion sin cambio no pinta ni avisa.
      */
-    isDivergent ()
+    commit (index)
     {
-        return this.isIndexDisabled(this.value);
-    }
+        const previous = this.value;
 
-    /** @brief Recompute availability (e.g. another parameter changed). */
-    /**
-     * @brief Recompute availability (e.g. another parameter changed).
-     * @param {Array<number|Function>} spec  vetos: indices, o (entry, index) => boolean.
-     */
-    setDisabled (spec)
-    {
-        this.disabledSpec = spec ?? [];
+        this.value = index;
         this.render();
-    }
-
-    /**
-     * @brief Cambia EN CALIENTE el motivo del veto de una opcion.
-     *
-     * Un veto puede depender de otro parametro ("requiere el motor Neurotik"), asi
-     * que el PORQUE tambien es dinamico: setDisabled dice QUE esta vetado y setNote
-     * explica POR QUE. Texto nuevo estrena la nota si aun no habia; texto vacio la
-     * retira con su descripcion. Un indice desconocido se ignora.
-     *
-     * El radio ya lleva su nota, asi que no hay nada mas que recomputar: el
-     * `aria-checked`/`aria-disabled` no dependen del motivo.
-     *
-     * @param {number} index  posicion de la entrada (0..n-1); una desconocida se ignora.
-     * @param {string} text  motivo nuevo; vacio retira la nota.
-     */
-    setNote (index, text)
-    {
-        const entry = this.entries[index];
-
-        if (entry == null)
-            return;
-
-        entry.note = String(text ?? '');
-        this.notes.wire(index, entry.note);
-    }
-
-    /** @brief Motivos del veto, en orden (diagnostico y tests). */
-    getNotes ()
-    {
-        return this.entries.map((entry) => entry.note);
+        announceTransition(this.options.onChange, previous, index);
     }
 
     /** @brief Push value + availability into the DOM. */
@@ -391,43 +279,9 @@ export class Segmented
         // A divergent value stays visible and flagged, never rewritten.
         this.wrapper.dataset.divergent = this.isDivergent() ? 'true' : 'false';
     }
-
-    /** @brief Programmatic update: does NOT fire onChange (user picks do). */
-    /**
-     * @brief Programmatic update: does NOT fire onChange (user picks do).
-     * @param {number} index  indice de la entrada activa; clampIndex recorta al dominio.
-     */
-    setValue (index)
-    {
-        this.value = this.clampIndex(index);
-        this.render();
-    }
-
-    getValue () { return this.value; }
-
-    /** @brief Option labels, in order (diagnostics and tests). */
-    getLabels ()
-    {
-        return this.entries.map((entry) => entry.label);
-    }
-
-    clampIndex (index)
-    {
-        return clampIndex(this.entries.length, index);
-    }
-
-    destroy ()
-    {
-        for (const [element, event, handler] of this.listeners)
-            element.removeEventListener(event, handler);
-
-        this.listeners.length = 0;
-        this.skin?.destroy();
-        this.wrapper.remove();
-    }
 }
 
-/** 'Label' and { label, disabled, note } are both accepted, everywhere. */
+/** 'Label' and { label, glyph, disabled, note } are both accepted, everywhere. */
 function normalizeEntry (entry)
 {
     if (typeof entry === 'string')
@@ -440,3 +294,7 @@ function normalizeEntry (entry)
         note: entry?.note ?? '',
     };
 }
+
+/** El valor inicial, recortado al dominio de las entradas. */
+const clampTo = (value, lista) =>
+    clampIndex((lista ?? []).length, value);
