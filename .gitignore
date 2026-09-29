@@ -28,3 +28,13 @@ serve-out.log
 
 # Copia espejo de la WebUI de ABDBankManager (la canonica vive en su repo)
 abdbank/
+
+# --- Scratch de sesiones (nunca producto) ---
+# Parches y sondas de una sesion de agente, y lo que las herramientas
+# dejan al escribir en la raiz. Mismas reglas que la raiz del workspace.
+/_*.py
+/_*.mjs
+/_*.sh
+/__pycache__/
+# Copias de seguridad de un parche a medio aplicar
+*.bak
