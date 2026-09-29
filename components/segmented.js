@@ -61,13 +61,7 @@
 
 import { applySkin, CONTROL_KIND } from './skins/index.js';
 import { transitioned, announceTransition } from './transitionNotices.js';
-
-/**
- * Internal ids for the note descriptions. The control still never invents the
- * GROUP's id (that one belongs to the caller), but an aria-describedby needs a
- * stable target, and these nodes are the control's own plumbing.
- */
-let noteSequence = 0;
+import { arrowStepFor, clampIndex, createNotes, nextEnabledIndex } from './optionIndex.js';
 
 /**
  * Usage:
@@ -181,18 +175,19 @@ export class Segmented
             this.group.setAttribute('aria-label', this.options.label);
         }
 
-        // Reasons for the vetoes: one hidden description per entry carrying a
-        // `note`, wired to its radio with aria-describedby. They are appended
-        // OUTSIDE the buttons on purpose - a hidden node INSIDE the button would
-        // be swallowed into its accessible NAME, and the radio would read as
-        // "Neurotik Requiere el motor Neurotik". The wiring lives in wireNote(),
-        // which setNote() reuses so a motive can change at runtime.
-        this.notesEl = null;
-        this.noteEls = [];            // un nodo por indice con motivo (o null)
-
         // El grupo se cuelga ANTES del bucle: asi el contenedor de notas (creado al
         // primer motivo) queda detras de los radios, donde se lee.
         this.wrapper.appendChild(this.group);
+
+        // Reasons for the vetoes: one hidden description per entry carrying a
+        // `note`, wired to its radio with aria-describedby. They live OUTSIDE the
+        // buttons on purpose - a hidden node INSIDE one would be swallowed into
+        // its accessible NAME. The wiring is optionIndex.js, shared with Select.
+        this.notes = createNotes({
+            wrapper: this.wrapper,
+            prefix: 'abd-segmented',
+            target: (index) => this.buttons[index],
+        });
 
         this.buttons = [];
 
@@ -224,78 +219,10 @@ export class Segmented
             this.buttons[index] = button;
 
             // El motivo (si lo hay) como descripcion del radio: fuera del boton.
-            this.wireNote(index);
+            this.notes.wire(index, entry.note);
         });
 
         this.container.appendChild(this.wrapper);
-    }
-
-    /**
-     * @brief Crea, actualiza o retira la nota oculta del indice, y la cablea.
-     *
-     * Una sola via de entrada al DOM para el motivo: buildDom (estado inicial) y
-     * setNote (cambio en caliente).
-     */
-    wireNote (index)
-    {
-        const button = this.buttons[index];
-        const entry = this.entries[index];
-
-        if (button == null || entry == null)
-            return;
-
-        if (entry.note === '')
-        {
-            // Sin motivo no queda descripcion: ni atributo ni nodo vacio.
-            button.removeAttribute('aria-describedby');
-            this.noteEls[index]?.remove();
-            this.noteEls[index] = null;
-            this.pruneNotesEl();
-            return;
-        }
-
-        let noteEl = this.noteEls[index];
-
-        if (noteEl == null)
-        {
-            noteEl = document.createElement('span');
-            noteEl.className = 'abd-segmented__note';
-            noteEl.id = `abd-segmented-note-${noteSequence += 1}`;
-            this.noteEls[index] = noteEl;
-            this.ensureNotesEl().appendChild(noteEl);
-
-            // The note stops being a mouse-only tooltip: it becomes the radio's
-            // accessible description, so whoever announces the vetoed option also
-            // announces WHY it is vetoed.
-            button.setAttribute('aria-describedby', noteEl.id);
-        }
-
-        noteEl.textContent = entry.note;
-    }
-
-    /** @brief El contenedor de notas (oculto a la vista), pegado al final. */
-    ensureNotesEl ()
-    {
-        if (this.notesEl == null)
-        {
-            this.notesEl = document.createElement('div');
-            this.notesEl.className = 'abd-segmented__notes';
-        }
-
-        if (this.notesEl.parentNode !== this.wrapper)
-            this.wrapper.appendChild(this.notesEl);
-
-        return this.notesEl;
-    }
-
-    /** @brief Sin notas no se deja un contenedor vacio en el DOM. */
-    pruneNotesEl ()
-    {
-        if (this.notesEl != null && this.notesEl.childElementCount === 0)
-        {
-            this.notesEl.remove();
-            this.notesEl = null;
-        }
     }
 
     attachInteraction ()
@@ -320,29 +247,16 @@ export class Segmented
         const onKey = (event) =>
         {
             // Arrow keys walk the options (wrapping), like a native radiogroup.
-            const step = event.key === 'ArrowRight' || event.key === 'ArrowDown'
-                ? 1
-                : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
-                    ? -1
-                    : 0;
+            const step = arrowStepFor(event.key);
 
             if (step === 0)
                 return;
 
             event.preventDefault();
 
-            const count = this.entries.length;
-            let next = this.value;
-
-            for (let hops = 0; hops < count; hops += 1)
-            {
-                next = (next + step + count) % count;
-
-                if (! this.isIndexDisabled(next))
-                    break;
-            }
-
             const previous = this.value;
+            const next = nextEnabledIndex(
+                (at) => this.isIndexDisabled(at), this.entries.length, previous, step);
 
             if (! transitioned(previous, next) || this.isIndexDisabled(next))
                 return;
@@ -428,7 +342,7 @@ export class Segmented
             return;
 
         entry.note = String(text ?? '');
-        this.wireNote(index);
+        this.notes.wire(index, entry.note);
     }
 
     /** @brief Motivos del veto, en orden (diagnostico y tests). */
@@ -499,14 +413,7 @@ export class Segmented
 
     clampIndex (index)
     {
-        const count = this.entries.length;
-
-        if (count === 0)
-            return 0;
-
-        const n = Math.round(Number(index));
-
-        return Math.min(count - 1, Math.max(0, Number.isFinite(n) ? n : 0));
+        return clampIndex(this.entries.length, index);
     }
 
     destroy ()

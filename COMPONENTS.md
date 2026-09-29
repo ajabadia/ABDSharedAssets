@@ -100,6 +100,9 @@ components/wheel.js         rueda pitch/mod filmstrip (la original de la familia
 components/xypad.js         pad 2D absoluto ({x,y}, y-up) — morphing, filtros XY
 components/drawer.js        cajón lateral fijo a la derecha (createDrawer): contenido
                             estable (sin re-render al abrir), ESC/fondo/botón, dialog
+components/optionIndex.js      el indice como valor compartido: recorte del
+                                valor, recorrido de flechas y el nodo de nota que
+                                explica un veto (Select y Segmented)
 components/transitionNotices.js  contrato de avisos de TRANSICION: un cambio
                                 real avisa una vez, una intencion sin cambio no
 components/continuousNotices.js  el hermano para gestos: onChange vivo por

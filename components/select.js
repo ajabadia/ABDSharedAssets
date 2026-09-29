@@ -45,13 +45,7 @@
  */
 
 import { applySkin, CONTROL_KIND } from './skins/index.js';
-
-/**
- * Internal ids for the note descriptions. The control still never invents the
- * <select>'s id (that one belongs to the caller), but an aria-describedby needs a
- * stable target, and these nodes are the control's own plumbing.
- */
-let noteSequence = 0;
+import { clampIndex, createNotes } from './optionIndex.js';
 
 /**
  * Usage:
@@ -141,19 +135,21 @@ export class Select
         if (this.options.id)
             this.field.id = this.options.id;
 
-        // Reasons for the vetoes: one hidden description per entry carrying a
-        // `note`, wired to its <option> with aria-describedby. They are appended
-        // OUTSIDE the options on purpose - a note inside one is swallowed into its
-        // accessible NAME, and the option would read as "Neurotik Requiere...".
-        // The wiring lives in wireNote(), which setNote() reuses so a motive can
-        // change at runtime.
-        this.notesEl = null;
-        this.noteEls = [];            // un nodo por indice con motivo (o null)
-        this.fieldNoteId = null;      // la nota que el control puso en el campo
-
         // El campo se cuelga ANTES del bucle: asi el contenedor de notas (creado al
         // primer motivo) queda detras de la lista, donde se lee.
         this.wrapper.appendChild(this.field);
+
+        // Reasons for the vetoes: one hidden description per entry carrying a
+        // `note`, wired to its <option> with aria-describedby. They live OUTSIDE
+        // the options on purpose - a note inside one is swallowed into the
+        // option's accessible NAME. The wiring is optionIndex.js, shared with
+        // Segmented; the copy on the FIELD is this control's own (setFieldNote).
+        this.notes = createNotes({
+            wrapper: this.wrapper,
+            prefix: 'abd-select',
+            target: (index) => this.field.options[index],
+        });
+        this.fieldNoteId = null;      // la nota que el control puso en el campo
 
         this.entries.forEach((entry, index) =>
         {
@@ -165,78 +161,10 @@ export class Select
             this.field.appendChild(option);
 
             // El motivo (si lo hay) como descripcion del option: fuera de el.
-            this.wireNote(index);
+            this.notes.wire(index, entry.note);
         });
 
         this.container.appendChild(this.wrapper);
-    }
-
-    /**
-     * @brief Crea, actualiza o retira la nota oculta del indice, y la cablea.
-     *
-     * Una sola via de entrada al DOM para el motivo: buildDom (estado inicial) y
-     * setNote (cambio en caliente).
-     */
-    wireNote (index)
-    {
-        const option = this.field.options[index];
-        const entry = this.entries[index];
-
-        if (option == null || entry == null)
-            return;
-
-        if (entry.note === '')
-        {
-            // Sin motivo no queda descripcion: ni atributo ni nodo vacio.
-            option.removeAttribute('aria-describedby');
-            this.noteEls[index]?.remove();
-            this.noteEls[index] = null;
-            this.pruneNotesEl();
-            return;
-        }
-
-        let noteEl = this.noteEls[index];
-
-        if (noteEl == null)
-        {
-            noteEl = document.createElement('span');
-            noteEl.className = 'abd-select__note';
-            noteEl.id = `abd-select-note-${noteSequence += 1}`;
-            this.noteEls[index] = noteEl;
-            this.ensureNotesEl().appendChild(noteEl);
-
-            // The note stops being a mouse-only tooltip: it becomes the option's
-            // accessible description, so whoever announces the vetoed option also
-            // announces WHY it is vetoed.
-            option.setAttribute('aria-describedby', noteEl.id);
-        }
-
-        noteEl.textContent = entry.note;
-    }
-
-    /** @brief El contenedor de notas (oculto a la vista), pegado al final. */
-    ensureNotesEl ()
-    {
-        if (this.notesEl == null)
-        {
-            this.notesEl = document.createElement('div');
-            this.notesEl.className = 'abd-select__notes';
-        }
-
-        if (this.notesEl.parentNode !== this.wrapper)
-            this.wrapper.appendChild(this.notesEl);
-
-        return this.notesEl;
-    }
-
-    /** @brief Sin notas no se deja un contenedor vacio en el DOM. */
-    pruneNotesEl ()
-    {
-        if (this.notesEl != null && this.notesEl.childElementCount === 0)
-        {
-            this.notesEl.remove();
-            this.notesEl = null;
-        }
     }
 
     attachInteraction ()
@@ -321,7 +249,7 @@ export class Select
 
         entry.note = String(text ?? '');
 
-        this.wireNote(index);
+        this.notes.wire(index, entry.note);
         this.render();     // y el campo sigue al valor actual (ver setFieldNote)
     }
 
@@ -408,14 +336,7 @@ export class Select
 
     clampIndex (index)
     {
-        const count = this.entries.length;
-
-        if (count === 0)
-            return 0;
-
-        const n = Math.round(Number(index));
-
-        return Math.min(count - 1, Math.max(0, Number.isFinite(n) ? n : 0));
+        return clampIndex(this.entries.length, index);
     }
 
     destroy ()
