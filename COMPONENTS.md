@@ -103,6 +103,9 @@ components/drawer.js        cajón lateral fijo a la derecha (createDrawer): con
 components/optionIndex.js      el indice como valor compartido: recorte del
                                 valor, recorrido de flechas y el nodo de nota que
                                 explica un veto (Select y Segmented)
+components/indexControl.js      la BASE de los controles de indice: el valor,
+                                las notas que explican un veto, la divergencia
+                                y el teardown (Select y Segmented la extienden)
 components/transitionNotices.js  contrato de avisos de TRANSICION: un cambio
                                 real avisa una vez, una intencion sin cambio no
 components/continuousNotices.js  el hermano para gestos: onChange vivo por
@@ -309,7 +312,15 @@ instanciados desde el módulo).
 
 Todo control **nuevo** se mantiene por debajo de 300 líneas; si un control crece, se divide.
 
-Los que hoy no caben no se parten de un día para otro: están fichados uno a uno en
+La división que funciona aquí no es partir un fichero en trozos, sino
+**sacar la clase base**: `Select` y `Segmented` compartian el valor, el veto, las
+notas y el teardown, y con eso basta para pasarse. Ahora eso vive en
+`IndexControl` (259 líneas) y lo que no necesita DOM en `optionIndex.js` (188), de
+modo que los dos controles quedan en 240 y 300 y las dos entradas que ocupaban en la
+lista de excepciones se han ido. Se reparte el trabajo por lo que se REUTILIZA, no
+por tamaño del trozo: un troceo que nadie mas hereda solo ha movido el problema.
+
+Los que aún no caben siguen fichados uno a uno en
 `EXCEPCIONES_DE_TAMANO` (`tests/ciContract.test.js`), y el contract lo comprueba en las dos
 direcciones — un sexto por encima del límite sale en rojo, y una excepción cuyo fichero ya
 cabe también, para que la lista se vaya vaciando sola en vez de crecer en silencio. Los
@@ -378,6 +389,17 @@ flowchart TB
 Tres fuentes —la documentación, el código y los ejemplos— y seis aristas. Cada arista
 lleva los números de las reglas que la sostienen y el lema de lo que la regla juzga; una
 regla que no aparece en ninguna no tiene flecha, y eso el diagrama lo enseña solo.
+
+La auditoría **sigue la herencia**. Cuando un control extiende a otro, el «código»
+de la pregunta no es solo su fichero: para las tres reglas que preguntan si algo SE USA
+(3 · 5 · 8) el alcance es el CONTRATO —su fichero y los de su cadena de bases, hasta
+la más lejana y con un corte si se forman un bucle—, porque un `entry.disabled` que
+lee el veto de `IndexControl` está ledo aunque `Select` no lo escriba, y un `destroy()`
+que viene heredado sigue siendo un método del receptor. Lo de DOCUMENTAR se queda en
+cada fichero a propósito: una clase base es un módulo más, con sus propias promesas, y
+juntarlas haría que se juzgara dos veces. Sin esto, partir una clase en dos no se
+notaba — no era que el código hiciera menos, era que la puerta se quedaba mirando un
+trozo—; con esto, el cambio sale del contract antes de romper nada.
 
 ### La tabla de las trece reglas
 
