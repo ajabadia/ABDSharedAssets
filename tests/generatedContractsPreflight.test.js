@@ -118,27 +118,35 @@ describe('el preflight de contratos generados', () => {
   });
 
   it('el contrato que declara generatedFrom y no tiene generador esta NOMBRADO', () => {
-    // ── EL HALLAZGO DE ESTE FICHERO ──
+    // ── EL HALLAZGO DE ESTE FICHERO, Y LO QUE SE HIZO CON EL ──
     //
-    // `fx-effects.json` dice en su raiz de donde viene: `ABDEep/...
-    // FXSlot_Factory.cpp`. O sea que se declara GENERADO. Y no hay ningun
-    // generador que lo produzca ni ningun `--check` que lo vigile, asi que
-    // nadie sabe si lo que hay en disco coincide con el codigo.
+    // `fx-effects.json` decia en su raiz de donde venia: `ABDEep/...
+    // FXSlot_Factory.cpp`. O sea que se declaraba GENERADO. Y no habia ningun
+    // generador que lo produjera ni ningun `--check` que lo vigilara, asi que
+    // nadie sabia si lo que hay en disco coincide con el codigo.
     //
     // Eso es peor que un contrato desfasado, porque el desfasado al menos se
-    // nota. Este esta al dia o no segun el ultimo que lo tocase a mano, y el
-    // campo `generatedFrom` —que es la autoridad que un panel lee para fiarse—
-    // dice que viene del codigo. No es que este viejo: es que MIENTE sobre de
-    // donde viene.
+    // nota. Este estaba al dia o no segun el ultimo que lo tocase a mano, y
+    // el campo `generatedFrom` —que es la autoridad que un panel lee para fiarse—
+    // decia que venia del codigo. No es que estuviera viejo: es que MENTIA
+    // sobre de donde venia.
+    //
+    // No se resolvio escribiendo el generador, sino quitandole el campo: la
+    // fabrica tiene 56 `case` y el catalogo 61 filas, y las cinco que sobran
+    // salen de `ABDSharedCode/DspEffects`. El bucle de este test sigue
+    // encontrandolo si manana vuelve a aparecer, que es para lo que esta la
+    // linea de mas abajo.
     //
     // Decirlo en el inventario es lo unico que lo hace visible. Un inventario
     // explicito tiene esa desventaja y es la que se ha elegido aqui: se puede
     // olvidar de anadir un generador nuevo, y eso falla con ruido. Uno que se
     // dedujera solo no se puede olvidar, y por eso no se deduccion
     // automaticamente lo que si se deduce.
+    // La lista vacia es el estado BUENO: no hay ningun contrato declarando una
+    // procedencia que nadie vigila. Antes habia una entrada (`fx-effects.json`) y
+    // se resolvio quitandole el `generatedFrom`, no inventandole un generador.
+    // Lo que se vigila es el invariante: si manana aparece una, esta NOMBRADA.
     const sinGenerador = CONTRATOS.filter((c) => c.sinGenerador);
-
-    expect(sinGenerador.length, 'hay contratos generados sin generador que nombra').toBeGreaterThan(0);
 
     for (const c of sinGenerador) {
       expect(c.script, `${c.salidas} sin generador no puede declarar script`).toBeNull();

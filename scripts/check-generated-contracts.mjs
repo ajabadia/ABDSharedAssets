@@ -112,28 +112,19 @@ export const CONTRATOS = [
     scriptNpm: 'check:s950-cal',
     salidas: ['s950_calibration.json'],
   },
-  // ── EL QUE NO TIENE GENERADOR, Y POR ESO SE DECLARA APARTE ──
+  // ── LOS QUE SE DECLARAN GENERADOS Y NO TIENEN GENERADOR ──
   //
-  // `fx-effects.json` declara `generatedFrom: ABDEep/.../FXSlot_Factory.cpp`, asi
-  // que es un contrato GENERADO por definicion: un panel puede leer de donde sale
-  // cada efecto. Y no hay ningun generador que lo produzca, ni ningun `--check`
-  // que lo verifique. Se declara aqui con `script: null` a proposito, y el
-  // preflight lo dice en voz alta en vez de dejar pasar el que si.
+  // Esta lista se vacio el 2026-09-30. `fx-effects.json` declaraba
+  // `generatedFrom: ABDEep/.../FXSlot_Factory.cpp` sin que hubiera ningun
+  // generador que lo produjera, y el campo es la autoridad que un panel lee
+  // para fiarse. No se resolvio escribiendo el generador: la fabrica tiene 56
+  // `case` y el catalogo 61 filas, y las cinco que sobran (el 0 y del 57 al
+  // 60) salen de `ABDSharedCode/DspEffects`. Se resolvio quitandole el campo.
   //
-  // Es el caso que hace que este fichero exista: un contrato que se declara
-  // generado y que nadie regenera cuando su fuente cambia es un contrato que
-  // MIENTE, y miente con la autoridad de un `generatedFrom` bien puesto. Un
-  // panel creyera que lo que lee viene del codigo, y no viene de ahi.
-  //
-  // Ponerlo en el inventario es lo que lo hace visible. Dejarlo fuera haria que
-  // este test —que recorre `contracts/` buscando `generatedFrom`— fallara, que
-  // es justo lo que ha pasado: lo ha encontrado el test, no una lectura.
-  {
-    script: null,
-    scriptNpm: null,
-    salidas: ['fx-effects.json'],
-    sinGenerador: true,
-  },
+  // La entrada se borro, la MECANICA se queda: si manana un contrato vuelve a
+  // declarar de donde sale y no hay `--check` que lo vigile, tiene que
+  // aparecer aqui para que el preflight lo pueda decir en voz alta. Una lista
+  // vacia es el estado bueno de esta lista, no un sitio que haya que rellenar.
 ];
 
 /** Como se pide python. En Windows `python` y en Unix `python3` son cosas distintas. */

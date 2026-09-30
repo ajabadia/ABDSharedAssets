@@ -148,14 +148,21 @@ recorre `scripts/` y falla si hay un generador que no esté declarado.
 
 ### Un contrato generado que no tiene generador
 
-`fx-effects.json` declara `generatedFrom: ABDEep/…/FXSlot_Factory.cpp` y **no hay
-ningún generador que lo produzca**. Nadie sabe si está al día, y el campo
-`generatedFrom` —que es la autoridad que un panel lee para fiarse— dice que viene
-del código. No es que esté viejo: es que **miente sobre de dónde viene**.
+Hubo uno: `fx-effects.json` declaraba `generatedFrom: ABDEep/…/FXSlot_Factory.cpp`
+y **no habia ningun generador** que lo produjera. El campo es la autoridad que un
+panel lee para fiarse, y decia que venia del codigo.
 
-Está declarado en el inventario con `sinGenerador: true` y el preflight lo dice en
-voz alta en vez de dejarlo pasar. Lo encontró el test al recorrer `contracts/`, no
-una lectura.
+Se resolvio **quitando el campo**, no escribiendo el generador. La cuenta no
+cuadra: la fabrica tiene 56 `case` y el catalogo tiene 61 filas, y las cinco que
+sobran —el 0 (bypass) y del 57 al 60— salen de `ABDSharedCode/DspEffects`
+(`FxDefaultCatalogue.h`), no de ahi. Y la fabrica no tiene `family` ni `params`,
+que son dos de las seis columnas de cada fila: un generador verificaria el id y la
+clase, y dejaria en verde justo lo que no sabe. Eso no es una puerta, es una puerta
+que no vigila.
+
+La entrada `sinGenerador: true` se borro del inventario y **la mecanica se quedo**:
+si un contrato declara de donde sale y nadie lo regenera, tiene que aparecer ahi, y
+el preflight lo dice en voz alta. Una lista vacia es el estado bueno.
 
 ## Contratos de matriz de modulacion
 
