@@ -35,6 +35,9 @@ abdbank/
 /_*.py
 /_*.mjs
 /_*.sh
-/__pycache__/
+# Los generadores de `scripts/` son python, y python escribe la cache de
+# bytes al lado del script: `scripts/__pycache__/`. Sin la barra delante,
+# que lo ancla a la raiz y deja fuera justo ese.
+__pycache__/
 # Copias de seguridad de un parche a medio aplicar
 *.bak

@@ -1,0 +1,55 @@
+{
+  "$comment": [
+    "LOS HERMANOS QUE LEEN LOS GENERADORES DE CONTRATOS, con su SHA.",
+    "",
+    "Cada generador de `scripts/` lee una cabecera de OTRO repo de la suite, y la",
+    "busca en la CARPETA HERMANA de este paquete: los generadores calculan",
+    "`ROOT = dirname(dirname(<esta carpeta>))` y de ahi cuelgan `<repo>/<fichero>`.",
+    "Por eso en CI este repo se descarga a `ABDSharedAssets/` y los hermanos al",
+    "mismo nivel, que es el layout del monorepo.",
+    "",
+    "EL SHA, Y POR QUE NO UNA RAMA. Una rama se mueve sola: el preflight pasaria en",
+    "verde hoy contra el codigo de hoy y en rojo dentro de dos dias sin que nadie",
+    "haya tocado nada. Fijado, el fallo es siempre el mismo y siempre este.",
+    "",
+    "CUANDO CAMBIE UNA CABECERA de uno de estos repos hay que subir SU SHA aqui Y en",
+    "`.github/workflows/docs-audit.yml` Y regenerar los contratos, en el mismo",
+    "commit. Son las tres mitades del mismo hecho, y `tests/siblingsPins.test.js`",
+    "comprueba que las dos primeras no se separen: la lista de aqui y los `ref:` del",
+    "workflow son el mismo dato escrito dos veces, y dos veces es donde se desincroniza.",
+    "",
+    "El fichero que se lista en `necesita` es el que el generador abre. No es un",
+    "test de vida del repo: es la comprobacion de que lo que hay ahi es lo que se",
+    "va a leer, para que un clon a medias no pase por un hermano presente."
+  ],
+
+  "hermanos": [
+    {
+      "repo": "ABDSharedCode",
+      "sha": "8113c8b02d2de3f2608632cb94488bed46ebc0bd",
+      "necesita": ["SynthCore/S950PatchFields.h", "SynthCore/S950Calibration.h"],
+      "lee": [
+        "scripts/generate_s950_patch_contract.py",
+        "scripts/generate_s950_calibration_contract.py"
+      ]
+    },
+    {
+      "repo": "ABDEep",
+      "sha": "9accfd663a20e051efc3a2de605a4cffb557e9a2",
+      "necesita": ["WebUI/js/modmatrix_data.js"],
+      "lee": ["scripts/generate_modulation_contracts.py"]
+    },
+    {
+      "repo": "ABDNeural",
+      "sha": "157da1b06abcc0c3706899423d5ae2f4fae35b3b",
+      "necesita": ["Source/State/ModDestinationTable.h"],
+      "lee": ["scripts/generate_modulation_contracts.py"]
+    },
+    {
+      "repo": "ABDMS2000",
+      "sha": "b954062457f230257f4a65ff5ec12aaf7e30e377",
+      "necesita": ["Source/DSP/Modulation/VirtualPatchMatrix.h"],
+      "lee": ["scripts/generate_modulation_contracts.py"]
+    }
+  ]
+}

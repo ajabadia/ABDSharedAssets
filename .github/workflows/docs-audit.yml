@@ -107,6 +107,23 @@ jobs:
         with:
           node-version: '20'
 
+      # LA RED DEBAJO DE LOS CHECKOUT. Es el mismo patron que usa ABDAudioLab en su
+      # `CMakeLists.txt` —usar el hermano si esta a mano, y si no bajarlo con el
+      # SHA fijado—, aqui en un script porque este paquete no es de CMake: son
+      # generadores de Python que leen cabeceras sueltas.
+      #
+      # `if: always()` a proposito, y es lo unico que hace que esto sirva: si un
+      # checkout se salta o no llega a ejecutarse, este paso corre IGUAL. Sin el,
+      # el fallo no seria un error de checkout, seria el preflight diciendo "no he
+      # podido comprobar" y saliendo con 2, que culpa al contrato de un problema
+      # del montaje. Hay que bajar el hermano a su SHA, no a una rama.
+      #
+      # Es idempotente y solo clona lo que falta: un hermano ya presente no se
+      # toca, y por eso no puede pisar el trabajo de nadie.
+      - name: Fetch missing siblings (pinned SHA)
+        if: always()
+        run: node scripts/fetch-missing-siblings.mjs
+
       # Los tres generadores de contratos son python y el runner de Ubuntu no lo
       # trae. Sin este paso el preflight no se puede ni ejecutar, y un preflight
       # que no corre y sale en verde es peor que no tenerlo: parece que hay puerta.
@@ -137,6 +154,35 @@ jobs:
       # tiene que CORRER IGUAL.
       - name: "Preflight: generated contracts are up to date"
         run: pnpm run preflight
+      # EL S950, CON SU NOMBRE PROPIO. Y SI, ESTA YA DENTRO DEL PREFLIGHT: los tres
+      # generadores de `scripts/` estan declarados en `CONTRATOS` y el preflight los
+      # corre a los tres, este incluido. No es una puerta nueva, es la MISMA puerta
+      # con etiqueta.
+      #
+      # Lo que se compra aqui es que el fallo se lea. Con el preflight solo, un
+      # contrato S950 viejo se ve como un paso rojo que se llama "Preflight: generated
+      # contracts are up to date", y para saber que era el S950 hay que abrir el log y
+      # buscarlo en las tres ultimas lineas. Con este paso, el que se pone rojo se
+      # llama `S950: el contrato coincide con la tabla de C++`, el check tiene nombre
+      # propio en la pestana, y se puede pedir como required sin arrastrar al resto.
+      #
+      # Por eso NO se sustituye al preflight: este lo sustituye. Si alguien limpia "el
+      # paso que sobra", el otro se queda y no pasa nada, que es el riesgo de dejar dos
+      # puertas para lo mismo sin el comment que las ata. Aqui esta el comment.
+      #
+      # Sale por los NOMBRES de `package.json` y no por la ruta del script a proposito:
+      # el mensaje de fallo del generador dice `pnpm generate:s950-contract`, y que el
+      # comando que se ejecuta sea el mismo que se cita es lo que hace que ese mensaje
+      # sirva para algo en vez de ser una pista que hay que traducir.
+      #
+      # Los dos van en el mismo paso porque son la mitad del mismo contrato: el
+      # catalogo de 38 campos y las 6 curvas de calibracion salen de la misma cabecera
+      # de ABDSharedCode, y un S950 a medio regenerar es un S950 desfasado.
+      - name: "S950: el contrato coincide con la tabla de C++"
+        run: |
+          pnpm run check:s950-contract
+          pnpm run check:s950-cal
+
 
       # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
       # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
