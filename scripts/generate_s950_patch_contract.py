@@ -437,8 +437,21 @@ def main():
 
     try:
         contract = build()
-    except SystemExit:
-        raise
+    except SystemExit as exc:
+        # ── UN GENERADOR QUE NO LLEGO A PRODUCIR UN CONTRATO, SALIDA 2 ──
+        #
+        # Todo lo que `build` aborta es de la misma clase: el origen no esta, o
+        # esta y el parser no lo entiende. En ninguno de los dos casos se ha
+        # mirado el json de contracts/, asi que NO se puede decir que este
+        # desfasado: no se ha llegado a compararlo con nada.
+        #
+        # La distincion es la que separa "regenera" de "arregla el origen". Con
+        # un 1 aqui el mensaje era "desfasado, se regenera con pnpm
+        # generate:s950-contract", y esa orden no puede cumplirse: el generador
+        # es justamente lo que esta roto, y el fichero que falta no lo genera
+        # este script. Quien lo leia iba al sitio equivocado dos veces.
+        print(str(exc), file=sys.stderr)
+        return 2
     except ValueError as exc:
         print('error al leer el catalogo: %s' % exc, file=sys.stderr)
         return 2

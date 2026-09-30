@@ -314,8 +314,14 @@ def main():
 
     try:
         contract = build(source)
-    except SystemExit:
-        raise
+    except SystemExit as exc:
+        # ── UN GENERADOR QUE NO LLEGO A PRODUCIR UN CONTRATO, SALIDA 2 ──
+        #
+        # Mismo motivo que en `generate_s950_patch_contract.py`: si `build` aborta
+        # no se ha mirado el json de contracts/, asi que no se puede afirmar que
+        # este desfasado. Es "no he podido comprobar", que es lo que dice el 2.
+        print(str(exc), file=sys.stderr)
+        return 2
     except ValueError as exc:
         print('error al leer la calibracion: %s' % exc, file=sys.stderr)
         return 2

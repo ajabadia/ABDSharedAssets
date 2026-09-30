@@ -218,8 +218,12 @@ NEURONIK_SOURCES = [
 # NeuronikEngine::applyModulation; ahora se leen de la fila, que es donde estan,
 # y la tabla no puede dejar de cuadrar con el codigo sin que se note.
 NEURONIK_DESTINATION = re.compile(
-    r'\{\s*"([^"]*)"\s*,\s*(?:nullptr|"([^"]*)")'
-    r'(?:\s*,\s*(true|false)\s*,\s*(true|false))?\s*\}')
+    r'makeModDestination<\s*(\d+)\s*>\s*'
+    r'\(\s*"([^"]*)"\s*,\s*'
+    r'(?:nullptr|"([^"]*)")'
+    r'(?:\s*,\s*(true|false))?'
+    r'(?:\s*,\s*(true|false))?'
+    r'(?:\s*,[^)]*)?\s*\)')
 
 
 def parse_neuronik_table():
@@ -235,10 +239,72 @@ def parse_neuronik_table():
     body = text[open_brace:end]
 
     rows = []
+    indices = []
     for m in NEURONIK_DESTINATION.finditer(body):
-        rows.append((m.group(1), m.group(2),
-                     m.group(3) == 'true', m.group(4) == 'true'))
+        rows.append((m.group(2), m.group(3),
+                     m.group(4) == 'true', m.group(5) == 'true'))
+        indices.append(int(m.group(1)))
+
+    # ── EL INDICE NO SE PASA POR ALTO, Y ESTO LO COMPRUEBA ──
+    #
+    # El `makeModDestination<12>` no es decoracion: es el indice del FORMATO DE
+    # PRESET, y el motor lo comprueba fila a fila. El contrato guarda los
+    # destinos en ORDEN y sin indice, asi que ese numero solo puede vivir aqui.
+    #
+    # Se comprueba por un motivo concreto, que es que el fallo que tapa este
+    # regex no es "no reconoce la tabla": es reconocerla A MEDIAS. Una fila
+    # partida en dos lineas, o con un comentario dentro de los parentesis, hace
+    # que el regex se la salte en silencio. El corte de "tabla vacia" de mas
+    # abajo no lo ve, porque la tabla no esta vacia: le faltan dos filas de
+    # treinta y una, y el `--check` dira "desfasado" con toda la razon, como si
+    # hubiera que regenerar. Regenerar en ese estado mete el recorte en el
+    # contrato y ya no hay manera de saber que estuvo ahi.
+    #
+    # Un indice que se salta o se repite es la senal de que falta una fila.
+    if indices and indices != list(range(len(indices))):
+        raise SystemExit(
+            'VACIO neuronik_modulation_matrix.json: la tabla de ModDestinationTable.h '
+            'no sale de 0..N-1 sin huecos (%d filas leidas, primer hueco en %s). '
+            'El parser ha dejado de reconocer el codigo del synth: mira la tabla '
+            'antes de regenerar.'
+            % (len(indices), _primer_hueco(indices)))
+
     return rows
+
+
+def _primer_hueco(indices):
+    for esperado, visto in enumerate(indices):
+        if esperado != visto:
+            return 'fila %d (dice %d)' % (esperado, visto)
+    return 'el final de la lista'
+
+
+# LA NOTA DE `replaces`, Y POR QUE VIVE AQUI Y NO EN EL JSON.
+#
+# Este texto se escribio a mano en el contrato el 2026-09-29, el dia que los
+# destinos 12..16 dejaron de declarar `replaces`. Y al dia siguiente el
+# `--check` empezo a decir que el contrato estaba desfasado, porque un generador
+# que no sabe escribir una nota nunca puede reproducir un fichero que la tiene.
+#
+# La paradoja es uncomfortable: el generador es la fuente de la verdad sobre las
+# BANDERAS, y no sobre la explicacion de que significan. Regenerar para dejar de
+# estar desfasado habria borrado el unico sitio donde estaba escrito por que 12
+# ya no es un `envAssign` —y ese "por que" es la decision, no el dato— y habria
+# dejado el contrato en verde con menos informacion que antes. Un contrato
+# regenerado que pierde el porque de una decision es un contrato peor, y en
+# verde.
+#
+# La nota se emite siempre, y el generador vuelve a ser el duenno del fichero
+# entero. Cambiar el texto es editar esta constante, que es el sitio honesto:
+# esta al lado del codigo que decide las banderas, no dentro del json que la
+# describe.
+NEURONIK_REPLACES_NOTE = (
+    '`replaces` es exactamente `envAssign` en el motor: la envolvente PISA el '
+    'factor de routing en vez de sumarse encima. Los destinos 12..16 dejaron '
+    'de publicarlo el 2026-09-29: son acumuladores a cero, la envolvente los '
+    'MODULA y no los pisa, y por eso van con `perNote: true` y '
+    '`replaces: false`. Los unicos que reemplazan son el 1 (ENV 1 -> VCA) y el '
+    '10 (ENV 2 -> cutoff), donde la envolvente ES la senal.')
 
 
 def build_neuronik():
@@ -247,8 +313,16 @@ def build_neuronik():
         entry = {'label': label, 'parameterId': parameter_id}
         if per_note:
             entry['perNote'] = True
-        if replaces:
-            entry['replaces'] = True
+            # ── POR QUE `replaces` SE ESCRIBE TAMBIEN CUANDO ES FALSO ──
+            #
+            # `replaces` sin `perNote` no describe nada: es como se comporta una
+            # envolvente, y si la fila no es por voz no hay envolvente que
+            # colocar. Publicarlo solo cuando es verdadero —que es lo que hacia
+            # este codigo— deja la fila identica a la que no dice nada, y el
+            # consumidor tiene que adivinar el default del esquema. Publicarlo
+            # siempre que la fila sea `perNote` convierte "no aparece" en
+            # "esta fila no va por voz", que si significa algo.
+            entry['replaces'] = replaces
         dests.append(entry)
 
     return {
@@ -267,6 +341,7 @@ def build_neuronik():
             {'label': label, 'category': cat, 'perNote': per_note}
             for label, cat, per_note in NEURONIK_SOURCES
         ],
+        'replacesNote': NEURONIK_REPLACES_NOTE,
         'destinations': dests,
         'provenance': {
             'source': ('Source/State/ModDestinationTable.h '

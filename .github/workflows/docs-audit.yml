@@ -19,16 +19,81 @@ concurrency:
 
 jobs:
   audit:
-    name: Docs audit + suite
+    name: Preflight + docs audit + suite
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     env:
       CI: true
 
+    # Este checkout vive en una SUBCARPETA a proposito, y no por estetica: los
+    # generadores de contratos no leen este repo, leen a los HERMANOS. Cada uno
+    # busca su fuente en `raiz del monorepo / <repo>`, o sea en la carpeta
+    # hermana de este checkout, que es donde tiene que estar. Con el checkout
+    # en la raiz del workspace no hay donde poner un hermano sin que acaba
+    # dentro del repo, y dentro del repo el generador no lo encuentra.
+    #
+    # Por eso los cuatro de abajo van a `ABDSharedCode/`, `ABDEep/`, etc., y este
+    # a `ABDSharedAssets/`, todos al mismo nivel. Es el layout del monorepo, que
+    # es lo que los scripts ya dan por supuesto.
+    defaults:
+      run:
+        working-directory: ABDSharedAssets
+
     steps:
-      - name: Checkout
+      - name: Checkout ABDSharedAssets
         uses: actions/checkout@v4
+        with:
+          path: ABDSharedAssets
+          fetch-depth: 1
+
+      # ── LOS HERMANOS, Y POR QUE VAN FIJADOS A UN SHA ──
+      #
+      # No son opcionales. Los tres generadores de `contracts/` leen cabeceras de
+      # codigo real que vive en otros repos, y el preflight compara el json
+      # commiteado contra lo que sale de ahi. Sin los cuatro, los generadores no
+      # pueden ni mirar: dan "no he podido comprobar" y el job muere, y el
+      # mensaje seria exactamente el que un contrato desfasado no merece.
+      #
+      # Un SHA y no una rama, por la razon de siempre: `main` aqui se moveria
+      # sola y un PR pasaria en verde con los contratos al dia contra el codigo
+      # de hoy y en rojo contra el de dentro de dos dias, sin que nadie haya
+      # tocado nada. Fijado, el fallo es siempre el mismo y siempre este.
+      #
+      # Cuando cambie una cabecera de estos repos, hay que subir el SHA de aqui
+      # Y regenerar los contratos en el mismo commit. Ese es el precio de que el
+      # preflight signifique algo, y es un precio pagado una vez por cambio.
+      - name: Checkout ABDSharedCode (Immutable Sibling Ref)
+        uses: actions/checkout@v4
+        with:
+          repository: ajabadia/ABDSharedCode
+          ref: 8113c8b02d2de3f2608632cb94488bed46ebc0bd
+          path: ABDSharedCode
+          fetch-depth: 1
+
+      - name: Checkout ABDEep (Immutable Sibling Ref)
+        uses: actions/checkout@v4
+        with:
+          repository: ajabadia/ABDEep
+          ref: 9accfd663a20e051efc3a2de605a4cffb557e9a2
+          path: ABDEep
+          fetch-depth: 1
+
+      - name: Checkout ABDNeural (Immutable Sibling Ref)
+        uses: actions/checkout@v4
+        with:
+          repository: ajabadia/ABDNeural
+          ref: 157da1b06abcc0c3706899423d5ae2f4fae35b3b
+          path: ABDNeural
+          fetch-depth: 1
+
+      - name: Checkout ABDMS2000 (Immutable Sibling Ref)
+        uses: actions/checkout@v4
+        with:
+          repository: ajabadia/ABDMS2000
+          ref: b954062457f230257f4a65ff5ec12aaf7e30e377
+          path: ABDMS2000
+          fetch-depth: 1
 
       # Las versiones de la suite: la raiz del workspace declara pnpm@10.25.0 y los
       # demas repos compartidos corren sus tests en Node 20.
@@ -42,11 +107,36 @@ jobs:
         with:
           node-version: '20'
 
+      # Los tres generadores de contratos son python y el runner de Ubuntu no lo
+      # trae. Sin este paso el preflight no se puede ni ejecutar, y un preflight
+      # que no corre y sale en verde es peor que no tenerlo: parece que hay puerta.
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       # A diferencia del resto de la suite, aqui SI hay lockfile versionado y es suelto
       # (un unico importer, el de este paquete): el install es reproducible y no hace
       # falta el layout de hermanos que reproduce pnpm-workspace-bootstrap.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # EL PREFLIGHT, antes que nada. Los contratos de contracts/ son GENERADOS: hay
+      # codigo en ABDSharedCode y en los repos de los synths que los produce, y el
+      # json es una copia. Si alguien toca la fuente y no regenera, el CI sigue en
+      # verde y el PR entra con dos verdades distintas sobre las curvas: los paneles
+      # dibujan con el json y el motor lee la cabecera.
+      #
+      # Por eso esto va antes de la suite y no dentro de ella. Es un paso propio
+      # porque un fallo de contrato tiene que LEERSE como un contrato desfasado, y
+      # porque metido en un test se puede saltar con un filtro de ruta.
+      #
+      # Sin `paths:` a proposito, igual que el job entero: un check requerido que no
+      # llega a ejecutarse deja el PR bloqueado para siempre. Si se tocara el
+      # generador sin tocar el json, que es justo el caso que vigila, el workflow
+      # tiene que CORRER IGUAL.
+      - name: "Preflight: generated contracts are up to date"
+        run: pnpm run preflight
 
       # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
       # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
