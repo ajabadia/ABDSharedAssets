@@ -74,9 +74,18 @@ describe('el preflight de contratos generados', () => {
   });
 
   it('declara los tres generadores con script, y son los tres que hay', () => {
-    // Tres CON generador mas uno SIN el, que se declara aparte y tiene su
-    // propio test. Inventariar el que no tiene generador es lo que lo hace
-    // visible; los que si lo tienen son los que se pueden comprobar.
+    // Tres, y los tres CON generador. Habia un cuarto, `fx-effects.json`, que se
+    // declaraba generado sin que nadie lo regenerara ni lo comprobara: se le
+    // quito el campo `generatedFrom` en vez de inventarle un generador, asi que
+    // ya no aparece aqui. La entrada `sinGenerador: true` se borro con el y la
+    // MECANICA se quedo, para que un contrato que vuelva a declarar una
+    // procedencia sin generador tenga que aparecer en CONTRATOS y salir en voz
+    // alta en el preflight.
+    //
+    // El guard de que NADIE declare una procedencia sin tener quien la verifique
+    // esta en `contractProvenance.test.js`, y mira mas que este: que el
+    // generador exista de verdad y mire `--check`. Aqui lo unico que se pedia
+    // era que estuviera declarado, y por ese hueco entro el que no tenia.
     const conGenerador = CONTRATOS.filter((c) => !c.sinGenerador);
     expect(conGenerador).toHaveLength(3);
 
