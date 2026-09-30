@@ -134,6 +134,16 @@ components/s950PatchFields.js    el catalogo de patches del S950 INDEXADO para u
                                 isS950Bipolar). No pinta nada: dice que hay que
                                 pintar y con que limites, leyendo el contrato
                                 GENERADO desde el C++ del motor
+components/s950Calibration.js  las curvas de unidades del S950 INDEXADAS para un
+                                panel (buildS950Calibration, s950AxisFor,
+                                s950Coverage). Tampoco pinta nada: devuelve la
+                                geometria de un eje y si ese eje se puede
+                                dibujar. valueAt() devuelve SIEMPRE null
+contracts/s950_calibration.json curvas de unidades del S950 (6 curvas, 0
+                                medidas). GENERADO desde
+                                ABDSharedCode/SynthCore/S950Calibration.h con
+                                `pnpm generate:s950-cal`; se verifica con
+                                `pnpm check:s950-cal`
 components/skins/index.js   SKINS: cómo se dibuja cada control (registry + 3 skins)
 components/index.js         barrel: controles + registerSkin/getSkin/applySkin
 styles/components/widgets.css     estilos base de knob/slider/toggle/select

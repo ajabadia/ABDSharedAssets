@@ -28,6 +28,40 @@ D:desarrollosABDSynthsABDSharedAssets+-- brands/       <- Logotipos vectoriales 
 +-- docs/         <- Guias oficiales de integracion, estilos e iconografia
 ```
 
+### Curvas de calibracion del S950 (GENERADO, y vacio a proposito)
+
+`contracts/s950_calibration.json` sale del mismo sitio que el catalogo y por el
+mismo motivo, pero de la **otra** tabla del S950: `ABDSharedCode/SynthCore/S950Calibration.h`.
+
+| | |
+|---|---|
+| De donde sale | `pnpm generate:s950-cal` |
+| Verificar sin escribir | `pnpm check:s950-cal` (sale 1 si esta desfasado) |
+| Que trae | las 6 curvas con unidad, rango de panel, sentido y escala, y **cero** puntos medidos |
+| Quien lo consume | `components/s950Calibration.js`, que lo indexa |
+
+El catalogo de patches dice **que byte es cual**. Este dice **cuanto vale**, o sea
+en que unidad esta cada magnitud: envolvente en segundos, LFO en hercios, cutoff
+en hercios, octavas de la envolvente de filtro, sustain en dB. Son dominios
+distintos, y el rango del mando no es el rango de la unidad que lleva al lado.
+
+**El contrato esta vacio de puntos y eso es el dato, no una carencia.** Los
+puntos de una curva de calibracion son resultados experimentales —alguien puso
+una sonda en un osciloscopio y barrio un mando—, y los del estudio Mz950 son
+AGPLv3. Asi que el contrato trae `measured: false`, `pointCount: 0`, `points: []`
+y `measuredRange: null` **explícitos**, y `valueAt()` devuelve `null` para todo.
+No porque sea provisional: 0 s de attack no es "no medido", es un ataque
+instantaneo, que es un click; y 0 *es* un numero, asi que un `|| 0` en el panel
+lo volveria indistinguible de un dato. En C++ esto es `std::nullopt`.
+
+Lo que si se puede hacer hoy, y es de lo que trata este contrato: **dibujar los
+ejes**. De las seis curvas, el eje **horizontal** se dibuja entero en las seis
+—sale del dominio del panel, que ya esta probado—, pero el **vertical** solo en
+dos. Las otras cuatro son logaritmicas, y un eje en log necesita un minimo REAL
+que es justamente un valor medido. `s950AxisFor()` lo dice con
+`needsMeasuredMinimum`, y `s950Coverage()` da el rotulo: "Ninguna curva medida
+todavia". Ese par es lo que permite **marcar** en vez de inventar.
+
 ### Catalogo de patches del S950 (GENERADO, no escrito a mano)
 
 `contracts/s950_patch_fields.json` es una cosa distinta a los contratos de
@@ -60,7 +94,70 @@ guardan **crudos** (`ALL`, `MONO1`), y la tipografia la pone
 `formatS950Name()`. Un contrato que maqueta se queda viejo el dia que el panel
 cambie su estilo, y entonces el desfase parece del panel cuando es del dato.
 
-### Contratos de matriz de modulacion
+## Preflight: los contratos generados no pueden llegar viejos
+
+Los ficheros de `contracts/` que llevan `generatedFrom` son **copias**: su
+verdad está en una cabecera de `ABDSharedCode` o en el código de un synth. Eso
+funciona mientras alguien se acuerde de regenerar la copia cuando cambia el
+original.
+
+El fallo no es que se olvide un generador —eso se ve—. Es que **no pasa nada**:
+el CI sigue en verde, el PR entra, y a partir de ahí hay dos verdades sobre las
+curvas del S950, una en el `.h` y otra en el `.json`. Los paneles dibujan con la
+segunda mientras el motor lee la primera, y un panel con ejes viejos no se
+queja, porque un panel no sabe que sus ejes están viejos.
+
+`pnpm run preflight` corre los tres generadores con `--check` y sale con:
+
+| código | qué significa |
+|---|---|
+| `0` | todos los contratos generados al día |
+| `1` | hay un contrato **desfasado**: regenéralo |
+| `2` | hay un generador que **no ha podido leer sus fuentes**: el preflight no sabe si ese contrato esta al dia |
+
+El 2 existe y va aparte del 1 a propósito. Un generador roto devolviendo 1
+haría que alguien regenerase un contrato perfectamente bueno para arreglar un
+parser que no entiende su código. Y un preflight que no distingue «tu contrato
+está viejo» de «no puedo ni mirar» miente igual que el contrato que vigila.
+
+Un contrato generado **sin** generador (más abajo) no es un 2: se avisa en voz
+alta y el preflight sale con 0. No es que se esté mirando y aprobándose —no se
+mira, no hay con qué— sino que no se puede hacer nada al respecto desde aquí, y
+un rojo por eso taparía los rojos que sí se pueden arreglar.
+
+Corre **antes** de la suite, en su propio paso del workflow y sin filtro de
+`paths:`: si se metiera dentro de un test, un `--check` olvidado se podría
+saltar con un filtro de ruta, que es justo el fallo que se tapa.
+
+**Los generadores necesitan a los repos hermanos.** Cada uno busca su fuente en
+la carpeta hermana de este checkout, así que en CI este repo se descarga a
+`ABDSharedAssets/` y los otros cuatro al mismo nivel: `ABDSharedCode`, `ABDEep`,
+`ABDNeural` y `ABDMS2000`. Van **fijados a un SHA**, no a una rama, porque una
+rama se mueve sola y el preflight pasaría en verde hoy y en rojo dentro de dos
+días sin que nadie haya tocado nada. Cuando cambie una cabecera de esos
+repos, hay que subir el SHA del workflow **y** regenerar los contratos en el
+mismo commit: son las dos mitades del mismo hecho.
+
+### Qué pasa si añades un generador nuevo
+
+Está en el inventario de `scripts/check-generated-contracts.mjs`, **explícito y
+a mano**. Es a propósito: un inventario se puede olvidar de actualizar y eso
+falla ruidosamente, mientras que uno que se dedujera del directorio no se puede
+olvidar y por eso se queda corto en silencio. `tests/generatedContractsPreflight.test.js`
+recorre `scripts/` y falla si hay un generador que no esté declarado.
+
+### Un contrato generado que no tiene generador
+
+`fx-effects.json` declara `generatedFrom: ABDEep/…/FXSlot_Factory.cpp` y **no hay
+ningún generador que lo produzca**. Nadie sabe si está al día, y el campo
+`generatedFrom` —que es la autoridad que un panel lee para fiarse— dice que viene
+del código. No es que esté viejo: es que **miente sobre de dónde viene**.
+
+Está declarado en el inventario con `sinGenerador: true` y el preflight lo dice en
+voz alta en vez de dejarlo pasar. Lo encontró el test al recorrer `contracts/`, no
+una lectura.
+
+## Contratos de matriz de modulacion
 
 `contracts/modulation_matrix.schema.json` declara la forma de la tabla de
 modulacion de un synth: que fuentes y que destinos existen, en que orden, y que
