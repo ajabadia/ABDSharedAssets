@@ -102,10 +102,15 @@ jobs:
         with:
           version: '10'
 
+      # Node 22, y no por moda: el smoke ARIA habla CDP a pelo con el `WebSocket`
+      # GLOBAL de Node, que llego en la 22 (en la 21 iba detras de un flag, y en
+      # la 20 no existe). Con la 20, esa linea era un `ReferenceError: WebSocket
+      # is not defined` y este job llevaba cinco corridas en rojo por un motivo
+      # que no era de ningun contrato. La suite entera corre en 24 sin quejarse.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # LA RED DEBAJO DE LOS CHECKOUT. Es el mismo patron que usa ABDAudioLab en su
       # `CMakeLists.txt` —usar el hermano si esta a mano, y si no bajarlo con el

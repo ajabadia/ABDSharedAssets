@@ -484,6 +484,18 @@ function checkOne (node, check)
 
 async function main ()
 {
+    // El `WebSocket` de abajo es el GLOBAL de Node, no una importacion: este
+    // script no declara dependencias de navegador a proposito. Ese global llego
+    // en Node 22, y en el 20 no existe, con lo que el fallo era un
+    // `ReferenceError` que no decia nada del Node que hacia falta. Se comprueba
+    // aqui para que el mensaje lo diga.
+    if (typeof WebSocket === 'undefined')
+    {
+        console.error('El smoke ARIA necesita el WebSocket global de Node, que llego en la 22.');
+        console.error(`Esta corriendo con Node ${process.version}: sube el workflow a 22 o mas.`);
+        return 2;
+    }
+
     const chromePath = findChrome();
 
     if (chromePath == null)
