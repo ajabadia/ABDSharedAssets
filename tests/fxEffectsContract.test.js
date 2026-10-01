@@ -30,7 +30,13 @@ import {
   CONTRACTS,
 } from './helpers/validateSchema.js';
 
-const SCHEMA = readSchema('fx-effects.schema.json');
+// El nombre del fichero, aparte del esquema: el validador lo recibe aparte
+// para poder decir CONTRA QUE esquema se ha soltado un campo, y el nombre
+// aparece en el mensaje. Si viviera solo dentro del objeto, el mensaje
+// tendria que adivinarlo.
+const SCHEMA_FILE = 'fx-effects.schema.json';
+
+const SCHEMA = readSchema(SCHEMA_FILE);
 const CONTRACT = readContract('fx-effects.json');
 
 /** Copia profunda con un camino de escritura, para sabotear sin tocar el disco. */
@@ -200,9 +206,15 @@ describe('fxEffectsContract — el catálogo de efectos y su esquema', () => {
 
     it('una clave de mas en una fila de efecto', () => {
       const saboteado = put(CONTRACT, ['effects', 1, 'displayName'], 'Reverb largo');
-      expect(validate(saboteado, SCHEMA)).toContain(
-        '(raíz).effects[1].displayName: propiedad no permitida por el esquema',
-      );
+      // El mensaje se mira por PARTES, no entero: la ruta donde esta el campo,
+      // el nombre del esquema contra el que se ha soltado, y la palabra `no
+      // declara`. Un `toContain` de la frase entera ata el test a la redaccion,
+      // y atarse al texto es justo lo que dejo estos dos casos fijando un
+      // mensaje viejo el dia que el mensaje mejoro.
+      const errores = validate(saboteado, SCHEMA, '', SCHEMA_FILE).join(' | ');
+      expect(errores).toContain('(raíz).effects[1].displayName:');
+      expect(errores).toContain(SCHEMA_FILE);
+      expect(errores).toContain('no declara');
     });
 
     it('un nombre de motor que no es un identificador de clase', () => {
@@ -226,9 +238,11 @@ describe('fxEffectsContract — el catálogo de efectos y su esquema', () => {
 
     it('una propiedad de mas en la raiz', () => {
       const saboteado = put(CONTRACT, ['otroCampo'], 1);
-      expect(validate(saboteado, SCHEMA)).toContain(
-        '(raíz).otroCampo: propiedad no permitida por el esquema',
-      );
+      // Lo mismo que arriba y por el mismo motivo: partes, no frase entera.
+      const errores = validate(saboteado, SCHEMA, '', SCHEMA_FILE).join(' | ');
+      expect(errores).toContain('(raíz).otroCampo:');
+      expect(errores).toContain(SCHEMA_FILE);
+      expect(errores).toContain('no declara');
     });
 
     it('un `variant` de texto es legal (los pitch lo usan)', () => {
