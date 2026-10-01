@@ -41,6 +41,8 @@
     "check:s950-cal": "python scripts/generate_s950_calibration_contract.py --check",
     "medir:aira": "node scripts/medir-cruce-aira.mjs",
     "preflight": "node scripts/check-generated-contracts.mjs",
+    "generate:cuarentena-cpp": "node scripts/generar-cuarentena-cpp.mjs",
+    "check:cuarentena-cpp": "node scripts/generar-cuarentena-cpp.mjs --check",
     "check:contracts": "node scripts/check-generated-contracts.mjs",
     "ci": "node scripts/ci-local.mjs",
     "ci:list": "node scripts/ci-local.mjs --list"

@@ -103,6 +103,40 @@ function manifiesto() {
  * `generatedContractsPreflight.test.js` lo pilla: compara lo declarado aqui con
  * lo que hay en disco y con lo que dice el propio generador.
  */
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * LOS GENERADOS QUE NO SON CONTRATOS, Y LA PUERTA QUE LES HACE FALTA.
+ *
+ * Un generado fuera de `contracts/`: la cabecera de C++ con los literales de la
+ * regla de cuarentena, escrita desde el enum del esquema. Vive en el
+ * laboratorio porque alli se compila, y se comprueba desde aqui porque el
+ * esquema vive aqui.
+ *
+ * POR QUE NO VALE CON LO QUE YA HAY.
+ *
+ * La version anterior ataba las dos mitades con dos tests cruzados, uno por
+ * lenguaje, y los dos hacen SKIP cuando el repositorio hermano no esta —el
+ * clon limpio—. Sin hermano, la mitad de C++ no se puede ni comparar. Con un
+ * fichero generado no hay mitad que comparar: hay un fichero, y el `--check`
+ * no necesita al hermano para decidir, solo necesita el esquema, que es la
+ * unica fuente. Por eso esta lista no comparte puerta con `CONTRATOS`: son
+ * cosas distintas y sus fallos se leen distinto.
+ *
+ * Y el destino puede no existir —el CI de ABDSharedAssets no baja el
+ * laboratorio—. El script sale con 0 y lo dice, porque ahi no hay cabecera que
+ * comprobar. En el CI de ABDAudioLab el hermano SI esta, y entonces se
+ * comprueba de verdad.
+ */
+export const GENERADOS_FUERA = [
+  {
+    script: 'scripts/generar-cuarentena-cpp.mjs',
+    scriptNpm: 'check:cuarentena-cpp',
+    salidas: ['../ABDAudioLab/src/core/HardwareContractQuarantine.generado.h'],
+    queEs: 'la cabecera de C++ con los literales de la regla de cuarentena',
+    deDondeSale: 'el enum de contracts/hardware_profile.schema.json',
+  },
+];
+
 export const CONTRATOS = [
   {
     script: 'scripts/generate_modulation_contracts.py',
@@ -563,6 +597,49 @@ export function correrCheck(script) {
   };
 }
 
+/**
+ * Corre un generador de Node en modo `--check`.
+ *
+ * Y existe al lado de `correrCheck`, no dentro de ella, porque los dos no son
+ * el mismo Lenguaje: `correrCheck` invoca Python y por eso no admite argumentos,
+ * y este generador es JavaScript y necesita pasarle `--check` como argumento. La
+ * forma de volver es la misma a proposito —codigo, salida, colgado, no existe—
+ * para que quien llama no tenga que saber de que lenguaje es cada cosa.
+ *
+ * `process.execPath` y no la palabra `node`: es el mismo Node que esta corriendo
+ * el preflight, sin depender de que haya otro en el PATH con otra version.
+ *
+ * @param {string} script relativo a la raiz de este paquete
+ * @param {string[]} [args]
+ * @returns {{codigo: number, salida: string, colgado: boolean, noExiste: boolean}}
+ */
+export function correrNode(script, args = []) {
+  const ruta = join(root, script);
+
+  if (!existsSync(ruta))
+    return { codigo: 2, salida: '', colgado: false, noExiste: true };
+
+  const r = spawnSync(process.execPath, [ruta, ...args], {
+    cwd: root,
+    encoding: 'utf-8',
+    timeout: TIEMPO_MS,
+    windowsHide: true,
+  });
+
+  if (r.error)
+    return { codigo: 2, salida: String(r.error.message ?? r.error), colgado: false, noExiste: false };
+
+  if (r.signal)
+    return { codigo: 2, salida: `el proceso ha terminado con la senal ${r.signal}`, colgado: true, noExiste: false };
+
+  return {
+    codigo: typeof r.status === 'number' ? r.status : 2,
+    salida: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim(),
+    colgado: false,
+    noExiste: false,
+  };
+}
+
 /** Los `scripts.` de `package.json` cuyo nombre empieza por el prefijo dado. */
 export function scriptsQueEmpiezanPor(man, prefijo) {
   return Object.keys(man.scripts ?? {}).filter((k) => k.startsWith(prefijo));
@@ -688,6 +765,60 @@ function main() {
     console.log('');
     console.log('Declaran `generatedFrom` pero no hay script que los regenere ni --check');
     console.log('que los vigile. Nadie sabe si estan al dia, y el campo dice que si.');
+  }
+
+  // ── Lo generado que no es un contrato, antes de las copias ──
+  //
+  // Antes que nada lo demas, porque es lo barato y es lo que mas duele cuando
+  // se queda viejo: una cabecera desfasada deja a C++ mirando un nombre que el
+  // esquema ya no declara, y `evaluar` devuelve "no retenido" para siempre.
+  const generadosDesfasados = [];
+
+  for (const g of GENERADOS_FUERA) {
+    if (!existsSync(join(root, g.script))) {
+      console.log(`  sin generador  ${g.queEs} (no esta ${g.script})`);
+      generadosDesfasados.push({ ...g, codigo: 2, salida: 'el script no existe' });
+      continue;
+    }
+
+    const r = correrNode(g.script, ['--check']);
+    const etiqueta = r.codigo === 0 ? 'al dia' : 'DESFASADO';
+
+    console.log(`  generado ${etiqueta.padEnd(9)} ${g.queEs}, desde ${g.deDondeSale}`);
+
+    if (r.codigo === 0)
+      continue;
+
+    generadosDesfasados.push({ ...g, codigo: r.codigo, salida: r.salida });
+
+    if (r.colgado) {
+      console.log('                 el generador se ha pasado de tiempo sin responder');
+      continue;
+    }
+
+    for (const linea of r.salida.split('\n').filter((l) => l.trim() !== '').slice(0, 8))
+      console.log(`                 ${linea.trim()}`);
+  }
+
+  if (generadosDesfasados.length > 0) {
+    console.log('');
+    console.log(`GENERADOS DESFASADOS (${generadosDesfasados.length}):`);
+    for (const g of generadosDesfasados)
+      console.log(`  ${g.queEs}  ${g.script} salio con ${g.codigo}`);
+    console.log('');
+    console.log('Un generado desfasado no es un contrato viejo: es codigo que no se ha');
+    console.log('vuelto a escribir despues de que cambiara su fuente. SE ARREGLA ASI:');
+
+    for (const g of generadosDesfasados) {
+      if (g.codigo === 2) continue;
+      console.log('');
+      console.log(`  ${g.queEs}:`);
+      console.log(`      pnpm ${g.scriptNpm.replace(/^check:/, 'generate:')}`);
+    }
+
+    console.log('');
+    console.log('Y si el --check dice que el script no existe, el arreglo es escribirlo,');
+    console.log('no regenerar.');
   }
 
   // ── Las copias, y aqui es donde el aviso se vuelve puerta ──
@@ -842,6 +973,12 @@ function main() {
     console.log('Esto NO es un problema de cuarentena: es que hay un JSON roto en el');
     console.log('catalogo y no se puede mirar. Salir con 1 diria "el contrato esta');
     console.log('viejo, regenera", que es mentira: regenerar no arregla un parser roto.');
+  }
+
+  if (generadosDesfasados.length > 0) {
+    console.log('');
+    console.log(`preflight FALLIDO: ${generadosDesfasados.length} generado(s) fuera de contracts/ desfasado(s).`);
+    return 1;
   }
 
   if (copiasBloqueantes.length > 0) {

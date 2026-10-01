@@ -45,7 +45,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { CONTRATOS, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, scriptsQueEmpiezanPor } from '../scripts/check-generated-contracts.mjs';
+import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor } from '../scripts/check-generated-contracts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -355,15 +355,63 @@ describe('el preflight de verdad, ejecutado', () => {
     // Y que no haya un cuarto `check:algo` por ahi que sea un contrato generado
     // y no esté en el preflight. Los tres de ahora estan; el cuarto es lo que
     // haria este test mas adelante, que es de lo que se trata.
+    //
+    // Y son DOS inventarios, no uno. `CONTRATOS` son los generadores que
+    // producen JSON en `contracts/`; `GENERADOS_FUERA` son los que producen
+    // codigo, y no viven en el catalogo. Unir las dos listas habria hecho que
+    // este test siguiera pasando con el cuarto generador fuera del sitio que le
+    // toca, que es exactamente el fallo que se quiere cazar: un `check:` que
+    // existe en el manifiesto y que el preflight no corre no vigila nada.
     const checks = scriptsQueEmpiezanPor(manifest, 'check:');
-    const declarados = CONTRATOS.map((c) => c.scriptNpm);
+    const declarados = [...CONTRATOS, ...GENERADOS_FUERA].map((c) => c.scriptNpm);
 
     for (const c of checks) {
       // `check:contracts` es el agregado, no un generador: no se espera en el
       // inventario, que es justo lo que lo hace reconocible como agregado.
       if (c === 'check:contracts') continue;
-      expect(declarados, `${c} no esta en el inventario del preflight`).toContain(c);
+      expect(declarados, `${c} no esta en ningun inventario del preflight`).toContain(c);
     }
+
+    // Y al reves: un generador declarado que no este en el manifiesto es un
+    // `pnpm generate:...` que el mensaje de arreglo no puede dar, porque el
+    // mensaje sale del NOMBRE del script. Ese nombre es la promesa de que
+    // existe ese comando.
+    for (const c of [...CONTRATOS, ...GENERADOS_FUERA]) {
+      if (c.sinGenerador) continue;
+      expect(checks, `${c.scriptNpm} lo usa el preflight pero no esta en package.json`)
+        .toContain(c.scriptNpm);
+    }
+  });
+
+  it('el generado de C++ se comprueba sin necesitar al repositorio hermano', () => {
+    // El motivo de que `GENERADOS_FUERA` exista separada y no colgada de
+    // `CONTRATOS`: una cabecera generada se comprueba contra SU fuente, y la
+    // fuente es el esquema, que esta aqui. Un `--check` que necesita al
+    // hermano para decidir no vigila en el clon limpio, y el clon limpio es
+    // donde nadie mira.
+    expect(GENERADOS_FUERA.length, 'la lista de generados fuera esta vacia').toBeGreaterThan(0);
+
+    for (const g of GENERADOS_FUERA) {
+      expect(g.script, 'un generado sin script no se puede correr').toBeTruthy();
+      expect(g.scriptNpm, `${g.script} necesita su nombre en package.json, que es lo que imprime el mensaje de arreglo`).toBeTruthy();
+      expect(g.salidas.length, `${g.script} tiene que decir que escribe`).toBeGreaterThan(0);
+      expect(g.queEs, 'el mensaje necesita decir QUE es, no solo el nombre del script').toBeTruthy();
+      expect(g.deDondeSale, 'y de donde sale, que es la parte que hace falta para regenerar').toBeTruthy();
+    }
+  });
+
+  it('y correr a un generador de Node es lo mismo que correr a uno de Python', () => {
+    // La forma de volver igual es lo que permite que quien llama no sepa de que
+    // lenguaje es cada generador. Sin esto, un `correrNode` que devolviera otra
+    // cosa pasaria inadvertido hasta que un `--check` de Node saliera con el
+    // codigo equivocado y el preflight dijera "desfasado" de algo que no lo esta.
+    const inexistente = correrNode('scripts/no-existe-cuarentena.mjs', ['--check']);
+    expect(inexistente.noExiste, 'un script que no esta tiene que decirlo').toBe(true);
+    expect(inexistente.codigo).toBe(2);
+
+    const dePython = correrCheck('scripts/no-existe-cuarentena.py');
+    expect(dePython.noExiste).toBe(true);
+    expect(dePython.codigo).toBe(2);
   });
 });
 
