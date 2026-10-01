@@ -4,6 +4,7 @@ export { enhanceRangeInputs, destroyEnhancedRangeInputs } from './enhanceRangeIn
 // ruta relativa. El preflight lo importa por aqui.
 export {
   POLITICA,
+  POLITICAS,
   veredicto,
   esRetenido,
   motivoDe,

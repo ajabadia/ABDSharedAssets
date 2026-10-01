@@ -36,6 +36,7 @@ import {
   auditar,
   comprobarContraElEsquema,
   contratoDerivaIgual,
+  POLITICAS,
   esquemaAplica,
   esRetenido,
   estadosDeclaradosPorElEsquema,
@@ -45,7 +46,7 @@ import {
   veredicto,
 } from '../utils/quarantine.js';
 import { auditarCuarentena } from '../scripts/check-generated-contracts.mjs';
-import { leerReglaDelEsquema } from '../scripts/generar-cuarentena-cpp.mjs';
+import { leerReglasDelEsquema, MAPA_CUARENTENA } from '../scripts/generar-cuarentena-cpp.mjs';
 
 const CONTRACTS = join(process.cwd(), 'contracts');
 
@@ -362,7 +363,7 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
   // para eso hace falta un segundo origen, que es `POLITICA`.
 
   it("la regla que sale del enum es la misma que la regla declarada", () => {
-    const problemas = contratoDerivaIgual(leerReglaDelEsquema());
+    const problemas = contratoDerivaIgual(leerReglasDelEsquema());
     expect(problemas).toEqual([]);
   });
 
@@ -371,7 +372,7 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
     // vigila es un renombrado COHERENTE, en el que el enum y los datos se van
     // juntos y no se rompe nada por el camino: la unica manera de verlo es contra
     // un texto escrito aqui.
-    const r = leerReglaDelEsquema();
+    const [r] = leerReglasDelEsquema();
 
     expect(r.campoEstado).toBe('status');
     expect(r.valorEstado).toBe('quarantined');
@@ -385,14 +386,17 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
       campoMotivo: 'estadoReason',
     };
 
-    const problemas = contratoDerivaIgual(renombrado);
+    const problemas = contratoDerivaIgual([renombrado]);
 
     // Dos de los tres, no uno: el valor no se ha movido y por eso no se queja.
     // El mensaje tiene que decir CUAL de los dos nombres va con cual, o no sirve
     // para arreglar nada.
+    // Y ahora el mensaje DICE QUAL, con el indice de la regla. Con dos reglas en
+    // el mapa, un mensaje sin indice obliga a recorrer el mapa entero a buscar.
     expect(problemas.filter((p) => p.includes('estado')).length).toBe(2);
     expect(problemas.filter((p) => p.includes('estadoReason')).length).toBe(1);
     expect(problemas.some((p) => p.includes('quarantined'))).toBe(false);
+    expect(problemas.filter((p) => p.startsWith('la regla 0, ')).length).toBe(2);
 
     // Y nombra tambien el lado declarado, que es el que dice el mensaje viejo.
     expect(problemas.join(' ')).toContain('status');
@@ -403,11 +407,11 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
     // decia regenera y regenerar escribia la cabecera rota. Un mensaje de
     // arreglo equivocado es peor que ninguno: convierte un rojo en un rojo con
     // una accion que empeora las cosas.
-    const problemas = contratoDerivaIgual({
+    const problemas = contratoDerivaIgual([{
       campoEstado: 'estado',
       valorEstado: 'quarantined',
       campoMotivo: 'estadoReason',
-    });
+    }]);
 
     const texto = problemas.join(' ');
     expect(texto).toContain('NO lo arregla');
@@ -424,7 +428,7 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
       campoMotivo: 'statusReason',
     };
 
-    const problemas = contratoDerivaIgual(otroValor);
+    const problemas = contratoDerivaIgual([otroValor]);
     expect(problemas.filter((p) => p.includes('deprecated')).length).toBe(1);
   });
 
@@ -434,6 +438,139 @@ describe("el enum que deriva el generador es el del estado, y no otro", () => {
     // fallo antes de tiempo, y se arregla distinto.
     expect(contratoDerivaIgual(null)).toHaveLength(1);
     expect(contratoDerivaIgual(undefined)).toHaveLength(1);
-    expect(contratoDerivaIgual(null)[0]).toContain('object');
+    expect(contratoDerivaIgual([])).toHaveLength(1);
+    expect(contratoDerivaIgual(null)[0]).toContain('lista');
+  });
+});
+
+
+//──────────────────────────────────────────────────────────────────────────────
+// EL MAPA DEL ESQUEMA, QUE ES LO QUE DECIDE Y NO ADIVINA
+//──────────────────────────────────────────────────────────────────────────────
+
+describe('el mapa del esquema declara las reglas, y el generador las genera todas', () => {
+
+  // El fallo que el mapa tapa, y que se midio antes de escribirlo. Con el
+  // criterio viejo, un esquema con DOS reglas de estado no se generaba: el
+  // generador buscaba el unico enum de un valor, encontraba dos, y se paraba
+  // diciendo que declarase cero o una. La paradoja es que se paraba por lo
+  // correcto —no sabia cual era— y se equivocaba en lo que habia que hacer:
+  // no era un error del esquema, era una segunda regla legitima.
+
+  it('el mapa declara una entrada por regla, y son la que se generan', () => {
+    const esquema = JSON.parse(readFileSync(join(CONTRACTS, 'hardware_profile.schema.json'), 'utf8'));
+    const mapa = esquema[MAPA_CUARENTENA];
+
+    // Y el mapa es una LISTA, no un objeto. Un objeto obligaria a cambiar la
+    // forma de lo que ya habia para anadir la segunda regla, que es
+    // exactamente lo que hacia el criterio viejo.
+    expect(Array.isArray(mapa.reglas)).toBe(true);
+    expect(mapa.reglas.length).toBeGreaterThan(0);
+
+    // Cada entrada declara el campo y el de su motivo, y NO el valor: el valor
+    // sale del enum, que es lo que evita que el mapa sea un segundo sitio
+    // donde escribir el estado a mano.
+    for (const entrada of mapa.reglas) {
+      expect(typeof entrada.campo).toBe('string');
+      expect(typeof entrada.motivo).toBe('string');
+      expect(entrada.valor).toBeUndefined();
+    }
+  });
+
+  it('cada entrada del mapa existe en properties, o no podria retener nada', () => {
+    const esquema = JSON.parse(readFileSync(join(CONTRACTS, 'hardware_profile.schema.json'), 'utf8'));
+
+    // Con additionalProperties false, un campo del mapa que el esquema no
+    // declara es una regla que ningun contrato podria llevar. El generador lo
+    // para, y aqui se comprueba que al menos el mapa de verdad lo cumple.
+    for (const entrada of esquema[MAPA_CUARENTENA].reglas) {
+      expect(esquema.properties[entrada.campo]).toBeDefined();
+      expect(esquema.properties[entrada.motivo]).toBeDefined();
+    }
+  });
+
+  it('sin el mapa el generador se para, y dice que lo anada', () => {
+    // NO es "no hay reglas". Seria el criterio viejo con otro nombre, y
+    // volveria a ser una adivinanza: sin mapa, el generador no puede saber
+    // que campo lleva la marca.
+    const dir = mkdtempSync(join(tmpdir(), 'cuarentena-sin-mapa'));
+    writeFileSync(join(dir, 'e.json'), JSON.stringify({ properties: {
+      estado: { enum: ['x'] },
+      estadoMotivo: { type: 'string' },
+    } }), 'utf8');
+
+    expect(() => leerReglasDelEsquema(join(dir, 'e.json'))).toThrow(/no declara/);
+  });
+
+  it('un mapa vacio se para: una cuarentena que no retiene nada', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cuarentena-mapa-vacio'));
+    writeFileSync(join(dir, 'e.json'), JSON.stringify({
+      properties: { estado: { enum: ['x'] }, estadoMotivo: {} },
+      'x-cuarentena': { reglas: [] },
+    }), 'utf8');
+
+    expect(() => leerReglasDelEsquema(join(dir, 'e.json'))).toThrow(/no una lista no vacia/);
+  });
+
+  it('dos reglas se generan, que era justo lo que el criterio viejo hacia imposible', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'cuarentena-dos-reglas'));
+    writeFileSync(join(dir, 'e.json'), JSON.stringify({
+      properties: {
+        estado: { enum: ['x'] },
+        estadoMotivo: {},
+        ciclo: { enum: ['y'] },
+        cicloMotivo: {},
+      },
+      'x-cuarentena': { reglas: [
+        { campo: 'estado', motivo: 'estadoMotivo' },
+        { campo: 'ciclo', motivo: 'cicloMotivo' },
+      ] },
+    }), 'utf8');
+
+    // Se comprueba que LLEGA a generarlas, y no que las aprueba: con dos
+    // reglas este repositorio solo conoce una, asi que el invariante se
+    // queja. La queja es la respuesta correcta, y es distinta de la del
+    // criterio viejo, que era un "no se cual" sin decir nada.
+    let error = null;
+    try { leerReglasDelEsquema(join(dir, 'e.json')); }
+    catch (e) { error = e.message; }
+
+    expect(error).toBe('el esquema declara 2 regla(s) de cuarentena y este repositorio solo conoce 1. Una regla que este repositorio no vigila es una regla que C++ aplicara sin que nadie la compruebe: o se anade a POLITICAS, o se quita la entrada del mapa.');
+    expect(error).toContain('2 regla(s) de cuarentena');
+    expect(error).toContain('solo conoce 1.');
+    // Y la parte que hace que esto sea un invariante y no un obstaculo: el
+    // mensaje dice que se anada la regla, no que se deshaga el mapa.
+    expect(error).toContain('POLITICAS');
+  });
+
+  it('el valor sale del enum, nunca del mapa', () => {
+    // Si el mapa pudiera llevar el valor, seria un segundo sitio donde se
+    // escribe el estado a mano, y basta un descuido de edicion para que las dos
+    // mitades dejen de hablar sin que ninguna puerta se entere.
+    const dir = mkdtempSync(join(tmpdir(), 'cuarentena-valor'));
+    writeFileSync(join(dir, 'e.json'), JSON.stringify({
+      properties: {
+        status: { enum: ['quarantined'] },
+        statusReason: {},
+      },
+      'x-cuarentena': { reglas: [
+        { campo: 'status', motivo: 'statusReason', valor: 'inventado' },
+      ] },
+    }), 'utf8');
+
+    // El valor inventado se ignora: sale el del enum. Asi que un mapa con un
+    // valor de mas no rompe nada, y el estado no se puede escribir en dos
+    // sitios porque en uno no se lee.
+    const reglas = leerReglasDelEsquema(join(dir, 'e.json'));
+    expect(reglas[0].valorEstado).toBe('quarantined');
+  });
+
+  it('las dos mitades tienen el MISMO numero de reglas, y se comparan por posicion', () => {
+    // La posicion es el contrato entre el mapa y POLITICAS. Un mapa reordenado
+    // moveria las reglas de sitio sin cambiar ninguna, y si la comparacion no
+    // fuera por posicion el error seria invisible.
+    const reglas = leerReglasDelEsquema();
+    expect(reglas.length).toBe(POLITICAS.length);
+    expect(contratoDerivaIgual(reglas)).toEqual([]);
   });
 });

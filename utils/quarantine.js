@@ -76,6 +76,30 @@ export const POLITICA = Object.freeze({
 });
 
 /**
+ * TODAS las reglas de cuarentena que este repositorio conoce, en orden.
+ *
+ * `POLITICA` era un objeto suelto y ahora hay una lista, porque el esquema puede
+ * declarar mas de una regla y esta mitad de JS tiene que saber de todas. El
+ * generador compara la lista entera, no solo la primera: si el mapa declara una
+ * segunda regla y aqui no, se queja en vez de generar una cabecera que C++ no
+ * tiene con quien comparar.
+ *
+ * `POLITICA` sigue siendo la PRIMERA, porque los usos de este repo —`veredicto`,
+ * `auditar`, el cajon— atienden una regla, y un retenido por la segunda no lo mira
+ * nadie todavia. Que se mire es una decision que se escribe, no que pase sola.
+ */
+export const POLITICAS = Object.freeze([
+  Object.freeze({
+    /** El campo del contrato que lleva la marca. */
+    campoEstado: 'status',
+    /** El unico valor de `campoEstado` que retiene. */
+    valorEstado: 'quarantined',
+    /** El campo del contrato que lleva el motivo. */
+    campoMotivo: 'statusReason',
+  }),
+]);
+
+/**
  * Dice si un contrato esta retenido, y por que.
  *
  * Un `contrato` que no es un objeto no retiene. Un JSON ilegible tampoco llega
@@ -338,41 +362,55 @@ export function comprobarContraElEsquema(esquema) {
  *   lo que el generador dedujo del enum.
  * @returns {string[]} problemas. Vacio = el enum y la politica son la misma regla.
  */
-export function contratoDerivaIgual(derivada) {
-  if (derivada === null || typeof derivada !== "object")
-    return ["el generador no ha devuelto una regla, sino " + typeof derivada];
+export function contratoDerivaIgual(derivadas) {
+  if (!Array.isArray(derivadas))
+    return ['el generador no ha devuelto una lista de reglas, sino ' + typeof derivadas];
 
+  if (derivadas.length === 0)
+    return ['el generador no ha derivado ninguna regla. Una cuarentena sin reglas no retiene nada, y eso parece funcionar hasta que se cuela un Aparato dudoso.'];
+
+  // Las dos mitades tienen que declarar el MISMO numero de reglas, y se comparan
+  // por POSICION. La posicion es el contrato: el mapa del esquema es una lista
+  // ordenada y esta tambien, asi que la segunda significa lo mismo en los dos
+  // lados. Sin eso, un mapa reordenado moveria las reglas de sitio y el error seria
+  // invisible.
+  if (derivadas.length !== POLITICAS.length) {
+    return [
+      `el esquema declara ${derivadas.length} regla(s) de cuarentena y este repositorio solo conoce ${POLITICAS.length}. Una regla que este repositorio no vigila es una regla que C++ aplicara sin que nadie la compruebe: o se anade a POLITICAS, o se quita la entrada del mapa.`,
+    ];
+  }
   const problemas = [];
 
   // Se comparan los tres por separado y no el objeto entero, porque cada uno se
   // rompe por su cuenta. Un cambio en el VALOR no es un renombrado: es una marca
   // nueva, y esa se decide sola.
-  const pares = [
-    [POLITICA.campoEstado, derivada.campoEstado, "el campo que lleva la marca"],
-    [POLITICA.valorEstado, derivada.valorEstado, "el valor que retiene"],
-    [POLITICA.campoMotivo, derivada.campoMotivo, "el campo del motivo"],
-  ];
+  derivadas.forEach((derivada, i) => {
+    const declarada = POLITICAS[i];
+    const donde = 'la regla ' + i;
 
-  for (const [declarado, derivado, que] of pares) {
-    if (declarado === derivado)
-      continue;
+    const pares = [
+      [declarada.campoEstado, derivada.campoEstado, 'el campo que lleva la marca'],
+      [declarada.valorEstado, derivada.valorEstado, 'el valor que retiene'],
+      [declarada.campoMotivo, derivada.campoMotivo, 'el campo del motivo'],
+    ];
 
-    problemas.push(
-      que + ": la regla de este repositorio lo llama " + declarado
-      + " y el enum del esquema ha derivado " + derivado + ". El "
-      + "criterio del generador no sabe que ese enum es el del estado: le "
-      + "vale cualquiera de un solo valor, asi que ha derivado la regla de "
-      + "otro sitio sin enterarse.",
-    );
-  }
+    for (const [declarado, derivado, que] of pares) {
+      if (declarado === derivado)
+        continue;
+
+      problemas.push(
+        donde + ', ' + que
+          + `: la regla de este repositorio lo llama "${declarado}" y el mapa del esquema ha derivado "${derivado}". El mapa DECLARA el campo y su motivo, asi que esto ya no es una adivinanza: o el mapa se ha editado sin actualizar esta lista, o al reves. Las dos cosas son un renombrado a medias.`,
+      );
+    }
+  });
 
   if (problemas.length > 0) {
     problemas.push(
-      "Regenerar la cabecera NO lo arregla: deja a C++ mirando un campo que el "
-      + "dato no tiene, y la cuarentena dejaria de retener en silencio. Un "
-      + "renombrado son tres cambios a la vez, el enum, la politica y los "
-      + "contratos que llevan la marca, y cual de las dos listas es la buena "
-      + "no lo decide un script.",
+      'Regenerar la cabecera NO lo arregla: deja a C++ mirando un campo que el dato '
+        + 'no tiene, y la cuarentena dejaria de retener en silencio. Un renombrado son '
+        + 'tres cambios a la vez, el mapa del esquema, esta lista y los contratos que '
+        + 'llevan la marca, y cual de las dos listas es la buena no lo decide un script.',
     );
   }
 

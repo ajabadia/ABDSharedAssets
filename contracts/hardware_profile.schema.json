@@ -513,6 +513,15 @@
     }
   },
   "additionalProperties": false,
+  "x-cuarentena": {
+    "$comment": "QUE CAMPOS LLEVAN UNA REGLA DE CUARENTENA, y a que campo va su motivo. El VALOR que retiene NO se escribe aqui: se lee del enum del campo declarado, que es lo unico que puede cambiarlo sin que a nadie se le pase por alto. Es una lista y no un objeto unico para que anadir una segunda regla sea anadir una entrada, no cambiar la forma de lo que ya habia.",
+    "reglas": [
+      {
+        "campo": "status",
+        "motivo": "statusReason"
+      }
+    ]
+  },
   "$defs": {
     "setupActionArray": {
       "type": "array",

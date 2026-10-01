@@ -29,6 +29,13 @@ import { fileURLToPath } from 'node:url';
 // sin que nadie lo note.
 import { medirCruceAira, motivoDeLaCuarentena } from '../../utils/cruceAira.js';
 
+// El nombre de la palabra que declara las reglas de cuarentena viene del
+// generador, no de una cadena aqui. Si el validador y el generador escribieran
+// cada uno el nombre, un renombrado pondria uno en rojo y el otro en verde, y
+// el rojo se leeria como un fallo del validador cuando lo que habria que
+// corregir es el generador.
+import { MAPA_CUARENTENA } from '../../scripts/generar-cuarentena-cpp.mjs';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const CONTRACTS = path.resolve(__dirname, '..', '..', 'contracts');
@@ -44,6 +51,14 @@ export const CONTRACTS = path.resolve(__dirname, '..', '..', 'contracts');
  */
 export const ANOTACIONES = new Set([
   '$schema', '$id', '$comment', 'title', 'description', 'default', 'examples',
+
+  // `x-cuarentena` declara que campos llevan una regla de cuarentena. No restringe
+  // el contrato: un perfil valido puede no declarar ninguno, que es lo que pasa
+  // con los que no estan en cuarentena. La LEE el generador de la cabecera de
+  // C++, asi que es anotacion y no palabra ejecutada, y por eso va aqui y no en
+  // SUPPORTED_KEYWORDS: un nodo con esto no restringe nada, y el validador tiene
+  // que poder decirlo en vez de darlo por comprobado.
+  MAPA_CUARENTENA,
 ]);
 
 /** Lo que este validador MIRA de verdad. Lo que no está aquí, no se comprueba. */
@@ -64,6 +79,10 @@ export const SUPPORTED_KEYWORDS = new Set([
   // de `additionalProperties` cierra TAMBIEN en lo que hay debajo de un
   // `$defs`. Un `$ref` sin resolver es un error, no un silencio.
   '$ref', '$defs',
+  // Y la palabra que declara las reglas de cuarentena, por el mismo motivo que las
+  // anotaciones de arriba: la lee el generador, no restringe el contrato, y un
+  // nodo que solo tiene esto no dice nada sobre lo que un contrato puede llevar.
+  MAPA_CUARENTENA,
 ]);
 
 /**
