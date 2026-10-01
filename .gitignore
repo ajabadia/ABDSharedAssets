@@ -41,3 +41,7 @@ abdbank/
 __pycache__/
 # Copias de seguridad de un parche a medio aplicar
 *.bak
+
+# Local Node recovery/install directories
+node_modules_ok/
+node_modules_roto_v10/
