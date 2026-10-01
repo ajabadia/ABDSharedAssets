@@ -22,7 +22,16 @@
 
 # Build
 *.cmake text eol=lf
-CMakeLists.txt text eol=lf
+# `CMakeLists.txt` estaba aqui y se ha quitado: este repo no tiene ni un
+# CMakeLists.txt, ni un `.cmake`, ni un `.cpp`, ni un `.h`. La regla no protegia
+# nada, y una proteccion que no protege se lee igual que una que protege.
+#
+# Las reglas POR EXTENSION de C++ que quedan si se conservan a proposito: este
+# `.gitattributes` es una copia del de ABDSharedCode y este repo comparte suite
+# con el. Declaran que, SI aparece un `.cpp`, tiene que ser LF. Para un nombre
+# CONCRETO no tiene sentido esa intention: si algun dia aparece un
+# CMakeLists.txt, se vuelve a anadir la regla.
+#CMakeLists.txt text eol=lf
 
 # C++ (este repo lo comparte con el modulo de efectos)
 *.cpp text eol=lf
