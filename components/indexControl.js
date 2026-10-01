@@ -20,7 +20,7 @@
  * dan YA resuelto, en piezas, y la referencia entera. El vocabulario es del
  * control —lo ofrece el que se construye, y lo documente quien lo ofrece—, y
  * la auditoria de documentacion lee cada fichero por separado: una clave de
- * opciones que la base leyera逼 al control a prometerla sin usarla. Por eso el
+ * opciones que la base leyera al control a prometerla sin usarla. Por eso el
  * constructor recibe `entries`, `disabledSpec`, `value` y `skin` sueltos.
  *
  * Delega lo que no sabe: `buildDom`, `attachInteraction` y `render` son del

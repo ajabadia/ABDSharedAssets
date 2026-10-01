@@ -37,10 +37,18 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// Toda llamada a git pasa por aqui. No es una comodidad: es lo que evita que
+// este guard se ponga rojo por una razon que no es suya. En una maquina donde
+// el repositorio es de otro usuario, git se niega a trabajar («dubious
+// ownership»), `ls-files` devuelve error, la lista queda vacia, y el primer
+// test dice que no ha mirado nada — un fallo de git Leanado como un fallo de
+// este guard. La ruta de `safe.directory` se deduce de donde esta el helper,
+// no se escribe a mano, para que el test no dependa de donde vive el checkout.
+import { GIT, gitSeguro } from './helpers/gitSeguro.js';
 
 import {
   reglasDe, cubreLa, obligaLf, reglasQueFijan, patronARegex,
@@ -59,11 +67,13 @@ const HERMANO_MODULO = resolve(repoRoot, '..', 'ABDEep', 'WebUI', 'tests', 'gita
  * Si `git ls-files` falla, se avisa y la lista queda VACIA a proposito, no se
  * lanza. Con la lista vacia el primer test se pone rojo diciendo que no ha mirado
  * nada. Lanzar el error de git seria peor: el stack apuntaria a `execFileSync` y
- * no a que el problema es que no hay checkout.
+ * no a que el problema es que no hay checkout. Y ahora que git va por
+ * `gitSeguro`, ese error ya no sale por la excepcion de `safe.directory`: si
+ * llega aqui, de verdad es que no hay checkout.
  */
 function listaTrackeada () {
   try {
-    return execFileSync('git', ['ls-files'], {
+    return gitSeguro(['ls-files'], {
       cwd: repoRoot,
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
@@ -78,7 +88,7 @@ function listaTrackeada () {
 /** Si el repositorio tiene al menos un commit, que es lo que hace existir un blob. */
 function tieneHistorial () {
   try {
-    execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+    gitSeguro(['rev-parse', '--verify', 'HEAD'], {
       cwd: repoRoot, stdio: ['ignore', 'ignore', 'ignore']
     });
     return true;
@@ -214,8 +224,8 @@ describe('el .gitattributes protege de verdad, y se ve', () => {
     const conCrlf = [];
 
     for (const f of contratos) {
-      const blob = execFileSync('git', ['show', 'HEAD:' + f], {
-        cwd: repoRoot, maxBuffer: 64 * 1024 * 1024
+      const blob = gitSeguro(['show', 'HEAD:' + f], {
+        cwd: repoRoot, encoding: 'buffer', maxBuffer: 64 * 1024 * 1024
       });
       const c = blob.toString('latin1').match(/\r\n/g);
 
@@ -244,7 +254,7 @@ describe('el .gitattributes protege de verdad, y se ve', () => {
       const discrepancias = [];
 
       for (const f of MUESTRA) {
-        const deGit = execFileSync('git', ['check-attr', 'eol', '--', f], {
+        const deGit = gitSeguro(['check-attr', 'eol', '--', f], {
           cwd: repoRoot, encoding: 'utf8'
         }).trim();
         const gitDice = deGit.endsWith('lf');
@@ -441,5 +451,50 @@ describe('y los artefactos generados se descubren, no se cuentan a mano', () => 
     // y se exige que todos los artefactos aparezcan.
     expect(artefactosSinFijar(ARTEFACTOS, '').length).toBe(ARTEFACTOS.length);
     expect(artefactosSinFijar(ARTEFACTOS, '*.json text eol=crlf').length).toBe(ARTEFACTOS.length);
+  });
+});
+
+describe('git se invoca de una forma que no depende de la maquina', () => {
+  // ESTE describe es la defensa de todo lo de arriba.
+  //
+  // En una maquina donde el repositorio es de otro usuario, git se niega a
+  // trabajar («dubious ownership»). Entonces `ls-files` falla, `listaTrackeada()`
+  // devuelve la lista VACIA, y este guard se pone rojo diciendo que no descubre
+  // ningun artefacto — un fallo de git Leanado como un fallo del guard. Fue lo
+  // que paso: seis de los ocho rojos de la auditoria de contratos eran esto.
+  //
+  // Asi que la excepcion se pone en el comando, y se comprueba que este lo pide
+  // de verdad en vez de confiar en que lo hara.
+  it('la excepcion de safe.directory va en TODA llamada a git', () => {
+    expect(GIT.length).toBeGreaterThan(0);
+
+    // Y tiene que ser la opcion que evita el fallo, no una cualquiera: `-c`
+    // antes del subcomando, y apuntando a un sitio.
+    const i = GIT.indexOf('-c');
+
+    expect(i, 'git no recibe ninguna excepcion de safe.directory: en una maquina '
+      + 'donde el repositorio es de otro usuario, este guard no mira nada').toBe(0);
+    expect(GIT[i + 1]).toContain('safe.directory=');
+  });
+
+  it('la ruta sale de donde esta el helper, no de una constante escrita a mano', () => {
+    // La excepcion sin ruta NO hace nada, y con la ruta de otra maquina hace
+    // daño en el sentido contrario: pone rojo un checkout sano. Se comprueba que
+    // la ruta que se pasa es de hecho la de ESTE repositorio.
+    const enGIT = GIT[GIT.indexOf('-c') + 1].split('=')[1];
+
+    expect(enGIT).toBe(repoRoot.replace(/\\/g, '/').replace(/\/+$/, ''));
+  });
+
+  it('git responde de verdad cuando se le pregunta con la excepcion puesta', () => {
+    // La asercion que de verdad importa, porque las dos de arriba pueden pasar
+    // con una excepcion mal formada. Si `gitSeguro` no funciona, esto falla; y
+    // si NO se pone la excepcion, tambien — que es justo lo que se quiere ver.
+    // Sin esto, un `GIT` mal escrito pasaria los tests anteriores y dejaria el
+    // guard en verde sin mirar nada.
+    const salida = gitSeguro(['ls-files']);
+
+    expect(salida.length).toBeGreaterThan(0);
+    expect(salida).toContain('contracts/');
   });
 });

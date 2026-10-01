@@ -46,6 +46,34 @@ const mismo = (real, esperado) => (real === esperado
     && typeof real === 'object' && typeof esperado === 'object'
     && JSON.stringify(real) === JSON.stringify(esperado)));
 
+// Compara contra un matcher asimetrico. Va DESPUES de `mismo` a proposito y hace
+// falta separarlo: `mismo` recibe el matcher de verdad, no lo que lleva dentro.
+const cumple = (real, esperado) => (esperado?.[MARCA_ASIMETRICA] === true
+  ? esperado.comprobar(real)
+  : mismo(real, esperado));
+
+const faltaDe = (real, esperados) => (Array.isArray(real) ? esperados : [])
+  .filter((e) => !real.some((x) => mismo(x, e)));
+
+// Los matchers asimetricos de vitest: son `expected` los que llevan la forma,
+// no el valor recibido, asi que se marcan con un simbolo y los reconoce
+// `mismo` por el Symbol y no por compararlos como datos. Sin esto, un test que
+// dice «contiene estos cinco, y pueden ser mas» no se puede escribir, porque
+// comparar la lista entera contra una sublista es comparar dos cosas
+// distintas. Y el fallo tiene que decir QUE elemento falta, que es lo unico
+// accionable.
+const MARCA_ASIMETRICA = Symbol('asimetrica');
+
+const contieneTodos = (real, esperados) => Array.isArray(real)
+  && esperados.every((e) => real.some((x) => mismo(x, e)));
+
+const matcher = (comprobacion, lista, etiqueta) => ({
+  [MARCA_ASIMETRICA]: true,
+  comprobar: comprobacion,
+  lista,
+  etiqueta
+});
+
 // Cada metodo cuenta UNA asercion, y el fallo dice las dos caras: lo que se
 // esperaba y lo que vino. Un "true is not true" no ayuda a nadie a las dos de
 // la manana.
@@ -58,8 +86,21 @@ export const expect = (real) => ({
   },
   toEqual: (esperado) => {
     estado.total += 1;
-    if (!mismo(real, esperado)) {
-      rojo(`toEqual\n        esperado: ${inspect(esperado)}\n        real:     ${inspect(real)}`);
+    if (!cumple(real, esperado)) {
+      // Cuando lo que falló es un `arrayContaining`, el fallo útil no es «son
+      // distintas»: es la lista de lo que no estaba. El rojo debe señalar el
+      // elemento que falta, no el hecho de que las dos listas no cuadren.
+      const faltan = esperado?.[MARCA_ASIMETRICA] === true
+        ? `\n        falta:    ${inspect(faltaDe(real, esperado.lista))}`
+        : '';
+      // Imprimir el matcher entero saldria como `comprobar: [Function]` y
+      // `lista: [...]`, que es la Representacion interna del shim, no lo que el
+      // test quiere ver. Lo que se dice es «faltaba esto», con la etiqueta del
+      // matcher de por medio.
+      const esperadoTxt = esperado?.[MARCA_ASIMETRICA] === true
+        ? `un valor que ${esperado.etiqueta}(${inspect(esperado.lista)})`
+        : inspect(esperado);
+      rojo(`toEqual\n        esperado: ${esperadoTxt}\n        real:     ${inspect(real)}${faltan}`);
     }
   },
   toStrictEqual: (esperado) => {
@@ -95,6 +136,31 @@ export const expect = (real) => ({
   toBeLessThan: (n) => {
     estado.total += 1;
     if (!(real < n)) rojo(`esperaba menor que ${n} y vino ${inspect(real)}`);
+  },
+  // Las cuatro variantes "o igual". Los tests las usan para decir "al menos
+  // esto" y "como mucho esto", que es una comparacion DISTINTA de la estricta:
+  // un `>=` que se cumple con la igualdad sigue siendo un `>=` cumplido. Sin
+  // ellas el test reventaba con «no es una funcion» en vez de dar su veredicto,
+  // y eso es peor que no tener la asercion, porque el rojo de verdad se esconde
+  // detras de un error de harness.
+  toBeGreaterThanOrEqual: (n) => {
+    estado.total += 1;
+    if (!(real >= n)) rojo(`esperaba mayor o igual que ${n} y vino ${inspect(real)}`);
+  },
+  toBeLessThanOrEqual: (n) => {
+    estado.total += 1;
+    if (!(real <= n)) rojo(`esperaba menor o igual que ${n} y vino ${inspect(real)}`);
+  },
+  // Los dos alias "To" de vitest. Son funciones propias y no una referencia al
+  // hermano de arriba porque, dentro de este literal de objeto, el nombre de la
+  // clave todavia no esta ligado cuando se evalua el valor.
+  toBeGreaterThanOrEqualTo: (n) => {
+    estado.total += 1;
+    if (!(real >= n)) rojo(`esperaba mayor o igual que ${n} y vino ${inspect(real)}`);
+  },
+  toBeLessThanOrEqualTo: (n) => {
+    estado.total += 1;
+    if (!(real <= n)) rojo(`esperaba menor o igual que ${n} y vino ${inspect(real)}`);
   },
   toHaveLength: (n) => {
     estado.total += 1;
@@ -149,8 +215,20 @@ export const expect = (real) => ({
       estado.total += 1;
       try { real(); } catch (e) { rojo(`esperaba que NO lanzara, y lanzo: ${e.message}`); }
     },
-  },
-});
+  },});
+
+// `expect.arrayContaining([...])` se escribe IGUAL que un matcher, pero no
+// empieza una asercion: es el lado ESPERADO de un `toEqual`. Va por eso como
+// propiedad de la funcion `expect`, no dentro del objeto que devuelve — meterlo
+// dentro parece funcionar y no funciona nunca, porque ahi no se lo busca nadie.
+// Dice «este elemento tiene que estar dentro», y no «esta lista es esta lista»:
+// esa distincion es la que permite comprobar un conjunto sin fijar su tamano,
+// que es como se escribe «estos cinco artefactos, y pueden ser mas».
+expect.arrayContaining = (lista) => matcher(
+  (r) => contieneTodos(r, lista),
+  lista,
+  'arrayContaining'
+);
 
 export const describe = (nombre, fn) => {
   console.log(`\n${nombre}`);
