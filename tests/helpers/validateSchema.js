@@ -22,6 +22,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// El motivo del retenido del AIRA sale de aqui y no de una cadena escrita a
+// mano. Es la unica razon por la que este helper importa un modulo de
+// `utils/`: mientras el motivo sea texto suelto aqui, el numero que dice y
+// el numero que se mide son dos verdades, y el contrato se lleva la de aqui
+// sin que nadie lo note.
+import { medirCruceAira, motivoDeLaCuarentena } from '../../utils/cruceAira.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const CONTRACTS = path.resolve(__dirname, '..', '..', 'contracts');
@@ -560,10 +567,14 @@ export const CUARENTENAS = [
     //
     // Levantar la cuarentena es borrar esta entrada de aqui Y atar el fichero
     // con su esquema, pero solo cuando se sepa cual de las dos listas describe
-    // el hardware. El test que cuenta el 24 esta a proposito, para que ese dia
-    // salte y haya que mirarlo en vez de que se note por los reds de otro.
+    // el hardware. El cruce se mide con `pnpm medir:aira`, que sale con 1
+    // mientras siga incompleto: ese dia hay que mirarlo en vez de que se note
+    // por los reds de otro.
     contrato: 'roland_aira_submodules.json',
-    motivo: 'De 31 bloques, solo 7 casan por nombre con los 31 modulos del patch_spec; los otros 24 de cada lado no coinciden. Medido por CUARENTENA_ROLAND_AIRA en tests/schemaValidator.test.js',
+    // Derivado, no escrito. Y el comentario de arriba dice por que el
+    // contrato tiene que llevar ESTE texto y no uno equivalente: el test
+    // compara los dos con `toBe`, no «parecidos».
+    motivo: motivoDeLaCuarentena(medirCruceAira()),
   },
 ];
 

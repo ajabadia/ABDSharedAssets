@@ -56,6 +56,13 @@ import {
 // se quedaria mirando un string viejo sin enterarse.
 import { POLITICA, comprobarContraElEsquema, veredicto } from '../utils/quarantine.js';
 
+// La medicion del cruce AIRA, del mismo modo: los tests de mas abajo miden el
+// cruce por su cuenta Y el motivo lo compara con lo que produce esta funcion.
+// Son dos cosas distintas a proposito —la una comprueba, la otra produce— y
+// por eso el motivo se puede quedar viejo si nadie ata las dos, que es
+// exactamente lo que este import deja poder comprobar.
+import { medirCruceAira, motivoDeLaCuarentena } from '../utils/cruceAira.js';
+
 /** Copia profunda de un contrato con un campo nuevo, sin tocar el original. */
 function conCampoInesperado(contrato, ...ruta) {
   const copia = structuredClone(contrato);
@@ -624,6 +631,65 @@ describe('CUARENTENA_ROLAND_AIRA: dos catalogos que los dos dicen ser 31', () =>
     for (const ausente of ['saw_oscillator', 'sqr_oscillator', 'gate_divider', 'logic_operation', 'midi_note_to_cv_gate']) {
       expect(soloHardware, `el AIRA deberia seguir teniendo ${ausente}`).toContain(ausente);
     }
+  });
+
+  // ESTE ES EL QUE FALTABA, Y EL QUE HACE QUE LOS OTROS SIRVAN.
+  //
+  // Los tests de arriba miden el cruce en vivo: comparan los 31 con los 31 y
+  // luego el `toEqual` de los siete nombres. Eso mide. Pero el `statusReason` del
+  // contrato es TEXTO LIBRE, y nadie lo compara con la medida: el texto decia
+  // "solo 7 casan" mientras el cruce de al lado es el que sea. Si manana el cruce
+  // pasa a ocho, el `toEqual` se pone rojo —bien— y el motivo sigue diciendo
+  // siete, y el registro de C++ sigue enseñando "solo 7" a un usuario que ya
+  // puede ser verdad. Un numero que se queda viejo en el sitio donde se LEE es
+  // peor que no dar el numero.
+  //
+  // Este test ata las tres cosas a la misma fuente: la medida, el texto del
+  // contrato y el motivo de la lista. Se derivan de `utils/cruceAira.js`, que
+  // calcula el cruce una vez, asi que no pueden discrepar entre si; lo que se
+  // comprueba aqui es que el FICHERO lleva ese texto y no otro.
+  it('el motivo del fichero es el que produce la medida, no texto parecido', () => {
+    const medida = medirCruceAira();
+    const esperado = motivoDeLaCuarentena(medida);
+
+    // La cuenta, otra vez, pero esta vez se comprueba que el numero que la
+    // medida ha producido es el que esta escrito. Si el cruce cambia y el
+    // contrato no se actualiza, este es el rojo que lo dice —y dice cual es el
+    // numero nuevo, que es lo que hay que escribir.
+    const escrito = readContract(LIBRERIA).statusReason;
+
+    expect(escrito, `el cruce da ${medida.comunes.length} de ${medida.bloques}, y el `
+      + `motivo del contrato dice otra cosa. El texto que toca es:`)
+      .toBe(esperado);
+
+    // Y la misma cuenta dentro del texto, por si alguien reescribe el motivo
+    // entero. Un motivo puede ser largo y util; lo que no puede es llevar un
+    // numero que la medida no sostiene.
+    expect(escrito, 'el motivo debe decir cuantos casan')
+      .toContain(`solo ${medida.comunes.length} casan`);
+
+    expect(escrito, 'el motivo debe decir cuantos no coinciden de cada lado')
+      .toContain(`los otros ${medida.desajuste} de cada lado`);
+
+    // Y que el motivo apunte a donde se mide, no a donde se comprueba. Es la
+    // diferencia entre que el proximo que lo mire sepa repetirlo y tenga que
+    // buscarlo.
+    expect(escrito, 'el motivo debe decir donde se mide la cuenta')
+      .toContain('medir-cruce-aira.mjs');
+  });
+
+  it('y los tres sitios dicen la misma cuenta: medida, contrato y lista', () => {
+    // El test de aqui arriba mira el contrato; el de mas abajo, en el bloque de
+    // cuarentena, mira que el motivo de la lista sea el del fichero. Este es el
+    // que cierra el triangulo, y el que evita que la lista se quede con el
+    // numero viejo mientras el contrato ya dice el nuevo.
+    const medida = medirCruceAira();
+    const deLaLista = motivoDeCuarentena(LIBRERIA);
+
+    expect(deLaLista, `${LIBRERIA} esta en la lista de cuarentena pero su motivo es null`)
+      .toBe(motivoDeLaCuarentena(medida));
+
+    expect(deLaLista).toBe(readContract(LIBRERIA).statusReason);
   });
 
   it('y el fichero en cuarentena se identifica COMO el AIRA igual', () => {

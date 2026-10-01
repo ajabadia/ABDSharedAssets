@@ -4,7 +4,7 @@
   "displayName": "Roland AIRA Modular (31 Universal Submodules)",
   "description": "Universal 31-Submodule DSP Engine shared across Bitrazer, Torcido, Demora & Scooper",
   "status": "quarantined",
-  "statusReason": "De 31 bloques, solo 7 casan por nombre con los 31 modulos del patch_spec; los otros 24 de cada lado no coinciden. Medido por CUARENTENA_ROLAND_AIRA en tests/schemaValidator.test.js",
+  "statusReason": "De 31 bloques, solo 7 casan por nombre con los 31 modulos del patch_spec; los otros 24 de cada lado no coinciden. Medido por scripts/medir-cruce-aira.mjs",
   "deviceType": "AUTOMATED_SYSEX",
   "brand": "Roland",
   "brandLogo": "brands/roland-logo.svg",
