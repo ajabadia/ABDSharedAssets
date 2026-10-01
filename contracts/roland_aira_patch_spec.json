@@ -27,12 +27,12 @@
       "mainParameters": ["LPF/HPF", "BYPASS", "SAMPLE RATE", "FILTER CUTOFF", "RATE DOWN", "RESONANCE", "SAMPLE RATE LEVEL", "FILTER CUTOFF LEVEL", "RATE DOWN LEVEL", "RESONANCE LEVEL"]
     },
     "torcido": {
-      "modelIdHex": "16",
+      "modelIdHex": "17",
       "displayName": "TORCIDO",
       "mainParameters": ["LO BOOST", "BYPASS", "DIST", "TONE", "TUBE WARM", "DRY/WET", "DIST LEVEL", "TONE LEVEL", "TUBE WARM LEVEL", "DRY/WET LEVEL"]
     },
     "demora": {
-      "modelIdHex": "17",
+      "modelIdHex": "16",
       "displayName": "DEMORA",
       "mainParameters": ["HOLD", "BYPASS", "TIME", "FEEDBACK", "WIDTH", "DRY/WET", "TIME LEVEL", "FEEDBACK LEVEL", "WIDTH LEVEL", "DRY/WET LEVEL"]
     },

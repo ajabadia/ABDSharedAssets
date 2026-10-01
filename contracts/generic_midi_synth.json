@@ -24,8 +24,8 @@
         "notes": "Control automatizado mediante mensajes estándar MIDI CC y NRPN de alta resolución."
       },
       "controls": [
-        { "index": 1, "name": "VCF Cutoff", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 74, "nrpn": 288, "min": 0.0, "max": 1.0, "default": 0.5, "unit": "Hz" },
-        { "index": 2, "name": "VCF Resonance", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 71, "nrpn": 289, "min": 0.0, "max": 1.0, "default": 0.0, "unit": "Q" }
+        { "index": 1, "name": "VCF Cutoff", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 74, "nrpn": 288, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "Hz" },
+        { "index": 2, "name": "VCF Resonance", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 71, "nrpn": 289, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "Q" }
       ]
     },
     {
@@ -39,8 +39,8 @@
         "notes": "Prueba de tiempos de ataque y liberación del envolvente VCA."
       },
       "controls": [
-        { "index": 1, "name": "VCA Attack Time", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 73, "min": 0.0, "max": 1.0, "default": 0.1, "unit": "ms" },
-        { "index": 2, "name": "VCA Release Time", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 72, "min": 0.0, "max": 1.0, "default": 0.3, "unit": "ms" }
+        { "index": 1, "name": "VCA Attack Time", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 73, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.1, "unit": "ms" },
+        { "index": 2, "name": "VCA Release Time", "type": "Knob", "controlMethod": "MIDI_CC", "cc": 72, "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.3, "unit": "ms" }
       ]
     }
   ]

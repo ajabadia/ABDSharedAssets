@@ -24,10 +24,10 @@
         "notes": "La tarjeta inyecta un pulso Gate de +5V. También puede usar el botón rojo MANUAL GATE."
       },
       "controls": [
-        { "index": 1, "name": "Attack Time (A)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "0-10" },
-        { "index": 2, "name": "Decay Time (D)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "0-10" },
-        { "index": 3, "name": "Sustain Level (S)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "0-10" },
-        { "index": 4, "name": "Release Time (R)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "0-10" }
+        { "index": 1, "name": "Attack Time (A)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.2, "unit": "0-10" },
+        { "index": 2, "name": "Decay Time (D)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-10" },
+        { "index": 3, "name": "Sustain Level (S)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-10" },
+        { "index": 4, "name": "Release Time (R)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-10" }
       ]
     },
     {
@@ -41,10 +41,10 @@
         "notes": "Segunda envolvente independiente con idéntica topología analógica."
       },
       "controls": [
-        { "index": 1, "name": "Attack Time (A)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.2, "unit": "0-10" },
-        { "index": 2, "name": "Decay Time (D)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "0-10" },
-        { "index": 3, "name": "Sustain Level (S)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.7, "unit": "0-10" },
-        { "index": 4, "name": "Release Time (R)", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.4, "unit": "0-10" }
+        { "index": 1, "name": "Attack Time (A)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.2, "unit": "0-10" },
+        { "index": 2, "name": "Decay Time (D)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-10" },
+        { "index": 3, "name": "Sustain Level (S)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.7, "unit": "0-10" },
+        { "index": 4, "name": "Release Time (R)", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.4, "unit": "0-10" }
       ]
     },
     {
@@ -58,10 +58,10 @@
         "notes": "Ajuste el conmutador OUTPUT LEVEL en x1 y elija la forma de onda en el conmutador rotatorio."
       },
       "controls": [
-        { "index": 1, "name": "Frequency Slider", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.5, "unit": "0-10" },
-        { "index": 2, "name": "Delay Slider", "type": "Slider", "min": 0.0, "max": 1.0, "default": 0.0, "unit": "0-10" },
-        { "index": 3, "name": "Freq Range Switch", "type": "Switch", "default": 1.0, "options": ["Low", "Mid", "High"] },
-        { "index": 4, "name": "Waveform Selector", "type": "RotarySwitch", "default": 0.0, "options": ["Sine", "Triangle", "Pulse", "Sawtooth"] }
+        { "index": 1, "name": "Frequency Slider", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.5, "unit": "0-10" },
+        { "index": 2, "name": "Delay Slider", "type": "Slider", "minVal": 0.0, "maxVal": 1.0, "defaultVal": 0.0, "unit": "0-10" },
+        { "index": 3, "name": "Freq Range Switch", "type": "Switch", "defaultVal": 1.0, "options": ["Low", "Mid", "High"] },
+        { "index": 4, "name": "Waveform Selector", "type": "RotarySwitch", "defaultVal": 0.0, "options": ["Sine", "Triangle", "Pulse", "Sawtooth"] }
       ]
     }
   ]

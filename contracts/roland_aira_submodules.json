@@ -3,6 +3,8 @@
   "id": "roland_aira_submodules",
   "displayName": "Roland AIRA Modular (31 Universal Submodules)",
   "description": "Universal 31-Submodule DSP Engine shared across Bitrazer, Torcido, Demora & Scooper",
+  "status": "quarantined",
+  "statusReason": "De 31 bloques, solo 7 casan por nombre con los 31 modulos del patch_spec; los otros 24 de cada lado no coinciden. Medido por CUARENTENA_ROLAND_AIRA en tests/schemaValidator.test.js",
   "deviceType": "AUTOMATED_SYSEX",
   "brand": "Roland",
   "brandLogo": "brands/roland-logo.svg",
@@ -28,18 +30,18 @@
           "index": 1,
           "name": "Cutoff Frequency",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Resonance Amount",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "Q"
         }
       ],
@@ -74,18 +76,18 @@
           "index": 1,
           "name": "Cutoff Frequency",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Resonance Amount",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "Q"
         }
       ]
@@ -105,18 +107,18 @@
           "index": 1,
           "name": "Cutoff Frequency",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.2,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.2,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Resonance Amount",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "Q"
         }
       ]
@@ -136,18 +138,18 @@
           "index": 1,
           "name": "Center Frequency",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Bandwidth (Q)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "Q"
         }
       ]
@@ -167,18 +169,18 @@
           "index": 1,
           "name": "Vowel Morph",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Morph"
         },
         {
           "index": 2,
           "name": "Formant Shift",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Semi"
         }
       ]
@@ -198,27 +200,27 @@
           "index": 1,
           "name": "Cutoff Frequency",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Mode Morph",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "Mode"
         },
         {
           "index": 3,
           "name": "Resonance (Q)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "Q"
         }
       ]
@@ -238,18 +240,18 @@
           "index": 1,
           "name": "Drive Gain",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Bias / Warmth",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "%"
         }
       ]
@@ -269,18 +271,18 @@
           "index": 1,
           "name": "Drive Level",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Tone / Tilt",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         }
       ]
@@ -300,18 +302,18 @@
           "index": 1,
           "name": "Gain / Distortion",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.6,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.6,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Clip Threshold",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "V"
         }
       ]
@@ -331,18 +333,18 @@
           "index": 1,
           "name": "Bit Depth",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.8,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.8,
           "unit": "Bits"
         },
         {
           "index": 2,
           "name": "Sample Rate Decimate",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.9,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.9,
           "unit": "kHz"
         }
       ]
@@ -362,18 +364,18 @@
           "index": 1,
           "name": "Fuzz Intensity",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.7,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.7,
           "unit": "%"
         },
         {
           "index": 2,
           "name": "Bias Voltage",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "V"
         }
       ]
@@ -393,36 +395,36 @@
           "index": 1,
           "name": "Attack Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.2,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.2,
           "unit": "ms"
         },
         {
           "index": 2,
           "name": "Decay Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "ms"
         },
         {
           "index": 3,
           "name": "Sustain Level",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.7,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.7,
           "unit": "Level"
         },
         {
           "index": 4,
           "name": "Release Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "ms"
         }
       ]
@@ -442,18 +444,18 @@
           "index": 1,
           "name": "Attack Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.1,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.1,
           "unit": "ms"
         },
         {
           "index": 2,
           "name": "Release Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "ms"
         }
       ]
@@ -473,18 +475,18 @@
           "index": 1,
           "name": "LFO Rate / Speed",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Waveform Select",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "Wave"
         }
       ]
@@ -504,27 +506,27 @@
           "index": 1,
           "name": "LFO 1 Rate",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "LFO 2 Rate",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.7,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.7,
           "unit": "Hz"
         },
         {
           "index": 3,
           "name": "Cross Mod Depth",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.2,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.2,
           "unit": "%"
         }
       ]
@@ -544,18 +546,18 @@
           "index": 1,
           "name": "Delay Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "ms"
         },
         {
           "index": 2,
           "name": "Feedback",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "%"
         }
       ]
@@ -575,27 +577,27 @@
           "index": 1,
           "name": "Tape Speed / Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "ms"
         },
         {
           "index": 2,
           "name": "Feedback Repeats",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "%"
         },
         {
           "index": 3,
           "name": "Tape Age / Damping",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "Hz"
         }
       ]
@@ -615,27 +617,27 @@
           "index": 1,
           "name": "Chorus Rate",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Chorus Depth",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.6,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.6,
           "unit": "ms"
         },
         {
           "index": 3,
           "name": "Dry/Wet Mix",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "%"
         }
       ]
@@ -655,27 +657,27 @@
           "index": 1,
           "name": "Speed",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.2,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.2,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Manual Delay",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "ms"
         },
         {
           "index": 3,
           "name": "Regeneration (Resonance)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.7,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.7,
           "unit": "%"
         }
       ]
@@ -695,27 +697,27 @@
           "index": 1,
           "name": "LFO Speed",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Sweep Range",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.7,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.7,
           "unit": "%"
         },
         {
           "index": 3,
           "name": "Feedback",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "%"
         }
       ]
@@ -735,18 +737,18 @@
           "index": 1,
           "name": "Internal Carrier Freq",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Modulation Mix",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 1.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 1.0,
           "unit": "%"
         }
       ]
@@ -766,36 +768,36 @@
           "index": 1,
           "name": "Threshold",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Ratio",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": ":1"
         },
         {
           "index": 3,
           "name": "Attack Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.2,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.2,
           "unit": "ms"
         },
         {
           "index": 4,
           "name": "Release Time",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.4,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.4,
           "unit": "ms"
         }
       ]
@@ -815,18 +817,18 @@
           "index": 1,
           "name": "Noise Color Morph",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Color"
         },
         {
           "index": 2,
           "name": "Output Level",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.8,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.8,
           "unit": "dB"
         }
       ]
@@ -846,18 +848,18 @@
           "index": 1,
           "name": "Clock Rate",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Hz"
         },
         {
           "index": 2,
           "name": "Glide / Slew",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "ms"
         }
       ]
@@ -877,18 +879,18 @@
           "index": 1,
           "name": "Rise Time (Slew Up)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "ms"
         },
         {
           "index": 2,
           "name": "Fall Time (Slew Down)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.3,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.3,
           "unit": "ms"
         }
       ]
@@ -908,18 +910,18 @@
           "index": 1,
           "name": "Gain / Initial Level",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.8,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.8,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Response Curve (Lin/Exp)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Curve"
         }
       ]
@@ -939,18 +941,18 @@
           "index": 1,
           "name": "Channel 1 Gain",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.8,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.8,
           "unit": "dB"
         },
         {
           "index": 2,
           "name": "Master Output Trim",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.8,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.8,
           "unit": "dB"
         }
       ]
@@ -970,18 +972,18 @@
           "index": 1,
           "name": "Pan Position (L-R)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Pan"
         },
         {
           "index": 2,
           "name": "Auto-Pan LFO Depth",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.0,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.0,
           "unit": "%"
         }
       ]
@@ -1001,9 +1003,9 @@
           "index": 1,
           "name": "Scale / Inversion (-1 to +1)",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Gain"
         }
       ]
@@ -1023,18 +1025,18 @@
           "index": 1,
           "name": "Interval Transpose",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Semi"
         },
         {
           "index": 2,
           "name": "Direct / Shifted Mix",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "%"
         }
       ]
@@ -1054,18 +1056,18 @@
           "index": 1,
           "name": "Polynomial Order / Drive",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Drive"
         },
         {
           "index": 2,
           "name": "Even/Odd Harmonic Balance",
           "type": "Knob",
-          "min": 0.0,
-          "max": 1.0,
-          "default": 0.5,
+          "minVal": 0.0,
+          "maxVal": 1.0,
+          "defaultVal": 0.5,
           "unit": "Balance"
         }
       ]

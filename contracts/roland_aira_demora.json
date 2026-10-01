@@ -60,9 +60,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 01",
           "cc": 11,
-          "min": 0,
-          "max": 1,
-          "default": 0.3,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.3,
           "unit": "ms"
         },
         {
@@ -72,9 +72,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 02",
           "cc": 12,
-          "min": 0,
-          "max": 1,
-          "default": 0.4,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.4,
           "unit": "%"
         },
         {
@@ -84,9 +84,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 03",
           "cc": 13,
-          "min": 0,
-          "max": 1,
-          "default": 0,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0,
           "unit": "Depth"
         },
         {
@@ -96,9 +96,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 04",
           "cc": 14,
-          "min": 0,
-          "max": 1,
-          "default": 0.8,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.8,
           "unit": "Hz"
         },
         {
@@ -108,9 +108,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 05",
           "cc": 15,
-          "min": 0,
-          "max": 1,
-          "default": 0.5,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.5,
           "unit": "%"
         },
         {
@@ -120,9 +120,9 @@
           "controlMethod": "SYSEX",
           "sysexAddress": "10 00 00 06",
           "cc": 16,
-          "min": 0,
-          "max": 1,
-          "default": 0.75,
+          "minVal": 0,
+          "maxVal": 1,
+          "defaultVal": 0.75,
           "unit": "dB"
         }
       ]

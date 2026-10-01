@@ -37,6 +37,18 @@
     "description": {
       "type": "string"
     },
+    "status": {
+      "description": "Estado editorial del contrato. `quarantined` significa que se sabe dudoso: no es que este roto, es que su contenido no es el que dice su cabecera, y NADIE debe presentarlo como hardware real hasta que se decida cual de las dos listas es la buena. El registro de C++ lo lee y no lo carga, asi que un contrato en cuarentena no aparece en el cajon de hardware.",
+      "type": "string",
+      "enum": [
+        "quarantined"
+      ]
+    },
+    "statusReason": {
+      "description": "Por que esta en cuarentena, escrito en el propio dato. Va aqui y no solo en el inventario de tests porque el contrato viaja: quien se lo lleva, incluido el snapshot versionado del laboratorio, se lleva el motivo con el.",
+      "type": "string",
+      "minLength": 1
+    },
     "deviceType": {
       "type": "string",
       "enum": [
@@ -95,7 +107,7 @@
           }
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "lifecycle": {
       "type": "object",
@@ -180,7 +192,7 @@
                 "type": "string"
               }
             },
-            "additionalProperties": true
+            "additionalProperties": false
           },
           "controls": {
             "type": "array",
@@ -227,15 +239,6 @@
                 "sysexAddress": {
                   "type": "string"
                 },
-                "min": {
-                  "type": "number"
-                },
-                "max": {
-                  "type": "number"
-                },
-                "default": {
-                  "type": "number"
-                },
                 "unit": {
                   "type": "string"
                 },
@@ -244,13 +247,95 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "minVal": {
+                  "type": "number",
+                  "description": "Valor minimo del control. Contrapartida de `min`."
+                },
+                "maxVal": {
+                  "type": "number",
+                  "description": "Valor maximo del control. Contrapartida de `max`."
+                },
+                "defaultVal": {
+                  "type": "number",
+                  "description": "Valor por defecto del control. Contrapartida de `default`."
+                },
+                "ccNumber": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 127,
+                  "description": "Numero de CC. Contrapartida de `cc`. El -1 es el \"no hay CC\", igual que en `cc`."
                 }
               },
-              "additionalProperties": true
+              "additionalProperties": false
             }
+          },
+          "measurementRecipe": {
+            "type": "object",
+            "description": "Receta de medicion: como se deja el instrumento en las condiciones justas antes de medir. Sin ella, `functions[]` dice que se puede medir pero no como, y la calibracion que sale depende de quien la escribio.",
+            "required": [
+              "recipeType",
+              "description"
+            ],
+            "properties": {
+              "recipeType": {
+                "type": "string",
+                "description": "Tipo de excitacion. NO es un enum cerrado a proposito: hay tres en uso (INTERNAL_NOISE_EXCITATION, LEGATO_PITCH_SWEEP, DIRECT_AUDIO_IN) y es una lista que se abre, no un conjunto que se pueda contar."
+              },
+              "description": {
+                "type": "string",
+                "minLength": 3,
+                "description": "Que deja puesto el instrumento, en palabras."
+              },
+              "setupActions": {
+                "$ref": "#/$defs/setupActionArray",
+                "description": "Los mismos pasos que usa `lifecycle`."
+              },
+              "excitationNotes": {
+                "type": "array",
+                "description": "Notas a tocar, si la excitacion es por nota. Vacio si no hace falta.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "noteNumber"
+                  ],
+                  "properties": {
+                    "noteNumber": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 127
+                    },
+                    "velocity": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 127
+                    },
+                    "startDelayMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "durationMs": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "isLegato": {
+                      "type": "boolean",
+                      "description": "true si se toca sin soltar la anterior."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "postSettlingDelayMs": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Espera DESPUES del ultimo paso, para que elDSP se asiente antes de medir."
+              }
+            },
+            "additionalProperties": false
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "parameters": {
@@ -274,7 +359,7 @@
             "type": "number"
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "bankManagement": {
@@ -417,13 +502,17 @@
               }
             }
           },
-          "additionalProperties": true
+          "additionalProperties": false
         }
       },
-      "additionalProperties": true
+      "additionalProperties": false
+    },
+    "isSoftsynth": {
+      "type": "boolean",
+      "description": "true si esto emula hardware en software en lugar de describir una maquina fisica. Existe porque `deviceType` no tiene ningun valor de software: sin este campo, un perfil emulado y uno real son indistinguibles para quien lo lee."
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "$defs": {
     "setupActionArray": {
       "type": "array",
@@ -489,7 +578,7 @@
             "maximum": 10000
           }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     }
   }
