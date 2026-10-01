@@ -13,4 +13,5 @@ export {
   esquemaAplica,
   ningunEsquemaAplica,
   comprobarContraElEsquema,
+  contratoDerivaIgual,
 } from './quarantine.js';

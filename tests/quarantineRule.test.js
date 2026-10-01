@@ -35,6 +35,7 @@ import {
   POLITICA,
   auditar,
   comprobarContraElEsquema,
+  contratoDerivaIgual,
   esquemaAplica,
   esRetenido,
   estadosDeclaradosPorElEsquema,
@@ -44,6 +45,7 @@ import {
   veredicto,
 } from '../utils/quarantine.js';
 import { auditarCuarentena } from '../scripts/check-generated-contracts.mjs';
+import { leerReglaDelEsquema } from '../scripts/generar-cuarentena-cpp.mjs';
 
 const CONTRACTS = join(process.cwd(), 'contracts');
 
@@ -336,5 +338,102 @@ describe('el preflight vigila la cuarentena, y no se la inventa', () => {
     expect(conRoto.ilegibles.length).toBe(1);
     expect(conRoto.ilegibles[0]).toContain('roto.json');
     expect(conRoto.leidos).toBe(3);
+  });
+});
+
+
+//──────────────────────────────────────────────────────────────────────────────
+// EL RENOMBRADO, QUE ES EL FALLO QUE ESTA COMPROBACION EXISTE PARA VER
+//──────────────────────────────────────────────────────────────────────────────
+
+describe("el enum que deriva el generador es el del estado, y no otro", () => {
+
+  // El fallo, medido antes de escribir esta comprobacion. Con `status` renombrado
+  // a `estado` y `statusReason` a `estadoReason`, que es como migra alguien que
+  // sabe lo que hace, el generador escribia una cabecera mirando `estado` y salia
+  // con un verde de "escrita". El dato seguia diciendo `status`. La
+  // cabecera y el DATO ya no hablaban, el laboratorio iba a dejar de retener en
+  // silencio, y el unico rojo posible era el de otra puerta, cuando el contrato ya
+  // se leia como sano. Y el mensaje de arreglo decia regenera, que es justo lo que
+  // fijaba el error.
+  //
+  // El criterio mecanico no lo podia ver: el unico enum de un valor sigue siendo
+  // cierto despues del renombrado. Lo unico que cambia es DE QUE enum se trata, y
+  // para eso hace falta un segundo origen, que es `POLITICA`.
+
+  it("la regla que sale del enum es la misma que la regla declarada", () => {
+    const problemas = contratoDerivaIgual(leerReglaDelEsquema());
+    expect(problemas).toEqual([]);
+  });
+
+  it("los NOMBRES estan pineados contra texto fijo, no contra si mismos", () => {
+    // Un test que comparase la regla consigo misma no morderia. El fallo que se
+    // vigila es un renombrado COHERENTE, en el que el enum y los datos se van
+    // juntos y no se rompe nada por el camino: la unica manera de verlo es contra
+    // un texto escrito aqui.
+    const r = leerReglaDelEsquema();
+
+    expect(r.campoEstado).toBe('status');
+    expect(r.valorEstado).toBe('quarantined');
+    expect(r.campoMotivo).toBe('statusReason');
+  });
+
+  it("un renombrado del campo y del motivo se quejaria de los DOS", () => {
+    const renombrado = {
+      campoEstado: 'estado',
+      valorEstado: 'quarantined',
+      campoMotivo: 'estadoReason',
+    };
+
+    const problemas = contratoDerivaIgual(renombrado);
+
+    // Dos de los tres, no uno: el valor no se ha movido y por eso no se queja.
+    // El mensaje tiene que decir CUAL de los dos nombres va con cual, o no sirve
+    // para arreglar nada.
+    expect(problemas.filter((p) => p.includes('estado')).length).toBe(2);
+    expect(problemas.filter((p) => p.includes('estadoReason')).length).toBe(1);
+    expect(problemas.some((p) => p.includes('quarantined'))).toBe(false);
+
+    // Y nombra tambien el lado declarado, que es el que dice el mensaje viejo.
+    expect(problemas.join(' ')).toContain('status');
+  });
+
+  it("avisa de que regenerar NO es el arreglo", () => {
+    // Este mensaje es la parte que evita el fallo de verdad. Sin el, el generador
+    // decia regenera y regenerar escribia la cabecera rota. Un mensaje de
+    // arreglo equivocado es peor que ninguno: convierte un rojo en un rojo con
+    // una accion que empeora las cosas.
+    const problemas = contratoDerivaIgual({
+      campoEstado: 'estado',
+      valorEstado: 'quarantined',
+      campoMotivo: 'estadoReason',
+    });
+
+    const texto = problemas.join(' ');
+    expect(texto).toContain('NO lo arregla');
+    expect(texto).toContain('Regenerar');
+  });
+
+  it("un cambio en el VALOR tambien se queja, y es otro fallo", () => {
+    // No es un renombrado: es una marca nueva, y el mismo enum de un valor. El
+    // criterio del generador lo aceptaria sin pestanear, asi que sin esta
+    // comparacion un cambio de valor tambien pasaria desapercibido.
+    const otroValor = {
+      campoEstado: 'status',
+      valorEstado: 'deprecated',
+      campoMotivo: 'statusReason',
+    };
+
+    const problemas = contratoDerivaIgual(otroValor);
+    expect(problemas.filter((p) => p.includes('deprecated')).length).toBe(1);
+  });
+
+  it("algo que no es una regla se dice, en vez de comparar undefined", () => {
+    // Si el generador devolviera null, comparar sin mirar daria tres
+    // desacuerdos que hablan de `undefined`, que no son un renombrado: son un
+    // fallo antes de tiempo, y se arregla distinto.
+    expect(contratoDerivaIgual(null)).toHaveLength(1);
+    expect(contratoDerivaIgual(undefined)).toHaveLength(1);
+    expect(contratoDerivaIgual(null)[0]).toContain('object');
   });
 });

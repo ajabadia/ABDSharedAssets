@@ -52,6 +52,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// La mitad de JS de la misma regla. Se importa para COMPARAR, no para
+// copiar: aqui no se escribe ningun nombre de la regla, y esa es la condicion para que
+// generar no vuelva a ser escribir. Ver `leerReglaDelEsquema`.
+import { contratoDerivaIgual } from '../utils/index.js';
+
 const aqui = path.dirname(fileURLToPath(import.meta.url));
 
 /** El esquema que declara los nombres. Es la unica fuente. */
@@ -104,7 +109,24 @@ export function leerReglaDelEsquema(rutaEsquema = ESQUEMA) {
     );
   }
 
-  return { campoEstado, valorEstado, campoMotivo };
+
+  // El criterio de arriba sabe QUE enum hay, pero no sabe que ese sea el del
+  // estado. Con un solo enum de un valor las dos cosas coinciden por casualidad,
+  // y en cuanto el esquema gana otro, el criterio elige el que le parezca y sale
+  // con un verde. Aqui se comprueba contra `POLITICA`, que es la mitad de JS de
+  // la misma regla y la unica que tiene los NOMBRES escritos.
+  //
+  // Por que es un throw y no un aviso: la cabecera que se escribiria con esta
+  // regla derivaria de otro sitio, C++ miraria un campo que el dato no tiene, y
+  // la cuarentena dejaria de retener SIN DARSE CUENTA. Un aviso que se puede
+  // ignorar aqui es exactamente el fallo que el resto de este diseno evita.
+  const deriva = { campoEstado, valorEstado, campoMotivo };
+  const problemas = contratoDerivaIgual(deriva);
+
+  if (problemas.length > 0)
+    throw new Error(problemas.join(' '));
+
+  return deriva;
 }
 
 /**

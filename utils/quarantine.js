@@ -300,3 +300,81 @@ export function comprobarContraElEsquema(esquema) {
 
   return problemas;
 }
+
+/**
+ * Si la regla que el GENERADOR ha derivado del enum es la misma regla que esta.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * POR QUE HACE FALTA, Y POR QUE ESTA EN ESTE FICHERO Y NO EN EL GENERADOR
+ *
+ * El criterio mecanico del generador y `POLITICA` son las dos mitades de la misma
+ * pregunta, y hasta ahora no se miraban. El generador deriva el campo del unico
+ * `enum` de un valor y sale con un verde, porque su unico criterio es que el
+ * esquema tenga UN enum de un valor. Ese criterio no sabe que ese enum sea el del
+ * estado: le valdria igual cualquier otro, y el error se lleva por delante la
+ * regla sin avisar.
+ *
+ * El fallo medido, con el renombrado hecho a proposito, que es lo que haria
+ * alguien migrando bien: `status` pasa a `estado` y `statusReason` a
+ * `estadoReason`. El generador escribe una cabecera que mira `estado`, dice
+ * "escrita" y sale con 0. El dato sigue diciendo `status`. La cabecera y el DATO
+ * ya no hablan, el laboratorio va a dejar de retener en silencio, y lo unico que
+ * se ve es un rojo de otra puerta, cuando el contrato ya se leia como sano. El
+ * mensaje de arreglo era ademas equivocado: decia regenera, y regenerar es
+ * justo lo que fija el error.
+ *
+ * Y el sitio de la comprobacion es este y no el generador porque lo que se
+ * compara son los NOMBRES, y los nombres estan en `POLITICA`. Si el generador
+ * se comprobara contra su propia salida compararia el enum consigo mismo y no
+ * diria nada: hace falta un segundo origen, y el unico que existe es la mitad de
+ * JS de la misma regla.
+ *
+ * Lo que NO hace es elegir. Si las dos mitades no coinciden, esto se queja y se
+ * para. Un renombrado son tres cambios, el enum, la politica y los contratos que
+ * llevan la marca, y decidir cual de las dos listas es la buena no es de un
+ * script.
+ *
+ * @param {{campoEstado: string, valorEstado: string, campoMotivo: string}} derivada
+ *   lo que el generador dedujo del enum.
+ * @returns {string[]} problemas. Vacio = el enum y la politica son la misma regla.
+ */
+export function contratoDerivaIgual(derivada) {
+  if (derivada === null || typeof derivada !== "object")
+    return ["el generador no ha devuelto una regla, sino " + typeof derivada];
+
+  const problemas = [];
+
+  // Se comparan los tres por separado y no el objeto entero, porque cada uno se
+  // rompe por su cuenta. Un cambio en el VALOR no es un renombrado: es una marca
+  // nueva, y esa se decide sola.
+  const pares = [
+    [POLITICA.campoEstado, derivada.campoEstado, "el campo que lleva la marca"],
+    [POLITICA.valorEstado, derivada.valorEstado, "el valor que retiene"],
+    [POLITICA.campoMotivo, derivada.campoMotivo, "el campo del motivo"],
+  ];
+
+  for (const [declarado, derivado, que] of pares) {
+    if (declarado === derivado)
+      continue;
+
+    problemas.push(
+      que + ": la regla de este repositorio lo llama " + declarado
+      + " y el enum del esquema ha derivado " + derivado + ". El "
+      + "criterio del generador no sabe que ese enum es el del estado: le "
+      + "vale cualquiera de un solo valor, asi que ha derivado la regla de "
+      + "otro sitio sin enterarse.",
+    );
+  }
+
+  if (problemas.length > 0) {
+    problemas.push(
+      "Regenerar la cabecera NO lo arregla: deja a C++ mirando un campo que el "
+      + "dato no tiene, y la cuarentena dejaria de retener en silencio. Un "
+      + "renombrado son tres cambios a la vez, el enum, la politica y los "
+      + "contratos que llevan la marca, y cual de las dos listas es la buena "
+      + "no lo decide un script.",
+    );
+  }
+
+  return problemas;
+}
