@@ -95,22 +95,44 @@ jobs:
           path: ABDMS2000
           fetch-depth: 1
 
-      # Las versiones de la suite: la raiz del workspace declara pnpm@10.25.0 y los
-      # demas repos compartidos corren sus tests en Node 20.
+      # LAS DOS VERSIONES VAN FIJADAS A UNA EXACTA, y no por purismo: las dos son
+      # la diferencia entre "el install es reproducible" y "el install es el que
+      # le toque". Un `version: '10'` es un COMPROMISO con la 10.x mas reciente
+      # que exista el dia que corra el job, y un `node-version: '22'` con la
+      # 22.x mas reciente. Los dos se mueven solos.
+      #
+      # Esto ya habia pasado y hacia ruido de verdad, no teorico. La linea de
+      # abajo ponia `version: '10'` mientras el comentario de al lado decia
+      # "la raiz del workspace declara pnpm@10.25.0": los dos enunciados no se
+      # podia leer los dos como verdad a la vez, y no habia forma de saber
+      # cual mandaba. Ahora el numero esta escrito una vez y el comentario lo
+      # explica.
+      #
+      # pnpm 10.25.0 es la version que declara `packageManager` en el
+      # `package.json` de la raiz de la suite, que es la que fija el lockfile de
+      # este paquete. Si esa raiz mueve la suya, este numero se queda viejo a
+      # proposito: cambiarlo aqui es una decision, no un efecto secundario.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: '10'
+          version: '10.25.0'
 
-      # Node 22, y no por moda: el smoke ARIA habla CDP a pelo con el `WebSocket`
-      # GLOBAL de Node, que llego en la 22 (en la 21 iba detras de un flag, y en
-      # la 20 no existe). Con la 20, esa linea era un `ReferenceError: WebSocket
-      # is not defined` y este job llevaba cinco corridas en rojo por un motivo
-      # que no era de ningun contrato. La suite entera corre en 24 sin quejarse.
+      # Node 22.23.3, y la 22 no es por moda: el smoke ARIA habla CDP a pelo con
+      # el `WebSocket` GLOBAL de Node, que llego en la 22 (en la 21 iba detras de
+      # un flag, y en la 20 no existe). Con la 20, esa linea era un
+      # `ReferenceError: WebSocket is not defined` y este job llevaba cinco
+      # corridas en rojo por un motivo que no era de ningun contrato. La minima
+      # para que el smoke hable sea la 22; la exacta, para que el job que hoy
+      # esta en verde siga siendo el mismo job dentro de seis meses.
+      #
+      # Ojo al orden de los dos pasos de arriba, que no es cosmetico:
+      # `pnpm/action-setup` se apoya en el Node que este paso deja en el PATH, y
+      # al reves (pnpm antes de Node) el Node instalado se lleva por delante la
+      # shim de pnpm y `pnpm install` deja de ser la version fijada.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.23.3'
 
       # LA RED DEBAJO DE LOS CHECKOUT. Es el mismo patron que usa ABDAudioLab en su
       # `CMakeLists.txt` —usar el hermano si esta a mano, y si no bajarlo con el
@@ -197,7 +219,36 @@ jobs:
       - name: Run full Vitest suite
         run: pnpm test
 
-      # El smoke resuelve Chromium en /usr/bin/google-chrome, que el runner de Ubuntu
-      # trae: es la misma puerta de ARIA que se corre a mano en local.
+      # EL NAVEGADOR NO SE DA POR HECHO. Antes este paso resolvia Chromium en
+      # /usr/bin/google-chrome, que el runner de Ubuntu traia: una suposicion
+      # sobre la imagen del runner, no sobre este repositorio, y justo la clase de
+      # cosa que se rompe sola cuando GitHub actualiza la imagen.
+      #
+      # Ahora el navegador se INSTALA aqui y se le pasa DENTRADO. Playwright se usa
+      # como descarga (`pnpm dlx`, sin tocar package.json ni el lock: el smoke no
+      # declara dependencias de navegador y no hay que añadirle una), y el
+      # binario se localiza con `--resolve-chrome`, que es el MISMO resolutor que
+      # usa el smoke en local. Si divergieran, el paso pasaria y el smoke luego no
+      # encontraria nada: por eso no se vuelve a escribir la ruta a mano.
+      # La version va FIJADA (no `@1`, que se mueve solo): el binario que baja
+      # Playwright es el que decide contra que librerias del sistema esta
+      # compilado, asi que un flotante puede cambiar el navegador de un dia para
+      # otro sin que este workflow haya cambiado. Cuando se actualice hay que
+      # tocar esta linea a proposito.
+      - name: Install Chromium for the ARIA smoke (Playwright cache)
+        run: pnpm dlx playwright@1.63.0 install --with-deps chromium
+
+      - name: Export the Chromium path (and say which one it is)
+        id: chrome
+        run: |
+          set -euo pipefail
+          path="$(node smoke/a11y-smoke.mjs --resolve-chrome)"
+          echo "CHROME_PATH=$path" >> "$GITHUB_OUTPUT"
+          echo "::group::Navegador del smoke ARIA"
+          echo "  $path"
+          echo "::endgroup::"
+
       - name: Smoke ARIA on real Chromium
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.CHROME_PATH }}
         run: pnpm run smoke:a11y

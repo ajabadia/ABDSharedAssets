@@ -125,6 +125,35 @@ alta y el preflight sale con 0. No es que se esté mirando y aprobándose —no 
 mira, no hay con qué— sino que no se puede hacer nada al respecto desde aquí, y
 un rojo por eso taparía los rojos que sí se pueden arreglar.
 
+### Y vigila también la cuarentena
+
+La misma puerta recorre `contracts/` entero y comprueba las marcas de
+**cuarentena**: los contratos que se saben dudosos y no se dan por buenos. Un
+contrato retenido lleva `status: "quarantined"` y su `statusReason` en el
+propio fichero, y sale con el motivo al lado, para que un Aparato que no aparece
+en el cajón del laboratorio tenga una explicación a la vista en vez de solo
+encontrarse cuando alguien lo busca.
+
+La regla vive en [`utils/quarantine.js`](utils/quarantine.js), y la comparten el
+preflight y el laboratorio de C++ por su mitad. La otra mitad está en
+`HardwareContractQuarantine`, en el repositorio hermano, y **no se puede
+compartir el fichero** porque uno es C++ y el otro es JS. Lo que ata las dos es
+el enum de `contracts/hardware_profile.schema.json`: cada mitad lo compara
+contra ese enum, con su propio test, y si divergen las dos se ponen rojas.
+
+El preflight sale con **1** si un contrato está retenido y no dice por qué (el
+laboratorio inventaría un texto de relleno, y un retenido con una explicación
+inventada al lado es peor que no tener ninguna), o si un contrato usa un estado
+que la regla no conoce (ese no lo retiene **ningún** lenguaje, así que su autor
+creería que está marcado y no lo está). Sale con **2** si algún `.json` del
+catálogo no se puede leer, que no es lo mismo: uno se arregla editando un campo
+y el otro mirando por qué el fichero está roto.
+
+Los esquemas de FX, matrices de modulación y campos de patch **no** tienen que
+declarar `status`: gobiernan cosas que no son un Aparato. Lo que se comprueba es
+que **algún** esquema sí lo haga, porque una regla que ningún esquema puede
+aplicar no está vigente.
+
 Corre **antes** de la suite, en su propio paso del workflow y sin filtro de
 `paths:`: si se metiera dentro de un test, un `--check` olvidado se podría
 saltar con un filtro de ruta, que es justo el fallo que se tapa.
@@ -163,6 +192,216 @@ que no vigila.
 La entrada `sinGenerador: true` se borro del inventario y **la mecanica se quedo**:
 si un contrato declara de donde sale y nadie lo regenera, tiene que aparecer ahi, y
 el preflight lo dice en voz alta. Una lista vacia es el estado bueno.
+
+## El validador de esquemas miente si el esquema calla
+
+`tests/helpers/validateSchema.js` recorre un contrato contra su esquema y
+devuelve una lista de errores. Hasta hace poco **ignoraba en silencio los campos
+que el esquema no declaraba**: sin `additionalProperties: false` —o con él, pero
+sin mirarlo— un `replacesNote` colado en un contrato pasaba tan feliz como si
+nada. Eso es exactamente la clase de campo que no aparece en el manual y que
+nadie encuentra hasta que un motor lo lee y no encuentra lo que esperaba.
+
+Ahora cada objeto cuyo esquema cierra con `additionalProperties: false` suelta
+un error por cada campo sobrante, y el error dice las tres cosas que hacen falta
+para arreglarlo sin buscar por todo el repositorio:
+
+```
+(raiz).otroCampo: propiedad que el esquema (fx-effects.schema.json) no declara.
+O se anade a `properties` del esquema si el campo es del contrato, o se quita
+del contrato si se ha colado.
+```
+
+El nombre del esquema entra en el mensaje, asi que `validate()` lleva un
+cuarto argumento opcional (`validate(instancia, esquema, prefijo, nombre)`).
+Sin el, el mensaje sale mas corto pero igual de accionable.
+
+Las dos salidas se ofrecen las dos porque el caso **no tiene un dueño claro**: si
+el campo es de verdad parte del contrato, lo que falta es su linea en
+`properties`; si se ha colado, lo que sobra es su linea en el contrato.
+Decidirlo es cosa de quien sabe lo que quiere, no del validador.
+
+Dos tests de `tests/fxEffectsContract.test.js` comprueban la puerta en la raiz y
+en un elemento anidado, y miran el mensaje **por partes** (la ruta, el nombre del
+esquema, la palabra `no declara`) en vez de por frase entera. Fijar la redaccion
+completa es lo que hizo que estos dos casos se quedaran apuntando a un mensaje
+viejo el dia que el mensaje mejoro.
+
+### El inventario es explicito: esquema contra contrato
+
+Que un esquema exista no dice a que contrato pertenece. El vinculo vive en
+`CONTRATOS_CON_ESQUEMA`, dentro del propio helper, y `tests/schemaValidator.test.js`
+recorre esa lista para que ningun par se quede sin comprobar. Los nombres **no
+siguen convencion** (`s950-calibration.schema.json` contra `s950_calibration.json`),
+y tres contratos distintos comparten `modulation_matrix.schema.json` sin
+declarar `$schema` en ninguno — por eso el vinculo no puede deducirse del fichero.
+
+**Ya no queda ningun esquema huerfano.** `hardware_profile.schema.json` estaba
+declarado sin un solo contrato, no porque no los tuviera sino porque nadie lo
+habia declarado: hay **veintiseis** en el mismo directorio, y
+`HardwareContractRegistry` los lee de ahi en produccion. Al atarlos salieron
+**195 rojos**, todos del mismo tipo: un campo bueno en el sitio equivocado.
+`minVal`/`maxVal`/`defaultVal` y `ccNumber` (48, 48, 48 y 36 usos), `isSoftsynth`,
+y `functions[].measurementRecipe`, que decia QUE se puede medir sin decir COMO.
+Los que faltaban se han declarado en el esquema, no: se han borrado del contrato.
+
+Con eso son seis los esquemas y los seis tienen contrato. El sexto es
+`roland_aira_patch_spec.schema.json`, que se escribio al encontrar que la tabla
+de Model ID del patch_spec **contradecía** a los cuatro contratos de por
+dispositivo (ver mas abajo).
+
+### Un contrato en cuarentena no es un esquema sin contrato
+
+`roland_aira_submodules.json` **no** esta atado a ningun esquema, y no es que se
+haya olvidado: se ha medido y esta en cuarentena de forma consciente. Esa lista
+se llama `CUARENTENAS` y vive aparte de `CONTRATOS_CON_ESQUEMA` — no dentro, con
+`contracts: []` — porque lo dudoso aqui es un CONTRATO y no un esquema, y porque
+meterlo dentro rompia el test que cuenta los ficheros del directorio: la clave se
+llama `schema` y ese fichero no lo es.
+
+El motivo, medido y escrito, no supuesto: el fichero trae **31 bloques** y el
+`patch_spec` del AIRA Modular trae **31 modulos**, y **solo casan 7**
+(`filter_24db`, `filter_18db`, `formant_filter`, `tube_clip`, `short_delay`,
+`compressor`, `sample_and_hold`). Los otros 24 de cada lado no coinciden, y la
+direccion del desajuste dice que estan mezclando mundos: el fichero trae
+`fuzz_germanium`, `chorus_ensemble`, `phaser_4stage`, `pitch_transposer`, y un
+AIRA Modular no tiene un fuzz de germanio; el AIRA tiene osciladores SAW y SQR, un
+divisor de gates, logica y MIDI NOTE TO CV/GATE, y aqui no estan.
+
+Lo que lo hace peligroso es que el fichero se identifica **como el AIRA**:
+`deviceType: AUTOMATED_SYSEX`, el `midiIdentification` del AIRA, la imagen del
+modelo. Quien lo lea por la cabecera —una calibracion, un generador de programas—
+cree que son los modulos de la maquina. Por eso el test `CUARENTENA_ROLAND_AIRA`
+mide el cruce leyendo los dos ficheros, en vez de fiarse de una lista de 31
+nombres escrita a mano que se quedaria verde mientras el fichero cambiase.
+
+### Los Model ID del AIRA se cruzan entre cinco ficheros
+
+Escribir el esquema del patch_spec salio con un error de datos debajo. La tabla
+`devices` decia **torcido = 16** y **demora = 17**. Los cuatro contratos de por
+dispositivo, y la nota `_note` de al lado —que cita el README de la fuente—
+dicen lo contrario: **demora = 16, torcido = 17**. Dos fuentes contra una, y la
+nota es la cita.
+
+Por que importa mas de lo que parece: el Model ID es el byte que va en el SysEx.
+Con la tabla cambiada, un editor de patches del AIRA identifica un Demora como
+Torcido, escribe en el, y no se entera. Y como `HardwareContractRegistry` lee los
+contratos de por dispositivo —que son los correctos—, el detector de MIDI y el
+editor de patches discrepaban sin que nada los enfrentara. La tabla esta
+arreglada, y un test cruza ahora los cinco sitios para que no se descoloquen
+solos.
+
+### Un `$ref` se resuelve, o se dice que no
+
+Antes de cerrar el esquema huerfano hubo que arreglar una cosa mas pequena y
+peor: un nodo con `$ref` no es un objeto, no es un array y no es una hoja, asi
+que en `validate()` caia de largo por las TRES ramas y devolvia **cero errores
+sin mirar nada**. Todo lo que colgase de un `$ref` —en
+`hardware_profile.schema.json` son `preCalibrationSetup`, `preSessionSetup` y
+`postSessionTeardown`— se declaraba valido por no mirarse.
+
+Ahora `validate()` resuelve los `$ref` locales (`#/...`, con `~0` y `~1`) contra
+el esquema raiz, y un `$ref` que no apunta a nada es un **error con su motivo**,
+no un silencio: es la misma mentira que un `oneOf` sin ejecutar, en otra forma.
+
+Con eso, `hardware_profile.schema.json` —que no tiene contrato, ni consumidor, ni
+un solo test en la suite— se pudo cerrar de verdad: sus **nueve** objetos con
+`properties` declaran `additionalProperties: false`, incluido el que vive dentro
+de `$defs`, porque un objeto de datos sigue siendo un objeto de datos alla donde
+este definido. Antes sus ocho objetos abiertos estaban **fijados** en un recuento
+de test, con la razon de que sin instancia nadie puede decir si cerrar rompe algo
+o solo lo endurece. La salida no fue aflojar el requisito: fue hacerlo posible, y
+el hueco ahora lo vigila un test que puede ponerse verde.
+
+Y para que el esquema sin contrato se pudiera mirar de verdad, el test montaba una
+**instancia minima** y la pasaba por el validador, con un campo colado debajo de
+cada uno de los tres `$ref`. Eso ya no hace falta: el esquema tiene veintiseis
+contratos de verdad que lo comprueban, que es un monton de instancias que nadie
+tiene que inventar. La instancia minima se queda como red por si un dia vuelve a
+haber un esquema sin contrato —que se declararia con su motivo, no en silencio—.
+
+### Un solo nombre para el rango de un mando
+
+Habia dos vivos: `min`/`max`/`default` y `minVal`/`maxVal`/`defaultVal`. El
+esquema declaraba los dos porque cada grupo de contratos usaba uno —9 con los
+segundos, 6 con los primeros—, que es lo que hace un esquema honesto: declarar
+lo que los datos usan, no lo que uno memoria de los datos. Lo que no era honesto
+era tener dos.
+
+Se ha unificado en `minVal`/`maxVal`/`defaultVal` (el mayoritario), los seis
+contratos migrados y el esquema ha dejado de declarar el nombre viejo. Cuatro
+tests lo fijan: que el esquema no lo declara, que ningun contrato del inventario
+lo usa, que el contrato **en cuarentena** tampoco —que no valida contra nada y
+es justo donde se cuela una cuarta variante— y, de paso, **cual es el reparto que
+queda**: `cc` frente a `ccNumber`. Ese ultimo sigue sin resolverse y aqui se dice
+por que: el numero de MIDI del AIRA viene en el SysEx (`sysexAddress`) y no es el
+mismo dato, asi que unificar los dos sin decidir cual es cual seria cambiar lo
+que significan.
+
+### Lo que el validador sigue sin mirar
+
+- **Un `$ref` a OTRO fichero** no se resuelve. Este validador lee un fichero, y
+  seguir una referencia externa obliga a decidir quien vigila ese segundo
+  fichero. Se declara no soportado antes que resolverse a medias.
+- **`$schema` no se exige** en ningun contrato, precisamente porque la matriz
+  sirve a tres.
+
+Un hueco que no se cuenta es un hueco que se olvida, asi que esto vive en el
+propio test y no solo aqui.
+
+### La copia de contratos del laboratorio se compara, y su desfase FALLA
+
+`ABDAudioLab/contracts/hardware/` no es un symlink ni un artefacto de build: son
+**40 ficheros** de este mismo `contracts/`, y los carga el registro de C++ cuando
+no encuentra ni esta copia ni la del hermano. El problema no es que exista, es
+que **nadie la compara**: hace tiempo 38 eran identicos y solo uno se habia
+quedado viejo, en silencio.
+
+El orden de la cadena lo hace peor, no mejor: la copia se usa cuando las otras dos
+NO estan. O sea, que la version vieja solo se ve cuando ya no hay forma de
+compararla. Y es justo la copia que sobrevive a una maquina sin repositorio
+hermano, que es un clon limpio y el CI del laboratorio: ahi no hay con quien
+compararla y nadie lo hace por ella.
+
+Asi que el preflight la compara y **falla**, con codigo 1. Antes solo avisaba, y
+la razon —que un rojo a diario se apaga— era buena pero el alcance no: la lista
+`COPIAS_BLOQUEANTES` era la unica puerta que vigilaba la copia, y vacia no habia
+ninguna. La lista esta en el propio script, sigue siendo reversible en una linea
+(vaciarla devuelve el aviso) y hay un test que comprueba que la copia del
+laboratorio esta dentro, para que bajarla sea una decision y no un olvido.
+
+El fallo dice **que se hace**, no solo que algo va mal:
+
+```
+COPIAS DESFASADAS (1):
+  ABDAudioLab/contracts/hardware  [BLOQUEANTE]
+
+SE ARREGLA ASI:
+
+  1. Copia los .json del origen encima de la copia:
+       xcopy /Y /I "ABDSharedAssets\contracts\*.json" "..\ABDAudioLab\contracts\hardware\"
+
+  2. Si la copia no hace falta —el laboratorio tiene el repositorio
+     hermano al lado—, el arreglo de verdad es borrar el directorio.
+```
+
+Y lista los tres casos por separado —distinto, falta, sobra— porque se arreglan
+distinto: los dos primeros se resuelven copiando, el tercero borrando. Un mensaje
+que los mezclaria obligaria a abrir el diff para saber cual es cual.
+`ABDAudioLab/contracts/hardware/` no es un symlink ni un artefacto de build: son
+**39 ficheros** de este mismo `contracts/`, y los carga el registro de C++ cuando
+no encuentra ni esta copia ni la del hermano. El problema no es que exista, es
+que **nadie la compara**: hasta ahora 38 eran identicos y solo uno se habia
+quedado viejo, en silencio.
+
+El orden de la cadena lo hace peor, no mejor: la copia se usa cuando las otras dos
+NO estan. O sea, que la version vieja solo se ve cuando ya no hay forma de
+compararla. El preflight la compara ahora y la avisa. **Avisa, y no falla**,
+porque `ABDAudioLab` esta en desarrollo y un preflight que bloquea el trabajo de
+otro repo se apaga — y apagarse es peor que no existir. La lista
+`COPIAS_BLOQUEANTES`, en el propio script, esta **vacia a proposito**, y un test
+comprueba que lo sigue estando, para que el vacio sea una decision y no un
+olvido.
 
 ## Contratos de matriz de modulacion
 

@@ -4,10 +4,15 @@
  * el árbol de accesibilidad, no los atributos. Es la mitad que jsdom no puede dar:
  * que el rol, el nombre, la descripción y el estado lleguen de verdad al motor.
  *
- * Por qué no hay Playwright: la familia no declara dependencias de navegador y
- * esto no añade ninguna. Habla el protocolo DevTools (CDP) a pelo con `fetch` y
- * `WebSocket` nativos de Node, y lanza el Chrome/Edge/Chromium que ya esté en la
- * máquina (o el que diga CHROME_PATH).
+ * Por qué no hay Playwright como DEPENDENCIA: la familia no declara
+ * dependencias de navegador y esto no añade ninguna. Habla el protocolo
+ * DevTools (CDP) a pelo con `fetch` y `WebSocket` nativos de Node, y lanza el
+ * Chrome/Edge/Chromium que ya esté en la máquina (o el que diga CHROME_PATH).
+ *
+ * Que se llegue a usar el binario de Playwright NO contradice lo de arriba: no
+ * se importa `playwright` ni se le pide que lance nada, solo se busca su Chromium
+ * YA DESCARGADO en la cache que deja `playwright install`. El motor sigue siendo
+ * el de este fichero; el navegador es un dato de entrada, como lo era antes.
  *
  * Uso:
  *   node smoke/a11y-smoke.mjs                  # casos + aserciones (exit 1 si fallan)
@@ -15,7 +20,12 @@
  *   node smoke/a11y-smoke.mjs --dump --raw     # + nodo crudo y el árbol completo
  *   node smoke/a11y-smoke.mjs --page smoke/a11y-probe.html --dump
  *
- * Variables: CHROME_PATH (binario), SMOKE_ROOT (raíz del paquete), SMOKE_PORT.
+ * Variables: CHROME_PATH (binario), SMOKE_ROOT (raíz del paquete), SMOKE_PORT,
+ * PLAYWRIGHT_BROWSERS_PATH (cache de navegadores de Playwright, si se movió).
+ *
+ * `--resolve-chrome` imprime el binario encontrado y sale, sin lanzar nada: es
+ * lo que usa el workflow para exportarlo a CHROME_PATH, de modo que la puerta
+ * que decide cuál es la MISMA que se ejecuta en local.
  *
  * LÍMITE, dicho claro: esto lee el árbol AX del motor, que es la materia prima de
  * lo que anuncia un lector, pero no es el lector. Lo que aquí no aparezca no se
@@ -23,8 +33,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,11 +54,78 @@ function argValue (flag, fallback)
 const DUMP = process.argv.includes('--dump');
 const RAW = process.argv.includes('--raw');
 const PAGE = argValue('--page', 'smoke/a11y-cases.html');
+const RESOLVE_ONLY = process.argv.includes('--resolve-chrome');
 
 /* ── Chromium ─────────────────────────────────────────────────────────────── */
 
+/**
+ * Chromium de la cache de Playwright, si esta descargado.
+ *
+ * NO se importa playwright: se leen las carpetas que deja `playwright install`.
+ * La cache guarda una carpeta POR VERSION (`chromium-1194`,
+ * `chromium_headless_shell-1194`, ...), asi que se recorren y se ordenan al
+ * reves para coger la mas alta, que es la que se acaba de instalar. Se cogen las
+ * dos familias porque el `headless_shell` es la que usa el modo headless moderno
+ * y `chromium` la completa; con cualquiera de las dos el smoke habla CDP igual.
+ */
+function findPlaywrightChrome ()
+{
+    const root = process.env.PLAYWRIGHT_BROWSERS_PATH
+        ?? (process.platform === 'win32'
+            ? join(homedir(), 'AppData', 'Local', 'ms-playwright')
+            : process.platform === 'darwin'
+                ? join(homedir(), 'Library', 'Caches', 'ms-playwright')
+                : join(homedir(), '.cache', 'ms-playwright'));
+
+    if (!existsSync(root))
+        return null;
+
+    const relative = [
+        ['chrome-linux', 'chrome'],
+        ['chrome-linux', 'headless_shell'],
+        ['chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium'],
+        ['chrome-win', 'chrome.exe'],
+        ['chrome-win', 'headless_shell.exe'],
+    ];
+
+    let folders;
+
+    try
+    {
+        folders = readdirSync(root, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory()
+                && /^(chromium|chromium_headless_shell)-/.test(entry.name))
+            .map((entry) => entry.name)
+            .sort()
+            .reverse();
+    }
+    catch
+    {
+        return null;
+    }
+
+    for (const folder of folders)
+    {
+        for (const parts of relative)
+        {
+            const path = join(root, folder, ...parts);
+
+            if (existsSync(path))
+                return path;
+        }
+    }
+
+    return null;
+}
+
 function findChrome ()
 {
+    // El orden es deliberado: primero lo que dijo alguien (CHROME_PATH), luego
+    // los navegadores del sistema en sus rutas de siempre, y al final la cache
+    // de Playwright. Este ultimo no sube de puesto a proposito — en local gana
+    // el Chrome que ya tiene el usuario, que es el que se esta probando— y en
+    // CI casi nunca compite con nadie, porque el workflow exporta CHROME_PATH y
+    // por tanto entra por la primera linea.
     const candidates = [
         process.env.CHROME_PATH,
         'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -61,7 +138,7 @@ function findChrome ()
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     ].filter(Boolean);
 
-    return candidates.find((path) => existsSync(path)) ?? null;
+    return candidates.find((path) => existsSync(path)) ?? findPlaywrightChrome();
 }
 
 /** Mata el árbol del proceso: un navegador que se resiste no debe colgar el test. */
@@ -484,7 +561,28 @@ function checkOne (node, check)
 
 async function main ()
 {
-    // El `WebSocket` de abajo es el GLOBAL de Node, no una importacion: este
+    // `--resolve-chrome` va DELANTE del guard de Node, y a proposito: es una
+    // pregunta de disco (que binario hay en esta maquina) y no deberia depender
+    // de la version de Node ni de que el CDP funcione. El workflow lo llama en un
+    // paso propio, y si aqui exigiera Node 22 el fallo seria "no encuentro un
+    // Chromium" cuando el problema es otro, que es la confusion que se paga
+    // primero en un log de CI.
+    if (RESOLVE_ONLY)
+    {
+        const resolved = findChrome();
+
+        if (resolved == null)
+        {
+            console.error('No encuentro ningun Chromium, ni del sistema ni en la cache de Playwright.');
+            console.error('El workflow lo baja antes con: pnpm dlx playwright@1.63.0 install --with-deps chromium');
+            return 3;
+        }
+
+        console.log(resolved);
+        return 0;
+    }
+
+    // El `WebSocket` de aqui es el GLOBAL de Node, no una importacion: este
     // script no declara dependencias de navegador a proposito. Ese global llego
     // en Node 22, y en el 20 no existe, con lo que el fallo era un
     // `ReferenceError` que no decia nada del Node que hacia falta. Se comprueba
@@ -500,7 +598,12 @@ async function main ()
 
     if (chromePath == null)
     {
-        console.error('No encuentro un Chromium. Define CHROME_PATH apuntando al binario.');
+        console.error('No encuentro ningun Chromium, ni del sistema ni en la cache de Playwright.');
+        console.error('Tres formas de arreglarlo, de mas fuerte a mas debil:');
+        console.error('  1. Descargarlo con Playwright:  pnpm dlx playwright install chromium');
+        console.error('     (el smoke lo encuentra solo en ~/.cache/ms-playwright, sin dependencia).');
+        console.error('  2. Apuntar al binario:           CHROME_PATH=/ruta/al/chrome pnpm run smoke:a11y');
+        console.error('  3. Instalar el del sistema:      sudo apt-get install -y chromium');
         return 2;
     }
 

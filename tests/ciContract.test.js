@@ -2024,3 +2024,100 @@ describe('auto-tests del contrato del CI', () => {
       .toEqual(['Pad.setValue(): recibe 4, la firma acepta 1..2']);
   });
 });
+
+/* ── LA TOOLCHAIN VA FIJADA ─────────────────────────────────────────── */
+
+/**
+ * El valor que declara un `with:` de `setup-node` o de `pnpm/action-setup`.
+ * Devuelve `null` si la clave no esta, para que el llamante pueda distinguir
+ * "no dice" de "dice una cosa rara".
+ */
+function pinnedVersion(source, action, key) {
+  const lines = source.split('\n');
+  const at = lines.findIndex((line) => line.includes(`uses: ${action}`));
+
+  if (at < 0)
+    return null;
+
+  // El bloque del paso va desde `uses:` hasta el siguiente paso, y el valor
+  // buscado esta dentro. Se corta en el proximo `- name:` o `- uses:`.
+  for (let i = at + 1; i < lines.length; i += 1) {
+    if (/^\s*-\s+(name|uses):/.test(lines[i]))
+      break;
+
+    const match = lines[i].match(new RegExp(`${key}:\\s*['\"]?([^'\"\\s#]+)`));
+
+    if (match != null)
+      return match[1];
+  }
+
+  return null;
+}
+
+describe('la toolchain del job va fijada a una version exacta', () => {
+  // POR QUE HACE FALTA UN TEST DE UN YAML. Un `node-version: '22'` y un
+  // `version: '10'` son las dos lineas mas mutables de un workflow y las dos que
+  // nadie edita a proposito: no cambian el resultado, cambian lo que HACE el
+  // resultado. El dia que salga una 22.24 con un cambio en el `WebSocket` global,
+  // este job empezara a fallar por el motivo equivocado y el log no dira por que.
+  //
+  // Y ya se ha visto pasar aqui: el `version: '10'` vivia debajo de un comentario
+  // que decia "la raiz del workspace declara pnpm@10.25.0". Dos enunciados, uno
+  // flotante y otro exacto, sin que hubiera forma de saber cual mandaba.
+
+  it('el workflow declara una version de Node exacta', () => {
+    const version = pinnedVersion(workflow, 'actions/setup-node', 'node-version');
+
+    expect(version).not.toBeNull();
+    // Una `x` o una `lts/*` aqui es exactamente lo que este test prohibe.
+    expect(version, '`node-version` con una x, un asterisco o un `lts/*` se mueve sola')
+      .toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('el workflow declara una version de pnpm exacta', () => {
+    const version = pinnedVersion(workflow, 'pnpm/action-setup', 'version');
+
+    expect(version).not.toBeNull();
+    expect(version, '`version` con una x o un asterisco se mueve sola')
+      .toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('la version de Node es la 22, que es la que trae el WebSocket global', () => {
+    // No es arbitrario: el smoke ARIA usa el `WebSocket` GLOBAL de Node, que
+    // llego en la 22. Con la 20 el job llevaba cinco corridas en rojo por un
+    // `ReferenceError` que no decia nada del Node que hacia falta.
+    const version = pinnedVersion(workflow, 'actions/setup-node', 'node-version');
+
+    expect(version.startsWith('22.')).toBe(true);
+  });
+
+  it('pnpm se instala ANTES que Node, que es el orden del que depende el otro', () => {
+    // El orden no es cosmetico: `pnpm/action-setup` se apoya en el Node que
+    // `setup-node` deja en el PATH. Al reves, el Node recien instalado se lleva
+    // por delante la shim de pnpm y `pnpm install` deja de ser la version fijada
+    // — sin error, que es lo que lo hace peligroso.
+    const lines = workflow.split('\n');
+    const pnpmAt = lines.findIndex((line) => line.includes('uses: pnpm/action-setup'));
+    const nodeAt = lines.findIndex((line) => line.includes('uses: actions/setup-node'));
+
+    expect(pnpmAt).toBeGreaterThanOrEqual(0);
+    expect(nodeAt).toBeGreaterThanOrEqual(0);
+    expect(pnpmAt, 'pnpm se instala despues de Node: se pierde la version fijada')
+      .toBeLessThan(nodeAt);
+  });
+
+  it('el Playwright del smoke tambien va fijado, por el mismo motivo', () => {
+    // El binario que baja Playwright es el que decide contra que librerias del
+    // sistema esta compilado. Un `@1` flotante cambia el navegador de un dia para
+    // otro sin que este workflow haya cambiado.
+    const match = workflow.match(/playwright@(\d+\.\d+\.\d+)/);
+
+    expect(match, 'la descarga de Playwright deberia llevar la version fijada').not.toBeNull();
+    // El flotante se prohibe SOLO cuando no le sigue ni un punto: en
+    // `playwright@1.63.0` hay un `1` justo detras de la arroba, asi que un
+    // `\b` ahi casaria con la version FIJADA y el test se caeria en verde
+    // por el motivo contrario al que dice.
+    expect(workflow, 'la descarga de Playwright no debe llevar un @1 flotante')
+      .not.toMatch(/playwright@1(?!\.\d)/);
+  });
+});

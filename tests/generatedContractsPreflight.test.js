@@ -40,11 +40,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { CONTRATOS, correrCheck, scriptsQueEmpiezanPor } from '../scripts/check-generated-contracts.mjs';
+import { CONTRATOS, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, scriptsQueEmpiezanPor } from '../scripts/check-generated-contracts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -74,18 +75,9 @@ describe('el preflight de contratos generados', () => {
   });
 
   it('declara los tres generadores con script, y son los tres que hay', () => {
-    // Tres, y los tres CON generador. Habia un cuarto, `fx-effects.json`, que se
-    // declaraba generado sin que nadie lo regenerara ni lo comprobara: se le
-    // quito el campo `generatedFrom` en vez de inventarle un generador, asi que
-    // ya no aparece aqui. La entrada `sinGenerador: true` se borro con el y la
-    // MECANICA se quedo, para que un contrato que vuelva a declarar una
-    // procedencia sin generador tenga que aparecer en CONTRATOS y salir en voz
-    // alta en el preflight.
-    //
-    // El guard de que NADIE declare una procedencia sin tener quien la verifique
-    // esta en `contractProvenance.test.js`, y mira mas que este: que el
-    // generador exista de verdad y mire `--check`. Aqui lo unico que se pedia
-    // era que estuviera declarado, y por ese hueco entro el que no tenia.
+    // Tres CON generador mas uno SIN el, que se declara aparte y tiene su
+    // propio test. Inventariar el que no tiene generador es lo que lo hace
+    // visible; los que si lo tienen son los que se pueden comprobar.
     const conGenerador = CONTRATOS.filter((c) => !c.sinGenerador);
     expect(conGenerador).toHaveLength(3);
 
@@ -373,4 +365,269 @@ describe('el preflight de verdad, ejecutado', () => {
       expect(declarados, `${c} no esta en el inventario del preflight`).toContain(c);
     }
   });
+});
+
+//==============================================================================
+describe('las COPIAS de contracts/ se comparan, o no existen', () => {
+  it('cada copia esta declarada con su destino y para que la usa el registro', () => {
+    // Sin el "para que la usa" el aviso dice "hay una copia vieja" y no dice
+    // por que importa. Y la razon por la que se comprueba es justo esa: una
+    // copia que nadie lee no es una copia, es un fichero suelto.
+    for (const c of COPIAS) {
+      expect(c.destino, 'una copia sin destino no se puede comparar').toBeTruthy();
+      expect(c.usaComo, `${c.destino} tiene que decir para que la usa el registro`).toBeTruthy();
+    }
+  });
+
+  it('el comparador existe, y una ruta que no existe no dice "todo igual"', () => {
+    // El fallo silencioso de un comparador de copias es devolver "iguales" para
+    // un directorio que no esta. El dia que se borre la copia —que es el
+    // arreglo de verdad— esto tiene que decir que no hay copia, no que la copia
+    // esta al dia.
+    const r = compararCopia('no-existe-este-directorio');
+
+    expect(r.existe).toBe(false);
+    expect(r.iguales).toEqual([]);
+    expect(r.distintos).toEqual([]);
+  });
+
+  it('la copia del laboratorio esta al dia, y sutamano esta fijado', () => {
+    // QUE ES ESTA COPIA, PARA QUE NO SE LEA COMO UNA BASURA.
+    //
+    // `ABDAudioLab/contracts/hardware/` no es un descuido ni un artefacto de
+    // build: el laboratorio la trae versionada A PROPOSITO, y lo dice en su
+    // `.gitignore` ("contracts/ is deliberately NOT ignored — it is a tracked
+    // in-repo snapshot required by the hardware contract registry and by the
+    // test suite"). El diseno tiene dos caminos a proposito: `build.bat` crea
+    // una junction NTFS a este repositorio cuando el directorio no existe —cero
+    // copia, nunca se desincroniza— y cuando si existe, manda el snapshot
+    // versionado, que es lo que tienen un clon limpio y el CI.
+    //
+    // O sea: la copia es la que sobrevive a la maquina, y por eso su desfase si
+    // importa. Lo que hace este preflight es exactly eso: que el desfase se
+    // diga en lugar de aparecer un dia en un panel.
+    //
+    // Y el numero va FIJADO, no solo "estan iguales". Una copia que se vacia
+    // entera daria "iguales: 0, distintos: 0" y pasaria como si estuviera
+    // al dia. El 40 es el recuento de verdad del catalogo, asi que bajarlo es un
+    // rojo, y sube solo con un contrato nuevo en el origen.
+    const r = compararCopia('ABDAudioLab/contracts/hardware');
+
+    if (!r.existe) {
+      // El otro final valido: no hay copia. Entonces no hay nada que comparar y
+      // no hay nada que sincronizar. Se acepta a proposito, y la unica forma de
+      // llegar aqui es que el laboratorio borre el snapshot entero, que es una
+      // decision suya.
+      expect(r.iguales).toEqual([]);
+      return;
+    }
+
+    expect(r.distintos,
+      'la copia del laboratorio se ha quedado vieja respecto al origen. Sincronizala byte a byte.')
+      .toEqual([]);
+    expect(r.soloEnCopia, 'sobran ficheros en la copia que no estan en el origen').toEqual([]);
+    expect(r.soloEnOrigen, 'faltan ficheros en la copia que estan en el origen').toEqual([]);
+    expect(r.iguales.length, 'el catalogo del laboratorio').toBe(40);
+  });
+
+  it('la copia del laboratorio BLOQUEA: su desfase tiene que tirar el preflight', () => {
+    // Esto es lo que se decide aqui, y por eso tiene un test que lo vigila.
+    //
+    // La lista estaba vacia a proposito porque el laboratorio estaba en
+    // desarrollo y un rojo a diario se apaga. El alcance ha cambiado: esta
+    // lista es la UNICA puerta que vigila la copia, y el snapshot es lo que
+    // sobrevive a una maquina sin repositorio hermano, que es el clon limpio
+    // y el CI. Con la lista vacia no habia ninguna puerta.
+    //
+    // Vaciar la lista sigue siendo la vuelta atras y cuesta una linea. Y es
+    // una decision deliberada la que evita el otro fallo: que se vacie sin
+    // que nadie lo decida.
+    expect(COPIAS_BLOQUEANTES, 'la copia del laboratorio tiene que bloquear')
+      .toContain('ABDAudioLab/contracts/hardware');
+  });
+
+  it('toda bloqueante esta declarada, y toda copia esta decidada', () => {
+    // Las dos direcciones del mismo agujero, y las dos son guardas rotas:
+    //
+    //   - Una bloqueante que no este en `COPIAS` no se comprueba nunca, porque
+    //     el preflight solo recorre `COPIAS`. Es una puerta que no se abre.
+    //   - Una copia en `COPIAS` que no este en la lista de bloqueantes vuelve
+    //     a ser un aviso, que es lo que hay que evitar a proposito.
+    const destinos = COPIAS.map((c) => c.destino);
+
+    for (const b of COPIAS_BLOQUEANTES)
+      expect(destinos, `${b} bloquea pero el preflight no la recorre`).toContain(b);
+
+    for (const d of destinos)
+      expect(COPIAS_BLOQUEANTES, `${d} se compara pero su desfase no bloquea`).toContain(d);
+  });
+
+  it('el veredicto ve las cuatro combinaciones, sin tocar el snapshot real', () => {
+    // Aqui es donde una puerta se rompe de verdad. Si el script decidiera
+    // dentro de `main`, comprobarlo exigiria desincronizar el snapshot de
+    // verdad del laboratorio, y eso no se puede hacer en una suite. Con datos
+    // inventados se cubren los cuatro casos, y el que se olvida se ve aqui.
+    const copia = { destino: 'ABDAudioLab/contracts/hardware' };
+    const bloqueantes = [copia.destino];
+    const vacio = (extra = {}) => ({
+      existe: true, iguales: [], distintos: [], soloEnOrigen: [], soloEnCopia: [], ...extra,
+    });
+
+    const alDia = veredictoCopia(copia, vacio(), bloqueantes);
+    expect(alDia.desfasada, 'una copia igual no esta desfasada').toBe(false);
+    expect(alDia.bloquea, 'sigue siendo bloqueante aunque este al dia').toBe(true);
+
+    const distinto = veredictoCopia(copia, vacio({ distintos: ['a.json'] }), bloqueantes);
+    expect(distinto.desfasada, 'un solo byte de diferencia es un desfase').toBe(true);
+    expect(distinto.bloquea).toBe(true);
+
+    const sobra = veredictoCopia(copia, vacio({ soloEnCopia: ['retirado.json'] }), bloqueantes);
+    expect(sobra.desfasada, 'un contrato retirado que sigue en la copia es un desfase').toBe(true);
+
+    // La copia VACIA es el fallo que mas caro sale: "iguales: 0, distintos: 0"
+    // parece una copia al dia, y es una copia que no esta.
+    const vaciada = veredictoCopia(copia, vacio({ soloEnOrigen: ['a.json', 'b.json'] }), bloqueantes);
+    expect(vaciada.desfasada, 'una copia vacia no es una copia al dia').toBe(true);
+  });
+
+  it('una copia que no existe NO es un desfase, y una que no bloquea avisa', () => {
+    // El primero es el final valido: el dia que el laboratorio borre el
+    // snapshot —que es el arreglo de verdad— esto tiene que callarse, y no
+    // puede hacerlo un "if (desfasado)" que incluye el caso de no existir.
+    const copia = { destino: 'ABDAudioLab/contracts/hardware' };
+    const noExiste = {
+      existe: false, iguales: [], distintos: [], soloEnOrigen: [], soloEnCopia: [],
+    };
+
+    const v = veredictoCopia(copia, noExiste, [copia.destino]);
+    expect(v.desfasada, 'no hay nada que sincronizar si no hay copia').toBe(false);
+
+    // El segundo es la via de vuelta: si alguien saca la copia de la lista de
+    // bloqueantes, el mismo desfase pasa a ser aviso y el codigo de salida
+    // vuelve a ser 0. Se comprueba para que rebajar la puerta sea una
+    // decision visible y no un efecto secundario.
+    const comoAviso = veredictoCopia(
+      copia,
+      { existe: true, iguales: [], distintos: ['a.json'], soloEnOrigen: [], soloEnCopia: [] },
+      [],
+    );
+    expect(comoAviso.desfasada).toBe(true);
+    expect(comoAviso.bloquea, 'sin estar en la lista de bloqueantes no cierra la puerta').toBe(false);
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LA PUERTA CIEGA: una copia que no es una copia.
+//
+// Una junction en el destino de una copia hace que `compararCopia` lea el
+// origen a traves del enlace y diga que los 40 ficheros son iguales. El preflight
+// sale en verde y no ha comparado NADA. Este bloque existe para que ese caso
+// tenga nombre, tenga salida 1, y sobre todo para que el dia que alguien lo
+// arregle bien no se pueda volver a tapar sin que algo se ponga rojo.
+describe('una copia que es un enlace no es una copia', () => {
+  it('el detector ve un enlace de verdad, y ve de verdad un directorio', () => {
+    // Esto no es un test de una funcion con datos inventados: hace un enlace en
+    // el disco. La razon es que `esEnlace` es la UNICA parte de la puerta que
+    // depende de la plataforma, y una plataforma es justo lo que no se puede
+    // inventar en un test. En Windows se crea una junction con 'junction';
+    // en Unix un enlace a directorio con 'dir'. Los dos hacen que
+    // `lstat` —y no `stat`— los vea como enlace, que es justo lo que hace el
+    // script.
+    const base = mkdtempSync(join(tmpdir(), 'puerta-cega-'));
+    const real = join(base, 'real');
+    const enlace = join(base, 'enlace');
+
+    try {
+      mkdirSync(real);
+      writeFileSync(join(real, 'a.json'), '{}');
+
+      symlinkSync(real, enlace, process.platform === 'win32' ? 'junction' : 'dir');
+
+      expect(esEnlace(enlace), 'un enlace es un enlace, y hay que verlo').toBe(true);
+      expect(esEnlace(real), 'un directorio de verdad NO es un enlace').toBe(false);
+
+      // Y lo que hace el daño: leer el enlace devuelve los ficheros del
+      // destino. Por eso comparar sale verde sin comparar.
+      expect(readdirSync(enlace)).toContain('a.json');
+      expect(readFileSync(join(enlace, 'a.json'), 'utf-8')).toBe('{}');
+    }
+    finally {
+      // `force` y `recursive` porque el enlace es el que hay que borrar y hay
+      // que borrarlo sin seguirlo: si el test falla antes del borrado, un rm que
+      // traverses el enlace se lleva el temporal de otro proceso.
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('una ruta que no existe no es un enlace, y eso no es una puerta ciega', () => {
+    // El caso limite. Si esto devolviera `true`, cualquier copia ausente
+    // seria una puerta ciega y el laboratorio no podria borrar jamas el
+    // snapshot sin que el preflight se pusiera rojo.
+    const base = mkdtempSync(join(tmpdir(), 'puerta-ciega-'));
+
+    try {
+      expect(esEnlace(join(base, 'nada'))).toBe(false);
+    }
+    finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('un enlace NO es un desfase: son dos cosas distintas que no se mezclan', () => {
+    // Si un enlace se declarara "desfasada", el mensaje diria "el origen cambio,
+    // la copia no", que es mentira: no hay dos cosas. Y el arreglo que imprimiria
+    // —copiar encima— no arreglaria nada, porque copiar por encima de un enlace
+    // es escribir en el origen.
+    const copia = { destino: 'ABDAudioLab/contracts/hardware' };
+    const enlace = {
+      existe: true,
+      esEnlace: true,
+      apuntaA: '/en/alguna/parte',
+      iguales: ['a.json'],
+      distintos: [],
+      soloEnOrigen: [],
+      soloEnCopia: [],
+    };
+
+    const v = veredictoCopia(copia, enlace, [copia.destino]);
+    expect(v.desfasada, 'un enlace no se ha comparado, asi que no hay desfase').toBe(false);
+    expect(v.puertaCiega, 'pero tiene su propia bandera').toBe(true);
+
+    const clasificado = clasificarCopia(copia, enlace);
+    expect(clasificado.caso, 'tiene su propio caso, no el de desfasada').toBe('ciega');
+  });
+
+  it('un enlace BLOQUEA aunque su destino no este declarado como bloqueante', () => {
+    // Esta es la decision que se tomo, y esta aqui para que sea visible: un
+    // enlace es el unico caso que bloquea por si mismo, sin estar en la lista.
+    // El motivo esta en el nombre del caso, no en un "if": no se ha comprobado
+    // nada, y dejar que el preflight salga verde habria dejado a alguien
+    // creyendo que el snapshot del laboratorio esta vigilado cuando no lo esta.
+    const copia = { destino: 'ABDAudioLab/contracts/hardware' };
+    const enlace = {
+      existe: true, esEnlace: true, apuntaA: '/en/alguna/parte',
+      iguales: [], distintos: [], soloEnOrigen: [], soloEnCopia: [],
+    };
+
+    const comoBloqueante = clasificarCopia(copia, enlace, [copia.destino]);
+    expect(comoBloqueante.bloquea).toBe(true);
+
+    const sinDeclarar = clasificarCopia(copia, enlace, []);
+    expect(sinDeclarar.bloquea, 'no declararlo no lo convierte en aviso').toBe(true);
+    expect(sinDeclarar.puertaCiega).toBe(true);
+  });
+
+  it('la copia del laboratorio es una copia de verdad ahora mismo', () => {
+    // El cierre del circulo. Todo lo de arriba es politica; esto es el estado
+    // real de la maquina. Si alguien monta la junction para trabajar comodo y
+    // se le olvida, el preflight sale con 1 —esto es lo que lo demuestra— pero
+    // el CI tambien clona de cero, y ahi lo que hay es el directorio.
+    const r = compararCopia('ABDAudioLab/contracts/hardware');
+    expect(r.existe, 'la copia del laboratorio esta ahi').toBe(true);
+    expect(r.esEnlace, 'y es un directorio, no una ventana al origen').toBe(false);
+
+    const clasificado = clasificarCopia({ destino: 'ABDAudioLab/contracts/hardware' }, r);
+    expect(clasificado.caso, 'y por eso no es una puerta ciega').toBe('al-dia');
+  });
+});
+
 });

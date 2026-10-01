@@ -61,9 +61,20 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// La regla de cuarentena, desde el sitio unico donde vive. Se importa del
+// barril y no de `utils/quarantine.js` a proposito: asi, si el barril se
+// desincroniza con el fichero, esto se rompe aqui y no en un navegador.
+import {
+  auditar,
+  comprobarContraElEsquema,
+  esquemaAplica,
+  motivoParaMostrar,
+  ningunEsquemaAplica,
+} from '../utils/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -126,6 +137,390 @@ export const CONTRATOS = [
   // aparecer aqui para que el preflight lo pueda decir en voz alta. Una lista
   // vacia es el estado bueno de esta lista, no un sitio que haya que rellenar.
 ];
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * LAS COPIAS DE `contracts/`, Y EL AGUJERO QUE SON.
+ *
+ * Hay un directorio entero, fuera de este repo, con una copia de estos
+ * contratos. No es un symlink ni un artefacto de build: son ficheros, y los
+ * carga el registro de C++ cuando no encuentra ni esta copia ni la del hermano
+ * (`ABDAudioLab/src/gui/MainContentComponent.cpp`, la cadena de busqueda va de
+ * `ABDSharedAssets/contracts` a sibling y de ahi a `contracts/hardware`).
+ *
+ * El problema no es que exista: es que nadie la compara. Treinta y nueve
+ * ficheros, de los que hoy solo UNO —`hardware_profile.schema.json`— es
+ * distinto, y se quedo distinto en silencio. Un esquema de perfiles cerrado
+ * con `additionalProperties: false` en un sitio y abierto en el otro es
+ * exactamente el fallo que este preflight existe para tapar, con la forma
+ * nueva: dos verdades y ninguna que avise.
+ *
+ * Y el orden de la cadena lo hace peor, no mejor: la copia se usa cuando las
+ * otras dos NO estan. O sea, que la version vieja solo se ve cuando ya no hay
+ * forma de compararla.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE AHORA FALLA, Y QUE SE HACE PARA ARREGLARLO.
+ *
+ * Antes esto avisaba, y la razon era que un preflight que bloquea el trabajo
+ * de otro repo se apaga. La razon era buena, y el diagnostico tambien: el
+ * problema de un rojo que salta a diario es que nadie se fia de el.
+ *
+ * Lo que ha cambiado no es el tono, es el alcance. Esta lista es la UNICA
+ * puerta que vigila la copia, y mientras estaba vacia no habia ninguna. El
+ * snapshot del laboratorio es lo que sobrevive a una maquina donde no hay
+ * repositorio hermano, que es un clon limpio y el CI: ahi no hay con quien
+ * compararlo y nadie lo comprueba. Si el origen cambia y la copia no, los dos
+ * lados siguen dando verde y el unico sintoma es que un comportamiento medido
+ * no se reproduce.
+ *
+ * Sigue siendo revisable, y de una linea: vaciar `COPIAS_BLOQUEANTES` devuelve
+ * el aviso. Lo que ya no puede pasar es que se vacie sin que alguien lo
+ * decida, y por eso hay un test que comprueba que la copia del laboratorio
+ * esta en la lista.
+ *
+ * SE ARREGLA COPIANDO, Y POR ESO EL FALLO DICE COMO. Un rojo que dice "la
+ * copia esta desfasada" obliga a investigar; uno que dice que ficheros copiar
+ * se ejecuta y se acaba. Y los tres casos se listan por separado —distinto,
+ * falta, sobra— porque arreglar cada uno es una operacion distinta, y un
+ * mensaje que los mezcla obliga a abrir el diff para saber cual es cual.
+ *
+ * Y de paso sigue en pie: si la copia no existe, no dice nada. Que es lo que
+ * tiene que pasar el dia que se borre, que es el arreglo de verdad.
+ */
+export const COPIAS = [
+  {
+    // La del laboratorio. Es la unica que se ha encontrado, y se declara a mano
+    // por la misma razon que los generadores: descubrirla recorriendo el disco
+    // significa que la copia siguiente nace sin vigilar.
+    destino: 'ABDAudioLab/contracts/hardware',
+    usaComo: 'ultimo recurso de la cadena de busqueda de HardwareContractRegistry',
+  },
+];
+
+/**
+ * Las copias cuyo desfase BLOQUEA el preflight.
+ *
+ * No es una lista de adorno: una entrada aqui que no estuviera en `COPIAS`
+ * seria una puerta que no se abre nunca, porque el preflight solo recorre
+ * `COPIAS`. Por eso hay un test que comprueba que toda bloqueante esta
+ * declarada, y no al reves.
+ */
+export const COPIAS_BLOQUEANTES = [
+  'ABDAudioLab/contracts/hardware',
+];
+
+/**
+ * Dice si una copia esta desfasada, y si su desfase bloquea.
+ *
+ * Es una FUNCION, y no codigo suelto dentro de `main`, por la misma razon que
+ * `compararCopia`: la puerta tiene que poder probarse sin desincronizar el
+ * snapshot de verdad del laboratorio. El test la ejercita con las cuatro
+ * combinaciones de (desfasada, bloqueante) usando datos inventados, que es
+ * donde un guard se rompe: cuando un caso se olvida, el rojo sale en la
+ * maquina de alguien en lugar de salir en la suite.
+ *
+ * Que una copia NO exista no es estar desfasada: no hay nada que sincronizar,
+ * y ese es un final valido.
+ *
+ * @param {{destino: string}} copia
+ * @param {{existe: boolean, distintos: string[], soloEnOrigen: string[], soloEnCopia: string[]}} resultado
+ * @param {string[]} bloqueantes
+ * @returns {{destino: string, desfasada: boolean, bloquea: boolean}}
+ */
+/**
+ * Dice si una ruta es un enlace y no un directorio de verdad.
+ *
+ * Se usa `lstat` y no `stat` a proposito, y es lo unico que lo distingue.
+ * `stat` sigue el enlace antes de mirar sus atributos, asi que una junction
+ * de `mklink /J` sale como un directorio normal y no se ve. `lstat` mira la
+ * entrada en si, que en Windows lleva el bit de punto de reanálisis.
+ *
+ * Y no es un detalle de esta plataforma: en Linux sale por el mismo sitio
+ * con `isSymbolicLink()`, de modo que la comprobacion funciona en los dos
+ * sin ramificar por el sistema.
+ *
+ * @param {string} ruta
+ * @returns {boolean}
+ */
+export function esEnlace(ruta) {
+  try {
+    return lstatSync(ruta).isSymbolicLink();
+  } catch {
+    // Una ruta que no existe no es un enlace. Y una que no se puede mirar
+    // tampoco, y eso lo recoge la comparacion de mas abajo como "no existe".
+    return false;
+  }
+}
+
+/**
+ * Que es esta copia, en una palabra, y si su problema cierra la puerta.
+ *
+ * Vive fuera de `main()` por una razon concreta: para comprobar esta politica
+ * con datos inventados. La politica es lo que decide si el preflight sale con 0
+ * o con 1, y probarla dentro de `main()` obligaria a montar una junction de
+ * verdad sobre el snapshot del laboratorio para ver que un caso bloquea. Un
+ * test que no se puede correr sin tocar el repo no se corre nunca.
+ *
+ * La politica del enlace es deliberadamente mas dura que la del desfase, y no
+ * por simetria: una copia vieja se ha comprobado y ha salido distinta, asi que
+ * alguien tiene algo que arreglar. Un enlace no se ha comprobado NADA, asi que
+ * lo que hay que arreglar es el preflight. Por eso `ciega` bloquea aunque su
+ * destino no este declarado en COPIAS_BLOQUEANTES: no bloquear ahi dejaria a
+ * alguien creyendo que el laboratorio vigila un snapshot que no existe.
+ *
+ * @returns {{caso: 'no-existe'|'ciega'|'desfasada'|'al-dia', bloquea: boolean, desfasada: boolean, puertaCiega: boolean}}
+ */
+export function clasificarCopia(copia, resultado, bloqueantes = COPIAS_BLOQUEANTES) {
+  // No hay copia. No es un fallo: no hay nada que sincronizar, y el dia que
+  // se borre —que es el arreglo de verdad— esto tiene que callarse.
+  if (!resultado.existe)
+    return { caso: 'no-existe', bloquea: false, desfasada: false, puertaCiega: false };
+
+  // Un enlace no es una copia: es una ventana al origen. Compararlo devuelve
+  // "todo igual" sobre una cosa que no ha sido comparada con nada, y eso sale
+  // verde. Aqui se corta, antes de comparar.
+  if (resultado.esEnlace)
+    return { caso: 'ciega', bloquea: true, desfasada: false, puertaCiega: true };
+
+  const v = veredictoCopia(copia, resultado, bloqueantes);
+
+  return {
+    caso: v.desfasada ? 'desfasada' : 'al-dia',
+    bloquea: v.bloquea,
+    desfasada: v.desfasada,
+    puertaCiega: false,
+  };
+}
+
+export function veredictoCopia(copia, resultado, bloqueantes = COPIAS_BLOQUEANTES) {
+  const desfasada = resultado.existe
+    && (resultado.distintos.length > 0
+      || resultado.soloEnOrigen.length > 0
+      || resultado.soloEnCopia.length > 0);
+
+  // La puerta ciega es un caso aparte de "desfasada", y va aparte a
+  // proposito.
+  //
+  // Una junction al origen no esta desfasada: esta PERFECTA, porque no
+  // hay dos cosas que comparar sino una contandose a si misma. Por eso no
+  // puede entrar por `desfasada`: esa bandera dice que una comparacion
+  // salio distinta, y aqui no se ha comparado nada.
+  //
+  // Y por eso devuelve su propia razon. Un guard que mezcla "el snapshot
+  // esta viejo" con "el snapshot no existe y no lo puedo comprobar" obliga
+  // a quien lee el mensaje a abrir el codigo para saber cual de los dos es.
+  const puertaCiega = resultado.existe === true && resultado.esEnlace === true;
+
+  return {
+    destino: copia.destino,
+    desfasada,
+    puertaCiega,
+    bloquea: bloqueantes.includes(copia.destino),
+  };
+}
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * LA CUARENTENA, Y EL HUECO QUE ESTA PUERTA TENIA.
+ *
+ * Este preflight es la puerta que BLOQUEA, vigila el catalogo de contratos
+ * entero y lo recorre entero —generadores y copias— y era incapaz de decir que
+ * un contrato estaba retenido. No por descuido: porque la regla de retener no
+ * estaba escrita en ningun sitio al que este script pudiera mirar. Estaba en el
+ * helper de tests de este repo, y un preflight no puede importar de la suite
+ * que vigila.
+ *
+ * Asi que la regla se escribio donde las dos mitades pueden verla —
+ * `utils/quarantine.js`— y esta puerta la usa. Es la tercera puerta de la misma
+ * regla, junto al registro de C++ del laboratorio y a su adapter.
+ *
+ * QUE COMPRUEBA, Y QUE NO.
+ *
+ * Que todo retenido diga POR QUE. Un retenido sin motivo no es un dato
+ * incompleto: el laboratorio inventa un texto de relleno y el cajon lo enseña.
+ * Lo que sale es un retenido con una explicacion inventada al lado, que es peor
+ * que no tener ninguna, porque parece contestada.
+ *
+ * Que ningun contrato use un estado que la regla no conoce. Ese es el fallo en
+ * la direccion contraria: el campo puesto, el valor mal escrito, y NINGUN
+ * lenguaje lo va a retener. Quien lo escribio creyo que estaba haciendo algo y
+ * no esta haciendo nada.
+ *
+ * Y que la regla de este repo siga siendo la del esquema. El enum de
+ * `hardware_profile.schema.json` y `POLITICA` se comparan aqui. Esa
+ * comparacion es la mitad de este lado; la otra mitad la hace un test de C++ en
+ * el laboratorio, porque el literal de C++ no se puede compartir con un modulo
+ * de JS. Las dos comparan contra el MISMO enum.
+ *
+ * QUE NO COMPRUEBA, Y POR QUE NO.
+ *
+ * No dice si un contrato DEBERIA estar retenido. Esa es una decision editorial
+ * y el que la toma es quien conoce el Aparato, no un script. Aqui solo se
+ * comprueba que si se ha retenido, se ha dicho por que.
+ *
+ * Y un JSON que no se puede parsear no se cuenta como problema de cuarentena:
+ * se cuenta como ilegible, y sale con 2. No es lo mismo que una regla mal
+ * guardada —eso se arregla editando un campo— que un fichero que no se puede
+ * leer, que se arregla mirando por que esta roto. Un preflight que no
+ * distingue los dos miente sobre cual de los dos es.
+ *
+ * @returns {{problemas: string[], retenidos: object[], leidos: number, ilegibles: string[]}}
+ */
+export function auditarCuarentena(directorio) {
+  const problemas = [];
+  const retenidos = [];
+  const ilegibles = [];
+  let leidos = 0;
+
+  const nombres = existsSync(directorio)
+    ? readdirSync(directorio).filter((nombre) => nombre.endsWith('.json')).sort()
+    : [];
+
+  // Los esquemas se miran aparte: declaran la regla en vez de cumplirla.
+  const esquemas = nombres.filter((n) => n.endsWith('.schema.json'));
+  const contratos = nombres.filter((n) => !n.endsWith('.schema.json'));
+  const leidosEsquemas = [];
+
+  // Los esquemas NO se comparan todos con la regla. De los que hay, solo el de
+  // perfiles de hardware declara `status`; los otros cinco gobiernan cosas que
+  // no son un Aparato y no tienen por que poder marcarse. Pedirles el campo
+  // pondria en rojo una rama que esta bien.
+  //
+  // Lo que si se comprueba es que ALGO pueda aplicar la regla. Sin eso, quitar
+  // `status` del esquema de perfiles dejaria la cuarentena sin poder usarse en
+  // ninguna parte y no habria ni un rojo.
+  for (const nombre of esquemas) {
+    try {
+      leidosEsquemas.push({
+        nombre,
+        esquema: JSON.parse(readFileSync(join(directorio, nombre), 'utf-8')),
+      });
+    } catch (exc) {
+      ilegibles.push(`${nombre}: no se ha podido leer (${String(exc.message ?? exc)})`);
+    }
+  }
+
+  if (leidosEsquemas.length > 0 && ningunEsquemaAplica(leidosEsquemas.map((e) => e.esquema))) {
+    problemas.push(
+      'ningun esquema declara "status", asi que la regla de cuarentena no se puede '
+      + 'aplicar a ningun contrato. No es que no haya retenidos: es que ya no hay '
+      + 'manera de marcar uno, y el laboratorio dejaria de retener en silencio.');
+  }
+
+  for (const { nombre, esquema } of leidosEsquemas) {
+    if (!esquemaAplica(esquema))
+      continue;
+
+    for (const problema of comprobarContraElEsquema(esquema))
+      problemas.push(`${nombre}: ${problema}`);
+  }
+
+  for (const nombre of contratos) {
+    let contrato;
+
+    try {
+      contrato = JSON.parse(readFileSync(join(directorio, nombre), 'utf-8'));
+    } catch (exc) {
+      ilegibles.push(`${nombre}: no se ha podido leer (${String(exc.message ?? exc)})`);
+      continue;
+    }
+
+    leidos += 1;
+    problemas.push(...auditar(nombre, contrato));
+
+    const motivo = motivoParaMostrar(contrato);
+
+    if (motivo !== null)
+      retenidos.push({ nombre, motivo });
+  }
+
+  return { problemas, retenidos, leidos, ilegibles };
+}
+
+/**
+ * El comando que arregla una copia, en el shell de quien esta leyendo.
+ *
+ * Se imprime en vez de solo describirlo porque el fallo mas caro de un
+ * preflight es el que obliga a investigar. Esta linea lo cierra.
+ */
+function comandoCopiar(destino) {
+  const bs = String.fromCharCode(92);
+  const d = destino.split('/').join(bs);
+
+  if (process.platform === 'win32')
+    return `xcopy /Y /I "ABDSharedAssets${bs}contracts${bs}*.json" "..${d}${bs}"`;
+
+  return `cp ABDSharedAssets/contracts/*.json ../${destino}/`;
+}
+
+/**
+ * Compara una copia contra `contracts/`.
+ *
+ * Byte a byte, no "el mismo JSON": dos ficheros con el mismo contenido y
+ * distinto formato son la misma verdad, y un preflight que los declara
+ * distintos obliga a normalizar formato por formato, que es trabajo de nadie.
+ *
+ * @returns {{existe: boolean, iguales: string[], distintos: string[], soloEnOrigen: string[], soloEnCopia: string[]}}
+ */
+export function compararCopia(destino) {
+  const vacio = {
+    existe: false,
+    esEnlace: false,
+    apuntaA: null,
+    iguales: [],
+    distintos: [],
+    soloEnOrigen: [],
+    soloEnCopia: [],
+  };
+  const dir = join(root, '..', destino);
+
+  if (!existsSync(dir)) return vacio;
+
+  // Si esto es un enlace se registra AHORA. El resto de la comparacion
+  // sigue, porque el contenido de un enlace se puede leer, y esa lectura
+  // es justo lo que hace el daño: sale "40 ficheros iguales" sobre una
+  // copia que no existe.
+  const enlace = esEnlace(dir);
+
+  let apuntaA = null;
+
+  if (enlace) {
+    try {
+      apuntaA = realpathSync(dir);
+    } catch {
+      apuntaA = null;
+    }
+  }
+
+  const json = (d) => (existsSync(d)
+    ? readdirSync(d).filter((n) => n.endsWith('.json')).sort()
+    : []);
+
+  const origen = json(join(root, 'contracts'));
+  const copiados = json(dir);
+  const enOrigen = new Set(origen);
+  const enCopia = new Set(copiados);
+  const iguales = [];
+  const distintos = [];
+
+  for (const nombre of origen) {
+    if (!enCopia.has(nombre)) continue;
+    const a = readFileSync(join(root, 'contracts', nombre));
+    const b = readFileSync(join(dir, nombre));
+    (a.equals(b) ? iguales : distintos).push(nombre);
+  }
+
+  return {
+    existe: true,
+    esEnlace: enlace,
+    apuntaA,
+    iguales,
+    distintos,
+    soloEnOrigen: origen.filter((n) => !enCopia.has(n)),
+    soloEnCopia: copiados.filter((n) => !enOrigen.has(n)),
+  };
+}
 
 /** Como se pide python. En Windows `python` y en Unix `python3` son cosas distintas. */
 const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
@@ -295,6 +690,192 @@ function main() {
     console.log('que los vigile. Nadie sabe si estan al dia, y el campo dice que si.');
   }
 
+  // ── Las copias, y aqui es donde el aviso se vuelve puerta ──
+  //
+  // Las ciegas van en su propia lista y no en la de las desfasadas porque no
+  // son lo mismo. Una desfasada se ha comparado y ha salido distinta. Una
+  // ciega no se ha comparado: se ha leido a traves de un enlace, que es mirar
+  // el origen y llamarlo copia. Meterlas en la misma lista obligaria a quien
+  // lee el mensaje a adivinar cual de las dos cosas ha pasado.
+  const copiasDesfasadas = [];
+  const copiasCiegas = [];
+
+  for (const c of COPIAS) {
+    const r = compararCopia(c.destino);
+    const caso = clasificarCopia(c, r);
+
+    if (caso.caso === 'no-existe') {
+      console.log(`  sin copia      ${c.destino} (no existe, y no hace falta)`);
+      continue;
+    }
+
+    // La comparacion se salta entera a proposito. Compararla no daria un
+    // error: daria "40 ficheros iguales" leyendo el origen a traves del
+    // enlace, que es la razon exacta de este caso.
+    if (caso.caso === 'ciega') {
+      copiasCiegas.push({ ...c, ...r, bloquea: caso.bloquea });
+      const donde = r.apuntaA === null ? '(destino ilegible)' : r.apuntaA;
+      console.log(`  COPIA CIEGA   ${c.destino}`);
+      console.log(`                 es un enlace a ${donde}`);
+      console.log('                 no se ha comparado nada: leer el enlace es leer el origen');
+      console.log(`                 se usa como ${c.usaComo}`);
+      continue;
+    }
+
+    if (caso.caso === 'al-dia') {
+      console.log(`  copia al dia   ${c.destino} (${r.iguales.length} ficheros iguales)`);
+      continue;
+    }
+
+    copiasDesfasadas.push({ ...c, ...r, bloquea: caso.bloquea });
+    console.log(`  COPIA VIEJA    ${c.destino}`);
+    console.log(`                 ${r.distintos.length} distintos, ${r.iguales.length} iguales`);
+    console.log(`                 se usa como ${c.usaComo}`);
+
+    // Los tres casos por separado, porque se arreglan distinto: los dos
+    // primeros se resuelven copiando, el tercero se resuelve borrando.
+    for (const n of r.distintos)
+      console.log(`                 distinto: ${n}  (el origen cambio, la copia no)`);
+    for (const n of r.soloEnOrigen)
+      console.log(`                 falta en la copia: ${n}`);
+    for (const n of r.soloEnCopia)
+      console.log(`                 sobra en la copia: ${n}  (esta en la copia y no en el origen)`);
+  }
+
+  const copiasBloqueantes = [...copiasDesfasadas, ...copiasCiegas]
+    .filter((c) => c.bloquea);
+
+  if (copiasCiegas.length > 0) {
+    console.log('');
+    console.log(`COPIAS QUE NO SON COPIAS (${copiasCiegas.length}):`);
+    for (const c of copiasCiegas) {
+      const donde = c.apuntaA === null ? '(destino ilegible)' : c.apuntaA;
+      console.log(`  ${c.destino}  ->  ${donde}`);
+    }
+    console.log('');
+    console.log('No es un desfase: es una copia que no existe porque es una junction.');
+    console.log('El preflight la recorre, ve el origen a traves del enlace y dice que');
+    console.log('los ficheros son iguales. No ha comparado dos cosas: ha comparado una');
+    console.log('consigo misma, y por eso sale verde.');
+    console.log('');
+    console.log('SE ARREGLA ASI:');
+    console.log('');
+    console.log('  1. Borra el enlace. SIN /S, y a proposito: /S se lleva por delante');
+    console.log('     el directorio al que apunta.');
+    console.log('       cmd //c rmdir "\\ABDAudioLab\\contracts\\hardware"');
+    console.log('');
+    console.log('  2. Deja un directorio de verdad y copia dentro los .json del origen:');
+    console.log('       xcopy /Y /I "\\ABDSharedAssets\\contracts\\*.json"');
+    console.log('                  "\\..\\ABDAudioLab\\contracts\\hardware\\"');
+    console.log('');
+    console.log('  Si prefieres no tener la copia, la alternativa es borrar el');
+    console.log('  destino y que el laboratorio lea el repositorio hermano. Pero eso');
+    console.log('  se decide a mano; el preflight solo dice que aqui no hay nada que');
+    console.log('  comparar.');
+  }
+
+  if (copiasDesfasadas.length > 0) {
+    console.log('');
+    console.log(`COPIAS DESFASADAS (${copiasDesfasadas.length}):`);
+    for (const c of copiasDesfasadas)
+      console.log(`  ${c.destino}${c.bloquea ? '  [BLOQUEANTE]' : '  [solo aviso]'}`);
+    console.log('');
+    console.log('No es un contrato generado que este viejo: es una COPIA que se ha quedado');
+    console.log('vieja. El original de arriba esta bien.');
+    console.log('');
+    console.log('SE ARREGLA ASI:');
+    console.log('');
+    console.log('  1. Copia los .json del origen encima de la copia:');
+
+    for (const c of copiasDesfasadas)
+      console.log(`       ${comandoCopiar(c.destino)}`);
+
+    console.log('');
+    console.log('  2. Si la copia no hace falta —el laboratorio tiene el repositorio');
+    console.log('     hermano al lado—, el arreglo de verdad es borrar el directorio.');
+    console.log('     Una copia que nadie sincroniza es justo lo que ha creado esto.');
+    console.log('');
+    console.log('  3. Si has anadido o quitado ficheros, los recuentos del inventario');
+    console.log('     del laboratorio (cuantos contratos y cuantos schemas) cambian');
+    console.log('     tambien, o su test fallara por otra causa y no por esta.');
+  }
+
+  // ── La cuarentena, que hasta ahora no la miraba nadie desde aqui ──
+  //
+  // Se imprime SIEMPRE, tambien cuando todo esta bien, y no solo el recuento:
+  // el recuento es lo que se lee para saber si algo va mal, y el motivo de cada
+  // retenido es lo que se lee para entender por que un Aparato no aparece. Un
+  // preflight que solo dice "1 retenido" obliga a abrir el repo; uno que dice
+  // cual y por que, no.
+  const cuarentena = auditarCuarentena(join(root, 'contracts'));
+
+  if (cuarentena.retenidos.length > 0) {
+    console.log(`  en cuarentena ${cuarentena.retenidos.length} (retenido por el`
+      + ' catalogo, no se cargan y se muestran en el cajon con su motivo):');
+
+    for (const r of cuarentena.retenidos)
+      console.log(`                 ${r.nombre}  ${r.motivo}`);
+  } else {
+    console.log('  en cuarentena 0');
+  }
+
+  if (cuarentena.problemas.length > 0) {
+    console.log('');
+    console.log(`CUARENTENA MAL DECLARADA (${cuarentena.problemas.length}):`);
+    for (const p of cuarentena.problemas) console.log(`  ${p}`);
+    console.log('');
+    console.log('No es un contrato viejo: es una marca de retencion que no se sostiene.');
+    console.log('Un retenido sin motivo aparece en el cajon con un texto de relleno, que');
+    console.log('es peor que no aparecer. Un estado mal escrito no lo retiene NINGUN');
+    console.log('lenguaje, asi que el contrato sale del cajon sin estar marcado de nada.');
+    console.log('SE ARREGLA EDITANDO EL FICHERO:');
+    console.log('  - retenido sin statusReason -> escribir statusReason');
+    console.log('  - status que no es "quarantined" -> o se corrige a ese valor, o se');
+    console.log('    quita el campo; un estado que la regla no conoce no retiene nada');
+  }
+
+  if (cuarentena.ilegibles.length > 0) {
+    console.log('');
+    console.log(`CONTRATOS QUE NO SE HAN PODIDO LEER (${cuarentena.ilegibles.length}):`);
+    for (const i of cuarentena.ilegibles) console.log(`  ${i}`);
+    console.log('');
+    console.log('Esto NO es un problema de cuarentena: es que hay un JSON roto en el');
+    console.log('catalogo y no se puede mirar. Salir con 1 diria "el contrato esta');
+    console.log('viejo, regenera", que es mentira: regenerar no arregla un parser roto.');
+  }
+
+  if (copiasBloqueantes.length > 0) {
+    console.log('');
+    const bloqueantesDesfasadas = copiasDesfasadas.filter((c) => c.bloquea).length;
+    const bloqueantesCiegas = copiasCiegas.filter((c) => c.bloquea).length;
+
+    // La coletilla del enlace es CONDICIONAL, y hace falta que lo sea. Con la
+    // frase fija, un desfase normal —que es el caso de todos los dias— salia
+    // anunciando '0 sin comprobar, por ser un enlace'. Eso no es ruido: es
+    // una frase que manda a mirar un enlace que no existe, mientras el
+    // fichero que hay que copiar esta tres lineas mas arriba.
+    const porEnlace = bloqueantesCiegas > 0
+      ? `, ${bloqueantesCiegas} sin comprobar por ser un enlace`
+      : '';
+
+    console.log(`preflight FALLIDO: ${copiasBloqueantes.length} copia(s) bloqueante(s):`
+      + ` ${bloqueantesDesfasadas} desfasada(s)${porEnlace}.`);
+    return 1;
+  }
+
+  // Y estos dos, antes de que el resumen pueda decir que todo esta bien.
+  if (cuarentena.problemas.length > 0) {
+    console.log('');
+    console.log(`preflight FALLIDO: ${cuarentena.problemas.length} problema(s) de cuarentena.`);
+    return 1;
+  }
+
+  if (cuarentena.ilegibles.length > 0) {
+    console.log('');
+    console.log('preflight INCOMPLETO: hay contratos del catalogo que nadie ha podido leer.');
+    return 2;
+  }
+
   if (desfasados.length > 0 && ilegibles.length > 0) return 1;
 
   if (desfasados.length > 0) {
@@ -309,7 +890,20 @@ function main() {
     return 2;
   }
 
-  console.log('preflight OK: ningun contrato generado esta desfasado.');
+  const conCopias = COPIAS.length > 0
+    ? `, y ${COPIAS.length} copia(s) vigilada(s) esta(n) al dia`
+    : '';
+
+  // El numero de retenidos va aqui y no solo arriba porque este es el sitio que
+  // alguien lee cuando todo lo demas esta en verde, y "todo al dia" con un
+  // Aparato escondido dentro no es un resumen honesto.
+  const conCuarentena = cuarentena.retenidos.length > 0
+    ? `, y ${cuarentena.retenidos.length} contrato(s) retenido(s) por cuarentena, `
+      + 'todos con motivo'
+    : ', y ninguno retenido por cuarentena';
+
+  console.log(`preflight OK: ningun contrato generado esta desfasado${conCopias}`
+    + `${conCuarentena}.`);
   return 0;
 }
 

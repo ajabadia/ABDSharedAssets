@@ -40,7 +40,9 @@
     "check:s950-contract": "python scripts/generate_s950_patch_contract.py --check",
     "check:s950-cal": "python scripts/generate_s950_calibration_contract.py --check",
     "preflight": "node scripts/check-generated-contracts.mjs",
-    "check:contracts": "node scripts/check-generated-contracts.mjs"
+    "check:contracts": "node scripts/check-generated-contracts.mjs",
+    "ci": "node scripts/ci-local.mjs",
+    "ci:list": "node scripts/ci-local.mjs --list"
   },
   "devDependencies": {
     "vite": "^5.4.0",
