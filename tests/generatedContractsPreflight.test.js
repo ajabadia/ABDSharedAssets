@@ -40,12 +40,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor, fuentesQueNoExisten, salidasDeclaradas } from '../scripts/check-generated-contracts.mjs';
+import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor, fuentesQueNoExisten, salidasDeclaradas, generadorProduceLoQueDice } from '../scripts/check-generated-contracts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -773,5 +773,269 @@ describe('la fuente que declara un generado exista, o no dice nada', () => {
     // ABDSharedCode, y ese hermano esta aqui al lado: si algun dia se mueve, este
     // test se pone rojo antes de que el panel de un usuario lo lea sin ver nada.
     expect(fuentesQueNoExisten()).toEqual([]);
+  });
+
+  it('un generatedBy que no esta, se avisa con un problema', () => {
+    // `generatedBy` es la otra forma de declarar procedencia, y la que usan las
+    // tres matrices de modulacion. Se comprueba por la misma razon que
+    // `generatedFrom`: un contrato que dice venir de un script que no esta es un
+    // contrato que ya nadie puede regenerar, y a partir de ahi sus cambios son
+    // copia a mano con un nombre que miente.
+    const raiz = mkdtempSync(join(tmpdir(), 'generador'));
+    mkdirSync(join(raiz, 'contracts'), { recursive: true });
+
+    const salidas = salidasDeclaradas();
+    const salida = salidas[0];
+    writeFileSync(join(raiz, 'contracts', salida), JSON.stringify({
+      generatedBy: 'scripts/generador_que_no_existe.py',
+    }), 'utf8');
+
+    for (const otra of salidas.slice(1))
+      writeFileSync(join(raiz, 'contracts', otra), '{}', 'utf8');
+
+    const problemas = fuentesQueNoExisten(raiz);
+    expect(problemas.length).toBe(1);
+    expect(problemas[0]).toContain(salida);
+    expect(problemas[0]).toContain('generador_que_no_existe.py');
+    expect(problemas[0]).toContain('regenerar');
+    rmSync(raiz, { recursive: true, force: true });
+  });
+
+  it('las matrices de modulacion declaran un generador que esta de verdad', () => {
+    // El caso bueno de `generatedBy` sobre el catalogo REAL, y no sobre una raiz
+    // inventada: la razon de que estas tres se puedan distinguir de las escritas
+    // a mano es que el script que las copia esta al lado. Si alguien lo renombra
+    // o lo mueve, este test se pone rojo en el commit, no tres semanas despues
+    // cuando alguien edite una fila a mano y no haya forma de saber por que.
+    const salidas = salidasDeclaradas();
+
+    for (const salida of salidas) {
+      const contrato = JSON.parse(
+        readFileSync(join(root, 'contracts', salida), 'utf8')
+      );
+
+      if (contrato.generatedBy === undefined)
+        continue;
+
+      expect(existsSync(join(root, contrato.generatedBy)),
+        `${salida} declara generatedBy "${contrato.generatedBy}" y ese script no esta`
+      ).toBe(true);
+    }
+
+    // Y no es un verde vacio: hay al menos un contrato que lo declara. Sin esta
+    // cuenta, el bucle de arriba pasaria sin haber mirado nada, que es el fallo
+    // silencioso de todo guard de descubrimiento.
+    const conGenerador = salidas.filter((s) => {
+      const c = JSON.parse(readFileSync(join(root, 'contracts', s), 'utf8'));
+      return typeof c.generatedBy === 'string' && c.generatedBy !== '';
+    });
+
+    expect(conGenerador.length,
+      'ningun contrato declara generatedBy. O los generadores han dejado de '
+      + 'anotar lo que escriben, o el catalogo se ha vaciado de artefactos: '
+      + 'entonces esta comprobacion pasaria sin mirar nada.'
+    ).toBeGreaterThan(0);
+  });
+
+  it('una evidencia que no esta se avisa con un problema', () => {
+    // `provenance.source` esta escrito en prosa y no se puede comprobar: es lo
+    // que lee una persona. `provenance.sourceFiles` es lo mismo, pero como rutas
+    // del monorepo, y SI se puede comprobar. Sin esta segunda mitad, un contrato
+    // puede citar un manual que no existe y seguir en verde, que es justo lo que
+    // hace que una referencia en prosa no sirva de autoridad.
+    const raiz = mkdtempSync(join(tmpdir(), 'evidencia'));
+    mkdirSync(join(raiz, 'contracts'), { recursive: true });
+
+    const salidas = salidasDeclaradas();
+    const salida = salidas[0];
+    writeFileSync(join(raiz, 'contracts', salida), JSON.stringify({
+      provenance: { sourceFiles: ['ABDNeural/Source/Que/No/Existe.h'] },
+    }), 'utf8');
+
+    for (const otra of salidas.slice(1))
+      writeFileSync(join(raiz, 'contracts', otra), '{}', 'utf8');
+
+    const problemas = fuentesQueNoExisten(raiz);
+    expect(problemas.length).toBe(1);
+    expect(problemas[0]).toContain(salida);
+    expect(problemas[0]).toContain('No/Existe.h');
+    rmSync(raiz, { recursive: true, force: true });
+  });
+
+  it('cada evidencia declarada existe de verdad en el monorepo', () => {
+    // El caso bueno sobre el catalogo REAL. Estas rutas llevan el repositorio
+    // delante a proposito —`Source/DSP/...` no significa nada hasta que se sabe
+    // que vive en ABDMS2000— y este test es el que se asegura de que esa
+    // diferencia no se pierde: si alguien las escribe sin el prefijo, el rojo
+    // sale aqui, en el commit.
+    const salidas = salidasDeclaradas();
+    let comprobadas = 0;
+
+    for (const salida of salidas) {
+      const contrato = JSON.parse(
+        readFileSync(join(root, 'contracts', salida), 'utf8')
+      );
+
+      const evidencia = contrato?.provenance?.sourceFiles;
+
+      if (!Array.isArray(evidencia))
+        continue;
+
+      for (const fichero of evidencia) {
+        comprobadas += 1;
+        expect(existsSync(join(root, '..', fichero)),
+          `${salida} declara evidencia "${fichero}" y ese fichero no esta en el monorepo`
+        ).toBe(true);
+      }
+    }
+
+    expect(comprobadas,
+      'ningun contrato declara provenance.sourceFiles. Sin esa lista la evidencia '
+      + 'es prosa y no se puede comprobar, y esta comprobacion pasa sin mirar nada.'
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe('el generador PRODUCE lo que dice, no solo existir', () => {
+  // ───────────────────────────────────────────────────────────────────────
+  // EL HUECO QUE ESTOS TESTS CIERRAN
+  //
+  // Todo lo anterior comprobaba que el `--check` de un generador salga con 0. Pero
+  // salir con 0 no es haber regenerado nada. El caso real que lo demuestra:
+  // cambiarle la constante `OUT` a un generador para que escriba en otro sitio.
+  // Su `--check` lee de ese mismo sitio equivocado, asi que los dos se
+  // equivocan a la vez y el contrato se queda viejo sin que nada se entere.
+  //
+  // Y el caso inverso, que es mas facil de no ver: un generador que escribe lo
+  // que declara Y ADEMAS otra cosa. El fichero ese queda fuera de `salidas`, el
+  // preflight no lo mira nunca, y es un contrato que se queda viejo solo.
+  //
+  // Los dos se comprueban con generadores de mentira, porque un test que solo
+  // comprobara que el generador bueno funciona pasaria igual si la comprobacion
+  // no mirase nada. La defensa se prueba rompiendola.
+
+  // Generador que no escribe NADA y sale con 0 diciendo «al dia». Es el fallo
+  // mas caro: el script parece vivo y el contrato no se regenera nunca.
+  const GENERADOR_TARDO = [
+    'import os, sys',
+    'print("al dia   s950_patch_fields.json            38 campos")',
+    'sys.exit(0)',
+  ].join('\n');
+
+  // Generador que escribe lo declarado Y ADEMAS un contrato que no esta en
+  // `salidas`. El legitimo queda correcto —por eso su `--check` dice «al dia»—
+  // y el colado no lo vigila nadie.
+  const GENERADOR_COLADO = [
+    'import os, sys',
+    'HERE = os.path.dirname(os.path.abspath(__file__))',
+    'OUT = os.path.join(os.path.dirname(HERE), "contracts")',
+    'def main():',
+    '    with open(os.path.join(OUT, "s950_calibration.json"), encoding="utf-8") as fh:',
+    '        texto = fh.read()',
+    '    with open(os.path.join(OUT, "s950_calibration.json"), "w", encoding="utf-8") as fh:',
+    '        fh.write(texto)',
+    '    with open(os.path.join(OUT, "CONTRATO_COLADO.json"), "w", encoding="utf-8") as fh:',
+    '        fh.write(texto)',
+    '    print("al dia   s950_calibration.json            6 curvas")',
+    '    return 0',
+    'sys.exit(main())',
+  ].join('\n');
+
+  function conGeneradorTemporal(contenido, fn) {
+    const ruta = join(root, 'scripts', 'generador_temporal.py');
+
+    try {
+      writeFileSync(ruta, contenido, 'utf8');
+      return fn();
+    }
+    finally {
+      rmSync(ruta, { force: true });
+    }
+  }
+
+  it('un generador que no escribe nada, aunque salga con 0, sale con un problema', () => {
+    const problemas = conGeneradorTemporal(GENERADOR_TARDO, () => generadorProduceLoQueDice({
+      script: 'scripts/generador_temporal.py',
+      salidas: ['s950_patch_fields.json'],
+    }).problemas);
+
+    expect(problemas.length).toBe(1);
+    expect(problemas[0]).toContain('s950_patch_fields.json');
+    expect(problemas[0]).toContain('no se ha');
+
+    // El mensaje tiene que decir por que importa, no solo que no ha escrito.
+    // Un rojo que solo dice «falta» deja a quien lo lee rehaciendo el catalogo
+    // entero en vez de mirar la constante `OUT`.
+    expect(problemas[0]).toContain('sale con 0');
+  });
+
+  it('un generador que escribe de mas lo dice, y ademas lo limpia', () => {
+    const colado = join(root, 'contracts', 'CONTRATO_COLADO.json');
+
+    const r = conGeneradorTemporal(GENERADOR_COLADO, () => generadorProduceLoQueDice({
+      script: 'scripts/generador_temporal.py',
+      salidas: ['s950_calibration.json'],
+    }));
+
+    expect(r.problemas.length).toBe(1);
+    expect(r.problemas[0]).toContain('CONTRATO_COLADO.json');
+
+    // Y lo limpio de verdad. Esto NO es opcional: si el preflight se deja el
+    // fichero colado en `contracts/`, el siguiente que mire el arbol se
+    // encuentra un contrato que nadie ha decidido tener, y ahora hay dos
+    //piredios de problemas: el que faltaba y el que se ha colado.
+    expect(existsSync(colado),
+      'el preflight ha dejado en contracts/ un fichero que el generador creo. '
+      + 'Comprobar los generadores no puede dejar el arbol sucio.'
+    ).toBe(false);
+  });
+
+  it('los generadores de verdad producen todo lo que su catalogo declara', () => {
+    // El caso bueno, y sobre el catalogo REAL. Es lo que hace que los dos tests
+    // de arriba sean una prueba y no unaBroda: si aqui pasara con un
+    // generador roto, la comprobacion no miraria nada.
+    for (const c of CONTRATOS) {
+      if (c.sinGenerador)
+        continue;
+
+      const r = generadorProduceLoQueDice(c);
+
+      expect(r.problemas,
+        `${c.script} deberia escribir ${c.salidas.join(', ')}`
+      ).toEqual([]);
+    }
+  });
+
+  it('comprobar los generadores NO deja contracts/ modificado', () => {
+    // La comprobacion regenera de verdad, asi que toca `contracts/`. Restaura,
+    // pero restaurar los que YA existian no basta: si un generador crea uno
+    // nuevo hay que borrarlo, y las fechas tambien tienen que volver a las que
+    // tenian, o el siguiente que mire el arbol creera que algo cambio sin que
+    // nadie lo haya cambiado.
+    const antes = readdirSync(join(root, 'contracts')).map((f) => {
+      const p = join(root, 'contracts', f);
+      return [f, statSync(p).mtimeMs, readFileSync(p).toString('base64')];
+    });
+
+    for (const c of CONTRATOS) {
+      if (!c.sinGenerador)
+        generadorProduceLoQueDice(c);
+    }
+
+    const despues = readdirSync(join(root, 'contracts')).map((f) => {
+      const p = join(root, 'contracts', f);
+      return [f, statSync(p).mtimeMs, readFileSync(p).toString('base64')];
+    });
+
+    expect(despues.length, 'comprobar los generadores ha anadido o quitado ficheros en contracts/')
+      .toBe(antes.length);
+
+    for (const [f, mtime, contenido] of antes) {
+      const ahora = despues.find((d) => d[0] === f);
+
+      expect(ahora, `comprobar los generadores ha borrado contracts/${f}`).not.toBe(undefined);
+      expect(ahora[1], `contracts/${f} ha cambiado de fecha; alguien dira que se ha editado`).toBe(mtime);
+      expect(ahora[2], `contracts/${f} ha cambiado de contenido`).toBe(contenido);
+    }
   });
 });

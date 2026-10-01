@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "queEs": "Las claves de JSON que ABDAudioLab ESCRIBE al exportar una medicion, agrupadas por el struct que las escribe. Este fichero es la fuente UNICA de esos nombres: `scripts/generar-claves-export-cpp.mjs` lo lee y escribe `MeasurementExportKeys.generado.h`, y el laboratorio usa esa cabecera en vez de teclear literales.",
+  "porQueHaceFalta": "Porque las claves vivian tecleadas en dos ficheros de C++ —`MeasurementSerialization.cpp` y `MeasurementContainerExporter.cpp`— y en NINGUN contrato de este repositorio. Un renombrado en el lado que lee dejaba al laboratorio escribiendo la clave vieja: el fichero salia bien formado, el panel no encontraba lo que buscaba, y no habia ni rojo ni crash. El fallo es silencioso por construccion, que es lo que lo hace caro.\n\nY no es hipotetico: ya ocurrio con `minVal`/`maxVal`, que el esquema no declaraba y dos parsers de C++ seguian leyendo con el nombre corto. 68 controles del catalogo cargaron con los valores por defecto del parser y nada protesto.",
+  "alcance": "Solo la EXPORTACION de modulacion y calibracion, que es lo que el encargo pedia. Las claves del manifiesto, de los artefactos y de las curvas se siguen escribiendo con literales a proposito: declararlas aqui seria ampliar el contrato sin un fallo que lo justifique, y una lista de nombres que nadie vigila se queda vieja igual. Las que SI van al manifiesto estan marcadas una a una, porque esa divergencia es real y no se deduce: el manifiesto escribe cuatro claves del grupo de calibracion, no las catorce.",
+  "grupos": [
+    {
+      "code": "analogChainCalibration",
+      "queEscribe": "La funcion estatica `analogCalibrationToJson` de ABDAudioLab/src/measurement/MeasurementSerialization.cpp, y el bloque `analogCalibration` del manifiesto que escribe `writeManifestJson` en MeasurementContainerExporter.cpp.",
+      "claveContenedor": "analogCalibration",
+      "nota": "El manifiesto es un SEGUNDO sitio que escribe este grupo, y escribe solo cuatro claves. Se declara cual de las cuales en `vaAlManifiesto`, porque la diferencia es invisible al leer el JSON de salida —uno trae catorce campos y el otro cuatro— y es justo el tipo de asimetria que hace que un panel se quede sin datos sin que el laboratorio se entere.",
+      "claves": [
+        {
+          "nombre": "calibrationId",
+          "tipo": "texto",
+          "queEs": "Identificador de esta calibracion. El que alguien lee dentro de tres semanas para saber que medicion es esta.",
+          "vaAlManifiesto": true
+        },
+        {
+          "nombre": "sampleRateHz",
+          "tipo": "numero",
+          "queEs": "Frecuencia a la que se calibro, en Hz. Va en el manifiesto porque sin ella una latencia en muestras no se puede convertir a segundos."
+        },
+        {
+          "nombre": "blockSize",
+          "tipo": "entero",
+          "queEs": "Tamano de bloque con el que se calibro. El par (sampleRateHz, blockSize) es lo que hace comparables dos calibraciones."
+        },
+        {
+          "nombre": "roundTripLatencySamples",
+          "tipo": "numero",
+          "queEs": "Latencia de ida y vuelta en muestras. Es la cifra que se corrige al comparar ensayos, y va al manifiesto porque es la que se necesita sin abrir el fichero grande.",
+          "vaAlManifiesto": true
+        },
+        {
+          "nombre": "snrDb",
+          "tipo": "numero",
+          "queEs": "Relacion senal-ruido en dB. Si esta por debajo del umbral, el resto de las cifras de este grupo no significan nada.",
+          "vaAlManifiesto": true
+        },
+        {
+          "nombre": "peakDbfs",
+          "tipo": "numero",
+          "queEs": "Pico alcanzado en dBFS. Un pico en 0 significa que la captura saturo, y todo lo demas de la calibracion es ruido de un amplificador que ya no cabe."
+        },
+        {
+          "nombre": "dcOffsetDb",
+          "tipo": "numero",
+          "queEs": "Desnivel de continua en dB. Es el sintoma de un acoplamiento que las demas cifras de este grupo no Teach a ver: un ruido de fondo alto tambien las sube."
+        },
+        {
+          "nombre": "status",
+          "tipo": "texto",
+          "queEs": "Como termino la calibracion: si se midio o no. La lectura usa `not_measured` cuando la clave no esta, y esa distincion es la que separa una calibracion mala de una calibracion que nadie ha hecho.",
+          "porDefecto": "not_measured",
+          "vaAlManifiesto": true
+        },
+        {
+          "nombre": "thresholds",
+          "tipo": "objeto",
+          "queEs": "Los umbrales contra los que se juzgo esta calibracion. Van aparte de las cifras porque son un JUICIO y no una medida: pueden cambiar sin que cambie el hardware, y por eso no deben viajar mezclados con lo medido.",
+          "de": [
+            { "nombre": "snrDbMin", "tipo": "numero", "queEs": "SNR minima aceptable en dB. Debajo de esto la calibracion se considera fallida.", "porDefecto": 18.0 },
+            { "nombre": "peakDbfsMax", "tipo": "numero", "queEs": "Pico maximo aceptable en dBFS. El valor por defecto es negativo porque un pico POSITIVO ya es saturacion.", "porDefecto": -0.5 },
+            { "nombre": "dcOffsetDbMax", "tipo": "numero", "queEs": "Desnivel maximo aceptable en dB, tambien negativo: el signo es el que dice que se compara en magnitud y no de signo.", "porDefecto": -60.0 }
+          ]
+        },
+        {
+          "nombre": "latencyBreakdown",
+          "tipo": "objeto",
+          "queEs": "De donde sale la latencia de ida y vuelta. Va desglosada porque el reparto entre host y hardware decide donde se puede corregir: una latencia de host se compensa, una de hardware no.",
+          "de": [
+            { "nombre": "estimatedHostLatencySamples", "tipo": "numero", "queEs": "Parte que se atribuye al host, en muestras. Es una estimacion y no una medida: por eso el nombre lo dice, y por eso no se puede compensaar con ella." },
+            { "nombre": "estimatedHardwareLatencySamples", "tipo": "numero", "queEs": "Parte que se atribuye al hardware, en muestras. Esta si es una medida del recorrido fisico de la senal." }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "modulationSideband",
+      "queEscribe": "La funcion estatica `modulationSidebandToJson` de ABDAudioLab/src/measurement/MeasurementSerialization.cpp.",
+      "claveContenedor": "sidebands",
+      "nota": "Es el UNICO grupo que se escribe como array: `sidebands` es la lista y estas claves son las de cada elemento. Por eso el generador emite la clave del contenedor aparte de las de dentro, y el consumidor tiene que saber cuales son.",
+      "claves": [
+        { "nombre": "carrierFrequencyHz", "tipo": "numero", "queEs": "Frecuencia de la portadora en Hz, la que se modulaba. Es la referencia contra la que se mide todo lo demas del grupo." },
+        { "nombre": "sidebandFrequencyHz", "tipo": "numero", "queEs": "Frecuencia de esta banda lateral en Hz. Junto con `order` dice si la banda es superior o inferior a la portadora." },
+        { "nombre": "order", "tipo": "entero", "queEs": "Orden de la banda lateral: -1 es la inferior, +1 la superior, y hay mas cuando la modulacion no es simple. La lectura usa 1 por defecto, que es la superior: es la unica que se ve cuando la modulacion es de indice variable.", "porDefecto": 1 },
+        { "nombre": "levelRelativeToCarrierDb", "tipo": "numero", "queEs": "Nivel de esta banda respecto a la portadora, en dB. Es NEGATIVO siempre que la banda existe, asi que un 0 dB no es modulacion fuerte: son dos portadoras, que es otra medicion y otra historia." }
+      ]
+    },
+    {
+      "code": "modulationResult",
+      "queEscribe": "La funcion estatica `modulationResultToJson` de ABDAudioLab/src/measurement/MeasurementSerialization.cpp.",
+      "claveContenedor": "modulationResult",
+      "nota": "Los tres subobjetos —`rateHz`, `depth` y `waveform`— tienen las MISMAS claves internas (`name`, `value`, `unit`, `status`, `reason`). Por eso los alias generados llevan el nombre del subobjeto delante: si no, tres claves distintas en el JSON se llamarian igual en C++ y el renombrado de una pondria las tres en silencio.",
+      "claves": [
+        { "nombre": "targetDestination", "tipo": "texto", "queEs": "Destino de la matriz que se estaba modulando. Es lo que une esta medicion con un contrato de matriz de modulacion: sin el, un resultado no se sabe a que destino pertenece.", "porDefecto": "unknown" },
+        { "nombre": "rateHz", "tipo": "objeto", "queEs": "La frecuencia de modulacion, medida o estimada. `value` va siempre en Hz; lo que cambia entre medida y estimacion es `status` y `reason`.", "de": [
+          { "nombre": "name", "tipo": "texto", "queEs": "Nombre de la magnitud, para que el panel no tenga que deducirlo del valor. No es la clave del dato: es su etiqueta.", "porDefecto": "rate" },
+          { "nombre": "value", "tipo": "numero", "queEs": "El valor medido, en la unidad que dice `unit`. Un 0 aqui es un valor real y no una ausencia: por eso `status` es lo que dice si se midio." },
+          { "nombre": "unit", "tipo": "texto", "queEs": "Unidad del valor: Hz, porque la frecuencia de modulacion SIEMPRE se expresa en hercios. Va declarada porque el subobjeto de al lado guarda una profundidad, que va en cents.", "porDefecto": "Hz" },
+          { "nombre": "status", "tipo": "texto", "queEs": "Si el valor se midio o se estimo. Es la clave que separa un numero de una conjetura, y la que hay que mirar antes de publicar el valor.", "porDefecto": "observed" },
+          { "nombre": "reason", "tipo": "texto", "queEs": "Por que se estimo, si se estimo. Solo se escribe cuando no esta vacio, y es la unica pista de por que el valor no es de fiar." }
+        ] },
+        { "nombre": "rateMethod", "tipo": "texto", "queEs": "Como se obtuvo la frecuencia de modulacion. Sin esto, un valor leido del pico del espectro y uno interpolado son indistinguibles, y son medidas de distinta calidad.", "porDefecto": "spectral_peak" },
+        { "nombre": "depth", "tipo": "objeto", "queEs": "La profundidad de la modulacion. Misma forma que `rateHz` porque se miden igual, y por eso tienen las mismas claves internas.", "de": [
+          { "nombre": "name", "tipo": "texto", "queEs": "Nombre de la magnitud, con el mismo papel que en `rateHz`: etiqueta, no dato.", "porDefecto": "depth" },
+          { "nombre": "value", "tipo": "numero", "queEs": "El valor medido, en la unidad que dice `unit`. Aqui el 0 SI es una respuesta valida: una modulacion de amplitud cero es una medicion, no una ausencia." },
+          { "nombre": "unit", "tipo": "texto", "queEs": "Unidad del valor: cents, que es como se expresa la profundidad. Distinta de la unidad de `rateHz` a proposito, y es el motivo de que este subobjeto no comparta claves con el.", "porDefecto": "cents" },
+          { "nombre": "status", "tipo": "texto", "queEs": "Si el valor se midio o se estimo. Con el mismo criterio que en `rateHz`, porque la forma de la medicion es la misma.", "porDefecto": "observed" },
+          { "nombre": "reason", "tipo": "texto", "queEs": "Por que se estimo, si se estimo. Solo se escribe cuando no esta vacio." }
+        ] },
+        { "nombre": "waveform", "tipo": "objeto", "queEs": "La forma de onda detectada. Es la unica parte del grupo que NO es un valor con unidades: es una clasificacion, y por eso lleva `confidence` en vez de unidad.", "de": [
+          { "nombre": "waveform", "tipo": "texto", "queEs": "La forma de onda detectada. Se llama igual que su contenedor porque el uno dice COMO es la forma y el otro la GUARDA.", "porDefecto": "none" },
+          { "nombre": "status", "tipo": "texto", "queEs": "Si se pudo determinar. `not_observable` es un resultado, no un fallo: hay modulaciones cuya forma no se puede clasificar y eso hay que poder decirlo.", "porDefecto": "not_observable" },
+          { "nombre": "confidence", "tipo": "numero", "queEs": "Confianza de la clasificacion, de 0 a 1. Es el numero que hay que mirar antes de fiarse de `waveform`, porque la forma es la parte mas frágil del grupo." }
+        ] },
+        { "nombre": "sidebands", "tipo": "array", "queEs": "Las bandas laterales medidas. Los elementos son los del grupo `modulationSideband`, y esta clave es la unica parte del grupo que es una lista." },
+        { "nombre": "spectralMetadata", "tipo": "objeto", "queEs": "Como se computo el espectro. Se escribe dentro del grupo de modulacion pero lo produce `spectralAnalysisToJson`, que es compartido con la medicion de dinamica: sus claves NO se declaran aqui porque no son de este grupo." },
+        { "nombre": "timeCurve", "tipo": "objeto", "queEs": "La envolvente temporal de la modulacion. La produce `curveToJson`, compartida con el resto de mediciones, asi que tampoco son claves de este grupo." },
+        { "nombre": "spectrumCurve", "tipo": "objeto", "queEs": "El espectro de la modulacion en dB. Lo produce `curveToJson` igual que la curva temporal, y por la misma razon no son claves de este grupo." }
+      ]
+    }
+  ]
+}

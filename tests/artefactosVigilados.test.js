@@ -44,12 +44,16 @@
 
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { descubreArtefactos } from './gitattributesGuard.js';
 import { CONTRATOS, GENERADOS_FUERA } from '../scripts/check-generated-contracts.mjs';
+// Por `gitSeguro`, igual que el guard hermano. Sin esto, en una maquina donde
+// el repositorio es de otro usuario, esta lista sale vacia y los tests de este
+// fichero pasan por no mirar nada — el mismo fallo que el del guard, y por el
+// mismo motivo.
+import { gitSeguro } from './helpers/gitSeguro.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -57,7 +61,7 @@ const NUL = String.fromCharCode(0);
 
 function listaTrackeada () {
   try {
-    return execFileSync('git', ['ls-files'], {
+    return gitSeguro(['ls-files'], {
       cwd: repoRoot,
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,

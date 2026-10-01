@@ -61,7 +61,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -135,6 +136,22 @@ export const GENERADOS_FUERA = [
     queEs: 'la cabecera de C++ con los literales de la regla de cuarentena',
     deDondeSale: 'el enum de contracts/hardware_profile.schema.json',
   },
+  {
+    // Misma forma de puerta y mismo motivo, pero sobre un fallo distinto y peor:
+    // una clave desfasada no deja a C++ mirando un nombre viejo, lo deja
+    // ESCRIENDO una clave que el panel ya no lee. El JSON sale bien formado, asi
+    // que no hay crash ni rojo: el laboratorio funciona y el dato no aparece.
+    //
+    // Lo que hay que mirar para entender por que es un `GENERADOS_FUERA` y no un
+    // `CONTRATOS` es que la salida es codigo y la fuente es un catalogo, no un
+    // esquema. La cabecera vive en el laboratorio porque alli se compila, y se
+    // comprueba desde aqui porque el catalogo vive aqui.
+    script: 'scripts/generar-claves-export-cpp.mjs',
+    scriptNpm: 'check:claves-export-cpp',
+    salidas: ['../ABDAudioLab/src/measurement/MeasurementExportKeys.generado.h'],
+    queEs: 'la cabecera de C++ con las claves de JSON que el laboratorio escribe al exportar',
+    deDondeSale: 'scripts/claves-export-medicion.json',
+  },
 ];
 
 /**
@@ -189,6 +206,43 @@ export function fuentesQueNoExisten(raizDelPaquete = root) {
     }
 
     const fuente = contrato?.generatedFrom;
+
+    // `generatedBy` es la OTRA forma de declarar procedencia, y la que usan los
+    // contratos de matriz de modulacion. Dice quien COPIO el fichero a disco, que
+    // es justo la pregunta que `generatedFrom` no contesta. Se comprueba aqui
+    // por la misma razon que `generatedFrom`: un contrato generado por un script
+    // que no esta, o que no es el que dice escribirlo, es un contrato que nadie
+    // puede volver a producir — y entonces su contenido es copia a mano con un
+    // nombre que miente.
+    const generador = contrato?.generatedBy;
+
+    if (typeof generador === 'string' && generador !== '') {
+      // `generatedBy` se declara como ruta DESDE LA RAIZ DEL PAQUETE
+      // (`scripts/...`), no desde la raiz del monorepo como hace
+      // `generatedFrom` (`ABDSharedCode/...`). Son dos bases distintas y por eso
+      // van un `join` distinto cada uno: con el equivocado, esta comprobacion
+      // daria siempre «no esta» sobre un repositorio sano.
+      if (!existsSync(join(raizDelPaquete, generador)))
+        problemas.push(`${salida} declara generatedBy "${generador}" y ese script no esta. Sin el, el contrato no se puede regenerar y sus cambios serian copia a mano.`);
+    }
+
+    // `provenance.sourceFiles` es lo mismo para la EVIDENCIA: `source` la
+    // escribe en prosa para que se lea, y estas son las rutas que se pueden
+    // comprobar. Sin ellas, un contrato puede citar un manual que no existe y
+    // seguir en verde, que es justo el fallo que hace que una referencia en
+    // prosa no sirva de autoridad.
+    const evidencia = contrato?.provenance?.sourceFiles;
+
+    if (Array.isArray(evidencia)) {
+      for (const fichero of evidencia) {
+        // Se resuelven desde la raiz del MONOREPO, que es donde viven los tres
+        // synths, y por eso el `..`. Una ruta que no este se avisa: es la
+        // misma idea que con `generatedFrom`, aplicada a la evidencia.
+        if (typeof fichero === 'string' && fichero !== ''
+          && !existsSync(join(raizDelPaquete, '..', fichero)))
+          problemas.push(`${salida} declara provenance.sourceFiles "${fichero}" y ese fichero no esta. La evidencia que el contrato declara como su autoridad no se puede abrir.`);
+      }
+    }
 
     if (typeof fuente !== 'string' || fuente === '')
       continue;
@@ -718,6 +772,236 @@ export function scriptsQueEmpiezanPor(man, prefijo) {
   return Object.keys(man.scripts ?? {}).filter((k) => k.startsWith(prefijo));
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// QUE EL GENERADOR PRODUZCA REALMENTE LO QUE DECLARA PRODUCIR
+// ─────────────────────────────────────────────────────────────────────────
+//
+// EL HUECO, DICHO CON EL SCRIPT QUE LO DEMUESTRA
+//
+// Todo lo de arriba comprueba que el `--check` del generador salga con 0. Pero
+// salir con 0 no es lo mismo que haber regenerado nada: un script que imprime
+// «al dia» y no toca un solo fichero sale con 0, y este preflight lo aceptaba.
+// Eso no es hipotetico, es lo que hace un generador al que le han cambiado el
+// nombre de la constante de salida, y es la forma mas cara de estos fallos: el
+// generador parece vivo, el preflight parece vigilarlo, y el contrato se
+// desfasa sin que nada se entere.
+//
+// EL OTRO HUECO, EL INVERSO, Y ES EL MAS FACIL DE NO VER
+//
+// Que un script escriba lo que dice no dice que escriba TODO lo que tiene que
+// escribir. Si `salidas` lista tres ficheros y el generador solo produce dos,
+// el tercero se queda viejo para siempre y el preflight no lo nota: solo mira
+// los que el propio generador menciona. Un contrato que nadie regenera es un
+// contrato que nadie vigila, y sigue pareciendo vigilado.
+//
+// ─────────────────────────────────────────────────────────────────────────
+// COMO SE COMPRUEBA SIN ROMPER NADA
+//
+// No se puede simplemente correr el generador y mirar: escribiria sobre los
+// contratos de verdad. Asi que se mide por FECHAS DE MODIFICACION, que es lo
+// unico que se puede observar sin tocar el contenido.
+//
+// Y se mide antes y despues, por una razon que no es de redundancia sino de
+// LIMITACION: si el generador no ha escrito un fichero, su fecha no cambia, y
+// no hay forma de distinguir «el generador no lo produce» de «el generador no lo
+// ha producido todavia» solo mirando el estado final. Comparando se distingue.
+//
+// Se copia el contrato entero antes, se corre el generador, y se restaura
+// SIEMPRE —tambien cuando todo ha ido bien, y no por prudencia sino por
+// principio: un preflight que deja el arbol modificado, aunque lo deje igual,
+// es un preflight del que nadie se fia la segunda vez que lo corre.
+
+/** Los ficheros de `contracts/` con su fecha de ultima modificacion. */
+function fechasDeContratos() {
+  const dir = join(root, 'contracts');
+  const fechas = new Map();
+
+  if (!existsSync(dir))
+    return fechas;
+
+  for (const nombre of readdirSync(dir)) {
+    const est = lstatSync(join(dir, nombre));
+
+    if (est.isFile())
+      fechas.set(nombre, est.mtimeMs);
+  }
+
+  return fechas;
+}
+
+/** Corre un generador SIN `--check`, para ver que ficheros toca de verdad. */
+function correrGenerador(script) {
+  const ruta = join(root, script);
+
+  if (!existsSync(ruta))
+    return { codigo: 2, salida: '', colgado: false, noExiste: true };
+
+  const r = spawnSync(PYTHON, [ruta], {
+    cwd: root,
+    encoding: 'utf-8',
+    timeout: TIEMPO_MS,
+    windowsHide: true,
+  });
+
+  if (r.error)
+    return { codigo: 2, salida: String(r.error.message ?? r.error), colgado: false, noExiste: false };
+
+  if (r.signal)
+    return { codigo: 2, salida: `el proceso ha terminado con la senal ${r.signal}`, colgado: true, noExiste: false };
+
+  return {
+    codigo: typeof r.status === 'number' ? r.status : 2,
+    salida: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim(),
+    colgado: false,
+    noExiste: false,
+  };
+}
+
+/**
+ * Que el generador toque de verdad cada fichero que declara en `salidas`.
+ *
+ * @param {object} contrato una entrada de `CONTRATOS`.
+ * @returns {{problemas: string[], tocado: boolean, restaurado: boolean}}
+ */
+export function generadorProduceLoQueDice(contrato) {
+  const problemas = [];
+  const copia = mkdtempSync(join(tmpdir(), 'preflight-gen-'));
+  const antes = fechasDeContratos();
+  const respaldos = new Map();
+
+  // Respaldo ANTES de correr nada. Es lo que hace esta comprobacion destructiva
+  // y por eso se hace con tanto cuidado: se copia el contrato entero a un sitio
+  // fuera, y se restaura pase lo que pase.
+  for (const [nombre] of antes) {
+    const origen = join(root, 'contracts', nombre);
+    const copiaFichero = join(copia, nombre);
+    respaldos.set(nombre, { origen, copia: copiaFichero, bytes: readFileSync(origen) });
+    writeFileSync(copiaFichero, respaldos.get(nombre).bytes);
+  }
+
+  let r;
+
+  try {
+    r = correrGenerador(contrato.script);
+
+    if (r.noExiste) {
+      problemas.push(`${contrato.script}: el generador no existe`);
+    }
+    else if (r.codigo !== 0) {
+      // Un generador que falla al escribir no es un generador que produce otra
+      // cosa: es un generador roto, y eso lo dice ya `--check`. Aqui solo se
+      // anota para no mezclar las dos cosas en el mismo rojo.
+      problemas.push(`${contrato.script}: al regenerar sale con ${r.codigo}, asi que no se puede comprobar que produzca lo que declara`);
+    }
+    else {
+      const despues = fechasDeContratos();
+
+    // Lo que el generador ha escrito son los ficheros NUEVOS mas los que han
+    // cambiado de fecha. Un fichero que se regenera con el mismo contenido puede
+    // tener la misma fecha si el sistema no la actualiza, asi que se mira tambien
+    // si ha cambiado el contenido: se compara byte a byte con el respaldo.
+    const escritos = new Set();
+
+    for (const [nombre, fecha] of despues) {
+      const previo = antes.get(nombre);
+      const copiaPrevia = respaldos.get(nombre);
+
+      const nuevo = (previo !== fecha)
+        || (copiaPrevia !== undefined
+          && !readFileSync(join(root, 'contracts', nombre)).equals(copiaPrevia.bytes));
+
+      if (nuevo)
+        escritos.add(nombre);
+    }
+
+    for (const nombre of despues.keys())
+      if (!antes.has(nombre))
+        escritos.add(nombre);
+
+    // 1. Lo declarado tiene que haberse escrito.
+    for (const salida of contrato.salidas) {
+      if (!escritos.has(salida)) {
+        problemas.push(
+          `${contrato.script} declara que produce "${salida}" y al correrlo ese fichero no se ha `
+          + 'escrito. O el generador ha cambiado y todavia escribe a otro sitio, o el nombre de la '
+          + 'salida esta mal escrito en el catalogo. Un generador que no escribe lo que declara '
+          + 'sale con 0 igual, asi que el --check no lo pilla por si solo.'
+        );
+      }
+    }
+
+    // 2. Y lo escrito tiene que estar declarado.
+    for (const nombre of [...escritos].sort()) {
+      if (!contrato.salidas.includes(nombre)) {
+        problemas.push(
+          `${contrato.script} escribe "${nombre}", que NO esta en sus salidas declaradas `
+          + `(${contrato.salidas.join(', ')}). Un fichero que el generador escribe y el catalogo `
+          + 'no vigila es un contrato que se queda viejo sin que nada lo mire.'
+        );
+      }
+    }
+    }
+  }
+  catch (e) {
+    // Un generador que revienta con una excepcion se mide igual que un rojo
+    // normal, no como una excepcion del preflight: quien lee el resultado
+    // quiere saber que el contrato no se ha comprobado, no que el preflight ha
+    // fallado por otra cosa.
+    problemas.push(`${contrato.script}: al regenerar ha lanzado ${e.message}`);
+  }
+  finally {
+    // Se restaura SIEMPRE, tambien en verde. Y se restauran las fechas, que es
+    // lo que un `copyFileSync` no haria por si solo: si el contrato queda con
+    // la fecha de hoy, el siguiente que mire el arbol Cree que se acaba de
+    // cambiar sin que nadie lo haya cambiado.
+    let restaurado = true;
+
+    for (const [nombre, { origen, bytes }] of respaldos) {
+      try {
+        writeFileSync(origen, bytes);
+      }
+      catch (e) {
+        restaurado = false;
+      }
+    }
+
+    // Y se BORRA lo que el generador creo que no estaba. Sin esto, correr el
+    // preflight con `--comprobar-generadores` deja en `contracts/` ficheros que
+    // antes no estaban, y el siguiente que mire el arbol se encuentra un
+    // contrato nuevo que nadie ha decided tener. Restaurar los que ya existen no
+    // basta: hay que deshacer tambien lo que se anadio.
+    for (const nombre of readdirSync(join(root, 'contracts'))) {
+      if (antes.has(nombre))
+        continue;
+
+      try {
+        rmSync(join(root, 'contracts', nombre), { force: true });
+      }
+      catch (e) {
+        restaurado = false;
+      }
+    }
+
+    // Y las fechas tambien, para que el arbol quede EXACTAMENTE como estaba.
+    for (const [nombre, mtime] of antes) {
+      try {
+        utimesSync(join(root, 'contracts', nombre), mtime / 1000, mtime / 1000);
+      }
+      catch (e) {
+        restaurado = false;
+      }
+    }
+
+    rmSync(copia, { recursive: true, force: true });
+
+    if (!restaurado) {
+      problemas.push(`${contrato.script}: no se ha podido restaurar contracts/ tras regenerar. Revisa el arbol antes de continuar.`);
+    }
+  }
+
+  return { problemas, tocado: true, restaurado: true };
+}
+
 function main() {
   let man;
 
@@ -750,6 +1034,15 @@ function main() {
 
   console.log('PREFLIGHT de contratos generados');
   console.log('='.repeat(72));
+
+  // `--comprobar-generadores` regenera de verdad, y solo se pide a mano.
+  //
+  // No va por defecto porque escribir sobre `contracts/` para comprobar que se
+  // escribe es una cosa que un preflight no debe hacer sin que alguien lo pida,
+  // aunque restaure despues: si se interrumpe a mitad, el arbol se queda
+  // modificado y el que llega despues no sabe si es un cambio suyo.
+  const comprobarGeneradores = process.argv.includes('--comprobar-generadores');
+  const generadoresMienten = [];
 
   const desfasados = [];
   const ilegibles = [];
@@ -797,6 +1090,39 @@ function main() {
 
     for (const linea of r.salida.split('\n').filter(Boolean).slice(0, 6))
       console.log(`                 ${linea}`);
+  }
+
+  // ── Que los generadores PRODUCAN lo que dicen, no solo que existan ──
+  //
+  // Despues de mirar si estan al dia, y separado de eso a proposito: «estar al
+  // dia» es que el contenido sea el correcto, y esto es que el generador siga
+  // escribiendo. Un generador al que le han cambiado la ruta de salida se queda
+  // «al dia» para siempre, porque `--check` lee la misma ruta equivocada y por
+  // eso no se entera nadie.
+  if (comprobarGeneradores) {
+    console.log('');
+    console.log('QUE LOS GENERADORES PRODUCAN LO QUE DECLARAN');
+    console.log('-'.repeat(72));
+
+    for (const c of CONTRATOS) {
+      if (c.sinGenerador)
+        continue;
+
+      const r = generadorProduceLoQueDice(c);
+
+      if (r.problemas.length === 0) {
+        console.log(`  produce        ${c.script}`);
+        console.log(`                 ${c.salidas.join(', ')}`);
+        continue;
+      }
+
+      generadoresMienten.push(...r.problemas);
+
+      console.log(`  NO PRODUCE    ${c.script}`);
+
+      for (const p of r.problemas)
+        console.log(`                 ${p}`);
+    }
   }
 
   console.log('='.repeat(72));
@@ -886,7 +1212,8 @@ function main() {
 
     console.error(`  Un contrato que dice de donde sale y cuya fuente no esta no`);
     console.error(`  dice nada: el campo es la autoridad y no puede apuntar a un sitio vacio.`);
-    console.error(`  O se corrige el generatedFrom, o se escribe el generador de verdad.`);
+    console.error(`  Arreglarlo es una de dos: se corrige la ruta que declara, o se`);
+    console.error(`  escribe el generador de verdad que la produzca.`);
     return 1;
   }
 
@@ -1101,6 +1428,21 @@ function main() {
     console.log('');
     console.log('preflight INCOMPLETO: hay contratos del catalogo que nadie ha podido leer.');
     return 2;
+  }
+
+  if (generadoresMienten.length > 0) {
+    console.log('');
+    console.log(`GENERADORES QUE NO PRODUCEN LO QUE DECLARAN (${generadoresMienten.length}):`);
+
+    for (const p of generadoresMienten)
+      console.log(`  ${p}`);
+
+    console.log('');
+    console.log('Un generador que existe y sale con 0 no esta produciendo nada, o produce');
+    console.log('menos de lo que declara. El --check no lo pilla por si solo, porque lee la');
+    console.log('misma ruta que el generador escribe: si esa ruta esta mal, los dos se');
+    console.log('-equivocan a la vez y todo queda verde.');
+    return 1;
   }
 
   if (desfasados.length > 0 && ilegibles.length > 0) return 1;

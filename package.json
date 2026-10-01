@@ -43,6 +43,8 @@
     "preflight": "node scripts/check-generated-contracts.mjs",
     "generate:cuarentena-cpp": "node scripts/generar-cuarentena-cpp.mjs",
     "check:cuarentena-cpp": "node scripts/generar-cuarentena-cpp.mjs --check",
+    "generate:claves-export-cpp": "node scripts/generar-claves-export-cpp.mjs",
+    "check:claves-export-cpp": "node scripts/generar-claves-export-cpp.mjs --check",
     "check:contracts": "node scripts/check-generated-contracts.mjs",
     "ci": "node scripts/ci-local.mjs",
     "ci:list": "node scripts/ci-local.mjs --list"
