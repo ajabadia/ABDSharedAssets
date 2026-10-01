@@ -191,5 +191,6 @@
   "provenance": {
     "source": "Source/State/ModDestinationTable.h (kModDestinationTable) y el switch de NeuronikEngine::applyModulation",
     "verifiedAt": "2026-09-29"
-  }
+  },
+  "generatedBy": "scripts/generate_modulation_contracts.py"
 }

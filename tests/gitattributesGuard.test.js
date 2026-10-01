@@ -38,13 +38,14 @@
 
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
   reglasDe, cubreLa, obligaLf, reglasQueFijan, patronARegex,
-  cuentaCrlf, esPreventiva, reglasInertes
+  cuentaCrlf, esPreventiva, reglasInertes,
+  senasDeArtefacto, descubreArtefactos, artefactosSinFijar
 } from './gitattributesGuard.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -84,6 +85,39 @@ function tieneHistorial () {
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * El contenido de los ficheros trackeados que se pueden leer como texto.
+ *
+ * Ni los bancos `.syx` ni los PNG sirven para buscar una cabecera, y leerlos
+ * enteros para comprobar que NO la tienen es tirar el tiempo del guard. Se
+ * cortan por tamano y se descartan los que tienen bytes NUL, que es como se
+ * distingue un binario de un texto sin depender de la extension.
+ */
+function contenidos (ficheros) {
+  const salida = [];
+
+  for (const f of ficheros) {
+    try {
+      if (statSync(resolve(repoRoot, f)).size > 2 * 1024 * 1024)
+        continue;
+
+      const texto = readFileSync(resolve(repoRoot, f), 'utf8');
+
+      if (texto.indexOf('\u0000') !== -1)
+        continue;
+
+      salida.push({ ruta: f, contenido: texto });
+    } catch (e) {
+      // Un fichero que no se puede leer no se puede desproteger: se avisa en
+      // consola y se sigue, porque reventar aqui dejaria el resto del guard sin
+      // comprobar por un unico banco corrupto.
+      console.warn('[gitattributesGuard] no se pudo leer ' + f + ': ' + e.message);
+    }
+  }
+
+  return salida;
 }
 
 const TRACKEADOS = listaTrackeada();
@@ -327,5 +361,85 @@ describe('el .gitattributes protege de verdad, y se ve', () => {
         + 'las FUNCIONES, porque las cabeceras dicen cosas distintas.'
       ).toBe(cuerpo(aqui));
     });
+  });
+});
+
+describe('y los artefactos generados se descubren, no se cuentan a mano', () => {
+  // La parte del guard que no tiene lista. Todo lo de arriba va de las REGLAS;
+  // esto va de los FICHEROS: cuales son generados y cuales de ellos se comparan
+  // sin que ninguna regla los proteja.
+  const ARTEFACTOS = descubreArtefactos(contenidos(TRACKEADOS));
+
+  it('este repo DESCUBRE artefactos, que es lo que evita el verde vacio', () => {
+    // EL RIESGO DE ESTA DEFENSA, DICHO EN VOZ ALTA. Un guard que descubre cero
+    // pasa todos sus tests: no hay nada que comprobar y no hay nada que
+    // proteger. Aqui se mide, porque el fallo silencioso de un guard de
+    // descubrimiento no es que se ponga rojo, es que nunca se pone.
+    expect(ARTEFACTOS.length,
+      'el guard no descubre NINGUN artefacto generado. O los generadores han dejado de '
+      + 'marcar lo que escriben, o la sena que los delata se ha roto. Un guard que '
+      + 'descubre cero esta verde sin comprobar nada.'
+    ).toBeGreaterThan(0);
+  });
+
+  it('los delata por su propio campo generatedBy, no por su nombre', () => {
+    // Estos cinco contratos son la razon de que la sena de procedencia exista.
+    // Sus nombres (`abdeep_modulation_matrix.json`, `s950_calibration.json`) no
+    // dicen si los escribio una persona o un script, y hasta ayer no lo decia
+    // nada: el nombre no los delata y el `.json` no lleva cabecera.
+    //
+    // Y son un MINIMO, no una lista cerrada. Un sexto artefacto con su
+    // `generatedBy` tiene que aparecer aqui sin que nadie edite este test: esa
+    // es la promesa del descubrimiento, y una lista exacta la revocaria. Lo que
+    // si tiene que ser exacto es el test de abajo, que es donde se ve que un
+    // artefacto esta SIN proteger.
+    const porProcedencia = ARTEFACTOS
+      .filter((a) => a.senas.includes('procedencia'))
+      .map((a) => a.ruta)
+      .sort();
+
+    expect(porProcedencia.length, 'han desaparecido artefactos que el guard descubria antes')
+      .toBeGreaterThanOrEqual(5);
+
+    expect(porProcedencia).toEqual(expect.arrayContaining([
+      'contracts/abdeep_modulation_matrix.json',
+      'contracts/abdms2000_modulation_matrix.json',
+      'contracts/neuronik_modulation_matrix.json',
+      'contracts/s950_calibration.json',
+      'contracts/s950_patch_fields.json'
+    ]));
+  });
+
+  it('un esquema que NOMBRA generatedFrom no es un artefacto generado', () => {
+    // El falso positivo que habria enseado a ignorar al guard. Estas dos tablas
+    // declaran la propiedad `generatedFrom` porque describen un contrato que la
+    // tiene, y eso las hace hablar de artefactos, no SER artefactos.
+    for (const f of ['contracts/s950-calibration.schema.json',
+      'contracts/s950-patch-fields.schema.json']) {
+      const contenido = readFileSync(resolve(repoRoot, f), 'utf8');
+
+      expect(contenido.includes('generatedFrom'), f + ' deberia nombrarla, si no este test no prueba nada')
+        .toBe(true);
+      expect(senasDeArtefacto(f, contenido), f + ' nombra generatedFrom pero NO esta generado')
+        .toEqual([]);
+    }
+  });
+
+  it('y ningun artefacto descubierto se queda sin regla que lo fije en LF', () => {
+    const sinFijar = artefactosSinFijar(ARTEFACTOS, ga);
+
+    expect(sinFijar.map((a) => a.ruta + ' [' + a.senas.join(', ') + ']'),
+      'artefactos generados que se COMPARAN byte a byte sin que ninguna regla los fije en '
+      + 'LF. La proxima regeneracion los devuelve con los saltos de linea cambiados y el '
+      + 'diff ensucia el fichero entero.'
+    ).toEqual([]);
+  });
+
+  it('la defensa muerde: sin reglas, TODOS los artefactos salen en rojo', () => {
+    // Una defensa que no se ejecuta es indistinguible de una que funciona, asi
+    // que hay que verla fallar una vez. Aqui se le da un `.gitattributes` vacio
+    // y se exige que todos los artefactos aparezcan.
+    expect(artefactosSinFijar(ARTEFACTOS, '').length).toBe(ARTEFACTOS.length);
+    expect(artefactosSinFijar(ARTEFACTOS, '*.json text eol=crlf').length).toBe(ARTEFACTOS.length);
   });
 });

@@ -537,5 +537,6 @@
     "source": "resources/md/deepmind_fx_modmatrix.md (manual) + docs/sysex_format.md (rango de byte) + medicion de la Fase 0",
     "measuredFrom": "ABDEep/resources/hardware_dumps/2026-08-10 (1024 presets de fabrica, 8192 slots)",
     "verifiedAt": "2026-09-28"
-  }
+  },
+  "generatedBy": "scripts/generate_modulation_contracts.py"
 }

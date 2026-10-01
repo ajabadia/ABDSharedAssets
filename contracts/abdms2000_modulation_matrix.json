@@ -84,5 +84,6 @@
   "provenance": {
     "source": "Source/DSP/Modulation/VirtualPatchMatrix.h",
     "verifiedAt": "2026-09-28"
-  }
+  },
+  "generatedBy": "scripts/generate_modulation_contracts.py"
 }

@@ -183,6 +183,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "generatedBy": {
+      "type": "string",
+      "description": "EL SCRIPT QUE ESCRIBE ESTE FICHERO, si lo hay. Es distinto de `provenance.source`, que es la tabla de la que se lee: `provenance.source` dice de dónde sale cada fila y `generatedBy` dice quién la copia a disco. Sin este campo un contrato generado es indistinguible de uno escrito a mano, y eso tiene una consecuencia concreta: el guard de `.gitattributes` solo sabe proteger un artefacto generado si lo puede RECONOCER, y el nombre (`*_modulation_matrix.json`) no lo dice. Va con dos espacios de sangría porque es la señal que el guard lee del blob, y una clave de segundo nivel —como la que este mismo esquema declara— no cuenta. OPCIONAL a propósito: un contrato escrito a mano no tiene generador, y obligar a declararlo sería obligar a mentir."
     }
   },
   "additionalProperties": false

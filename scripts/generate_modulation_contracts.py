@@ -366,6 +366,27 @@ def main():
         'neuronik_modulation_matrix.json': build_neuronik(),
     }
 
+    # ¿ QUIÉN ESCRIBIÓ ESTE FICHERO?
+    #
+    # Los tres contratos declaran en `provenance` de dónde sale cada fila, que es
+    # lo que hace que una etiqueta inventada se distinga de una medida. Eso no
+    # dice quién lo escribió: un contrato generado y uno escrito a mano se leen
+    # exactamente igual, y hay una defensa que depende de esa diferencia.
+    #
+    # El guard de `.gitattributes` protege lo que se COMPARA byte a byte, porque
+    # un artefacto generado con los saltos de línea cambiados ensucia el diff
+    # entero la próxima vez que se regenera. Para protegerlo tiene que
+    # RECONOCERLO, y el nombre no ayuda: `*_modulation_matrix.json` no dice si lo
+    # escribió una persona o este script. Con esta clave el guard lo descubre
+    # leyendo el blob, y un contrato nuevo nace protegido sin que nadie tenga que
+    # acordarse de añadirlo a una lista.
+    #
+    # Se escribe aquí, en `main`, y no en cada `build_*`, porque es el sitio donde
+    # el generador ya sabe cuáles son sus salidas: aunque añadan un cuarto
+    # contrato al generador, sale marcado.
+    for contrato in contracts.values():
+        contrato['generatedBy'] = 'scripts/generate_modulation_contracts.py'
+
     # Una tabla que se lee VACIA no es un synth sin destinos: es un parser que ha
     # dejado de entender el codigo. Sin este corte el generador escribia encima
     # del contrato commiteado una lista vacia y el --check decia «desfasado» como

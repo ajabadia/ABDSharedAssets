@@ -228,8 +228,93 @@ function pareceComparadoComoDato (fichero) {
     /\.gen\.[a-z]+$/.test(fichero);
 }
 
+/**
+ * LAS SENAS DE UN ARTEFACTO GENERADO: lo que permite que un artefacto nazca
+ * protegido sin que nadie tenga que acordarse de anadirlo a una lista.
+ *
+ * HASTA AQUI EL GUARD SOLO MIRABA LAS REGLAS. Que reglas hay, cuales son
+ * huerfanas, cuales fijan LF: todo eso va de `.gitattributes`. Esto va de los
+ * FICHEROS, y es la direccion contraria: dados los ficheros que hay, cuales son
+ * generados y cuales de ellos se comparan sin que ninguna regla los proteja.
+ *
+ * Y para eso hay que RECONOCERLOS, no conocerlos. Tres senas, y ninguna
+ * bastante por si sola:
+ *
+ *   - `nombre`: algo asi como `registry.gen.js`, `ParameterRegistry.gen.h` o
+ *     `parameter-registry.data.json`. Es la que ya usaba
+ *     `pareceComparadoComoDato`, y es la unica que no hay que escribir.
+ *   - `cabecera`: `AUTO-GENERATED` en las cinco primeras lineas. La ponen los
+ *     generadores de ABDEep (`GEN_HEADER_JS` y `GEN_HEADER_CPP`).
+ *   - `procedencia`: una clave de PRIMER nivel `generatedBy` o `generatedFrom`
+ *     en un JSON. La ponen los contratos de ABDSharedAssets, que no tienen
+ *     nombre de artefacto ni cabecera: se llaman `abdeep_modulation_matrix.json`
+ *     y no dicen si los escribio una persona o un script.
+ *
+ * LO QUE ESTA SENAL NO RESUELVE, Y HAY QUE DECIRLO. No descubre un artefacto
+ * nuevo y desconocido: descubre los que el generador ha decidido marcar. Por
+ * eso la convencion va PRIMERO y el guard despues. Un guard que hiciera
+ * promesas de descubrirlo todo sin marcar nada seria un guard que descubre
+ * cero, que es el peor resultado posible porque es verde.
+ *
+ * POR QUE LA SENAL DE PROCEDENCIA MIRA LA SANGRIA. En
+ * `contracts/s950-calibration.schema.json` la palabra `generatedFrom` aparece
+ * dos veces, y ninguna significa que ese esquema este generado: una es la lista
+ * de propiedades obligatorias del contrato y la otra es la declaracion de esa
+ * propiedad. Un esquema que nombra `generatedFrom` es un fichero MANUAL que
+ * habla de artefactos, no un artefacto, y marcarlo seria un falso positivo que
+ * ensea a ignorar al guard. Por eso solo cuenta a dos espacios de sangria, que
+ * es donde caen las claves de primer nivel del JSON que escriben estos
+ * generadores (`json.dumps(indent=2)`).
+ */
+function senasDeArtefacto (ruta, contenido) {
+  const senas = [];
+  const texto = contenido || '';
+
+  if (pareceComparadoComoDato(ruta))
+    senas.push('nombre');
+
+  if (texto.split('\n').slice(0, 5).join('\n').includes('AUTO-GENERATED'))
+    senas.push('cabecera');
+
+  if (/^ {2}"generated(?:From|By)":/m.test(texto))
+    senas.push('procedencia');
+
+  return senas;
+}
+
+/** Un artefacto generado: un fichero con al menos una de las senas. */
+function esArtefacto (ruta, contenido) {
+  return senasDeArtefacto(ruta, contenido).length > 0;
+}
+
+/**
+ * Los artefactos de una lista de `{ ruta, contenido }`, cada uno con la sena que
+ * lo delato. Devolver la sena es lo que permite que un fallo diga POR QUE se
+ * considera artefacto: "sin regla y solo por el nombre" es un diagnostico
+ * distinto de "sin regla y solo porque se leyo como generado".
+ */
+function descubreArtefactos (ficheros) {
+  return (ficheros || [])
+    .map((f) => ({ ruta: f.ruta, senas: senasDeArtefacto(f.ruta, f.contenido) }))
+    .filter((f) => f.senas.length > 0);
+}
+
+/**
+ * Los artefactos que NADIE fija en LF.
+ *
+ * Un artefacto generado se COMPARA byte a byte en cada regeneracion, asi que si
+ * los saltos de linea cambian solos el diff que sale es el fichero entero: la
+ * revision que deberia decir "cambia este destino" dice "cambia todo el
+ * fichero", y el dia que hace falta de verdad nadie lo lee. Esa es la defensa
+ * que estos numeros comprueban que existe.
+ */
+function artefactosSinFijar (artefactos, texto) {
+  return artefactos.filter((a) => reglasQueFijan(a.ruta, texto).length === 0);
+}
+
 export {
   reglaDe, reglasDe, patronARegex, cubreLa, obligaLf,
   reglasQueFijan, cuentaCrlf, pareceComparadoComoDato,
-  esPreventiva, reglasInertes
+  esPreventiva, reglasInertes,
+  senasDeArtefacto, esArtefacto, descubreArtefactos, artefactosSinFijar
 };
