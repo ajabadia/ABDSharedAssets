@@ -137,6 +137,79 @@ export const GENERADOS_FUERA = [
   },
 ];
 
+/**
+ * Que la fuente que un generado DECLARA exista de verdad.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * QUE COMPRUEBA, Y POR QUE NO LO HACIA ANTES
+ *
+ * El preflight ya comprobaba que un contrato generado tenga script, y eso es lo
+ * que hace que el `--check` sirva. Lo que no comprobaba es que la ruta que el
+ * propio contrato escribe en `generatedFrom` siga ahi.
+ *
+ * Y ese campo es una autoridad, no un comentario: es lo que un panel lee para
+ * fiarse de que el contenido tiene un origen. Si el `.h` de ABDSharedCode se
+ * renombra o se mueve, el contrato sigue diciendo "vengo de aqui" con la misma
+ * seguridad de siempre, y nadie se entera hasta que alguien vaya a leer la
+ * fuente y no la encuentre.
+ *
+ * Es el mismo fallo que el de `fx-effects.json` que se resolvio en `CONTRATOS`,
+ * por el otro lado: ahi faltaba el generador, aqui falta la fuente. Los dos son
+ * un campo que declara una verdad sin que ninguna puerta la compruebe.
+ *
+ * Que se compruebe SOLO si la ruta es de este monorepo. Una fuente externa —un
+ * volcado de hardware, un manual— no esta en ningun sitio que este repositorio
+ * pueda mirar, y exigirla seria un falso rojo permanente. Las de ABDSharedCode si
+ * se comprueban, porque es hermano y esta aqui al lado.
+ *
+ * @param {string} raizDelPaquete donde vive `contracts/`.
+ * @returns {string[]} problemas. Vacio = toda fuente declarada existe.
+ */
+export function fuentesQueNoExisten(raizDelPaquete = root) {
+  const problemas = [];
+
+  for (const salida of salidasDeclaradas()) {
+    const ruta = join(raizDelPaquete, 'contracts', salida);
+
+    if (!existsSync(ruta)) {
+      problemas.push(`${salida}: no esta en contracts/, asi que su fuente no se puede comprobar`);
+      continue;
+    }
+
+    let contrato;
+
+    try {
+      contrato = JSON.parse(readFileSync(ruta, 'utf8'));
+    }
+    catch (e) {
+      // Un JSON ilegible NO es un problema de fuente. Se cuenta como ilegible, y lo
+      // cuentan el validador de esquemas y la auditoria de cuarentena, que saben
+      // decir mas. Mezclarlos aqui seria obscurecer un fallo que ya tiene su puerta.
+      continue;
+    }
+
+    const fuente = contrato?.generatedFrom;
+
+    if (typeof fuente !== 'string' || fuente === '')
+      continue;
+
+    // Solo las rutas de este monorepo. Una fuente que apunte fuera no se puede
+    // comprobar desde aqui, y fingir lo contrario seria un verde falso.
+    if (!fuente.startsWith("ABDSharedCode/"))
+      continue;
+
+    if (!existsSync(join(raizDelPaquete, '..', fuente)))
+      problemas.push(`${salida} declara generatedFrom "${fuente}" y ese fichero no esta. El campo es la autoridad que un panel lee para fiarse del origen, asi que mientras apunte a un sitio que no existe no dice nada.`);
+  }
+
+  return problemas;
+}
+
+/** Todos los ficheros que los generadores de CONTRATOS dicen producir. */
+export function salidasDeclaradas() {
+  return CONTRATOS.flatMap((c) => c.salidas);
+}
+
 export const CONTRATOS = [
   {
     script: 'scripts/generate_modulation_contracts.py',
@@ -798,6 +871,23 @@ function main() {
 
     for (const linea of r.salida.split('\n').filter((l) => l.trim() !== '').slice(0, 8))
       console.log(`                 ${linea.trim()}`);
+  }
+
+  // La fuente que declara cada generado tiene que existir. Va antes de las copias
+  // porque es la misma clase de fallo en el otro extremo: un campo que declara un
+  // origen y ninguna puerta que lo compruebe.
+  const fuentes = fuentesQueNoExisten();
+
+  if (fuentes.length > 0) {
+    console.error(`FUENTES QUE NO EXISTEN (${fuentes.length}):`);
+
+    for (const f of fuentes)
+      console.error(`  ${f}`);
+
+    console.error(`  Un contrato que dice de donde sale y cuya fuente no esta no`);
+    console.error(`  dice nada: el campo es la autoridad y no puede apuntar a un sitio vacio.`);
+    console.error(`  O se corrige el generatedFrom, o se escribe el generador de verdad.`);
+    return 1;
   }
 
   if (generadosDesfasados.length > 0) {

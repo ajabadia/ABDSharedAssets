@@ -45,7 +45,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor } from '../scripts/check-generated-contracts.mjs';
+import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor, fuentesQueNoExisten, salidasDeclaradas } from '../scripts/check-generated-contracts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -678,4 +678,100 @@ describe('una copia que es un enlace no es una copia', () => {
   });
 });
 
+});
+
+
+//──────────────────────────────────────────────────────────────────────────────
+// LA FUENTE QUE DECLARA UN GENERADO, QUE TIENE QUE EXISTIR
+//──────────────────────────────────────────────────────────────────────────────
+
+describe('la fuente que declara un generado exista, o no dice nada', () => {
+
+  // El preflight ya vigilaba que un generado TENGA script. Lo que no vigilaba
+  // era que la ruta que el contrato escribe en `generatedFrom` siga ahi, y ese
+  // campo es una autoridad: es lo que un panel lee para fiarse del origen. Con
+  // el `.h` renombrado en ABDSharedCode, el contrato seguia diciendo "vengo de
+  // aqui" con la misma seguridad y sin que nada se pusiera rojo.
+
+  // Es el fallo de `fx-effects.json` por el otro lado: ahi faltaba el generador,
+  // aqui falta la fuente. Los dos son un campo que declara una verdad sin que
+  // ninguna puerta la compruebe.
+
+  it('declarar una fuente que no existe sale con un problema, no con un verde', () => {
+    // Se prueba sobre una raiz falsa, para no tocar el catalogo de verdad. Un
+    // test que dependiera del disco real noPodria comprobar el fallo: si el
+    // fichero exists, no hay mutacion que hacer.
+    const raiz = mkdtempSync(join(tmpdir(), 'fuentes'));
+    mkdirSync(join(raiz, 'contracts'), { recursive: true });
+
+    const salidas = salidasDeclaradas();
+    expect(salidas.length).toBeGreaterThan(0);
+
+    // Se escribe uno de verdad, con una fuente que no esta en ningun sitio.
+    const salida = salidas[0];
+    writeFileSync(join(raiz, 'contracts', salida), JSON.stringify({
+      generatedFrom: 'ABDSharedCode/Inventado/NoExiste.h',
+    }), 'utf8');
+
+    // Se copian TODOS los nombres que el preflight espera, con el primero malo,
+    // para que el fallo sea el de la fuente y no el de un fichero que falta.
+    for (const otra of salidas.slice(1))
+      writeFileSync(join(raiz, 'contracts', otra), '{}', 'utf8');
+
+    const problemas = fuentesQueNoExisten(raiz);
+    expect(problemas.length).toBe(1);
+    expect(problemas[0]).toContain(salida);
+    expect(problemas[0]).toContain('NoExiste.h');
+
+    // Y el mensaje dice POR QUE importa, no solo que no esta. Un rojo que solo
+    // dice "falta" deja a quien lo lee buscando el fichero en el sitio equivocado.
+    expect(problemas[0]).toContain('autoridad');
+    rmSync(raiz, { recursive: true, force: true });
+  });
+
+  it('una fuente de fuera del monorepo NO se comprueba', () => {
+    // Las matrices de modulacion dicen venir de volcados de hardware y de
+    // manuales, que no estan en ningun sitio que este repositorio pueda mirar.
+    // Exigir un volcado que vive en un disco externo seria un falso rojo
+    // permanente, y la unforma de que un rojo permanente se ignores es apagarlo.
+    const raiz = mkdtempSync(join(tmpdir(), 'fuentes-externas'));
+    mkdirSync(join(raiz, 'contracts'), { recursive: true });
+
+    const salidas = salidasDeclaradas();
+    const salida = salidas[0];
+    writeFileSync(join(raiz, 'contracts', salida), JSON.stringify({
+      generatedFrom: 'ABDEep/resources/volcado/presets.bin',
+    }), 'utf8');
+
+    for (const otra of salidas.slice(1))
+      writeFileSync(join(raiz, 'contracts', otra), '{}', 'utf8');
+
+    expect(fuentesQueNoExisten(raiz)).toEqual([]);
+    rmSync(raiz, { recursive: true, force: true });
+  });
+
+  it('un JSON ilegible no es un problema de fuente', () => {
+    // Un JSON roto ya tiene su puerta, que es mas informada que esta. Que esta
+    // tambien se quejaria seria decir dos veces lo mismo y peor, porque el
+    // arreglo "pon la ruta buena" no arregla un parser roto.
+    const raiz = mkdtempSync(join(tmpdir(), 'fuentes-roto'));
+    mkdirSync(join(raiz, 'contracts'), { recursive: true });
+
+    const salidas = salidasDeclaradas();
+    const salida = salidas[0];
+    writeFileSync(join(raiz, 'contracts', salida), '{ esto no es json', 'utf8');
+
+    for (const otra of salidas.slice(1))
+      writeFileSync(join(raiz, 'contracts', otra), '{}', 'utf8');
+
+    expect(fuentesQueNoExisten(raiz)).toEqual([]);
+    rmSync(raiz, { recursive: true, force: true });
+  });
+
+  it('el catalogo de verdad tiene toda fuente en su sitio', () => {
+    // El caso bueno del catalogo real. Los dos del S950 apuntan a un `.h` de
+    // ABDSharedCode, y ese hermano esta aqui al lado: si algun dia se mueve, este
+    // test se pone rojo antes de que el panel de un usuario lo lea sin ver nada.
+    expect(fuentesQueNoExisten()).toEqual([]);
+  });
 });
