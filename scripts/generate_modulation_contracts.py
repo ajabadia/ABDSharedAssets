@@ -146,6 +146,19 @@ def build_abdeep():
             'source': (
                 'resources/md/deepmind_fx_modmatrix.md (manual) + '
                 'docs/sysex_format.md (rango de byte) + medicion de la Fase 0'),
+            # `source` de arriba es para el que LEE: explica la evidencia con
+            # palabras. Este es para el que COMPRUEBA: son las rutas tal cual
+            # existen en el monorepo, con el repo delante, porque
+            # `resources/md/...` no significa nada hasta que se sabe que vive en
+            # ABDEep y no en ABDNeural. Sin esta lista, las dos rutas de `source`
+            # no se pueden comprobar y la referencia vale como documento, no como
+            # dato: el dia que el manual se mueva, el contrato sigue mintiendo
+            # igual que hoy.
+            'sourceFiles': [
+                'ABDEep/resources/md/deepmind_fx_modmatrix.md',
+                'ABDEep/docs/sysex_format.md',
+                'ABDEep/WebUI/js/modmatrix_data.js',
+            ],
             'measuredFrom': (
                 'ABDEep/resources/hardware_dumps/2026-08-10 (1024 presets de '
                 'fabrica, 8192 slots)'),
@@ -193,6 +206,10 @@ def build_ms2000():
         ],
         'provenance': {
             'source': 'Source/DSP/Modulation/VirtualPatchMatrix.h',
+            # La ruta que de verdad lee el generador, con el repo delante.
+            'sourceFiles': [
+                'ABDMS2000/Source/DSP/Modulation/VirtualPatchMatrix.h',
+            ],
             'verifiedAt': '2026-09-28',
         },
     }
@@ -347,6 +364,10 @@ def build_neuronik():
             'source': ('Source/State/ModDestinationTable.h '
                        '(kModDestinationTable) y el switch de '
                        'NeuronikEngine::applyModulation'),
+            'sourceFiles': [
+                'ABDNeural/Source/State/ModDestinationTable.h',
+                'ABDNeural/Source/State/ParameterDefinitions.h',
+            ],
             'verifiedAt': '2026-09-29',
         },
     }

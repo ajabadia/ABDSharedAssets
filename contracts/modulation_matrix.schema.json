@@ -177,6 +177,13 @@
           "type": "string",
           "description": "Ruta de los datos con los que se midió (p. ej. los dumps de banco del hardware)."
         },
+        "sourceFiles": {
+          "type": "array",
+          "description": "Las mismas evidencias que dice `source`, pero como rutas completas del monorepo, con el repositorio delante. `source` está para el que lee y explica con palabras; este está para el que COMPRUEBA, y sin él la referencia es un documento y no un dato: `Source/DSP/Modulation/VirtualPatchMatrix.h` no significa nada hasta que se sabe que vive en ABDMS2000 y no en ABDNeural. El preflight comprueba que cada ruta exista, así que el día que el manual se mueva el contrato se pone rojo en vez de seguir mintiendo.",
+          "items": {
+            "type": "string"
+          }
+        },
         "verifiedAt": {
           "type": "string",
           "description": "Fecha de la última comprobación contra la evidencia."

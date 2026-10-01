@@ -190,6 +190,10 @@
   ],
   "provenance": {
     "source": "Source/State/ModDestinationTable.h (kModDestinationTable) y el switch de NeuronikEngine::applyModulation",
+    "sourceFiles": [
+      "ABDNeural/Source/State/ModDestinationTable.h",
+      "ABDNeural/Source/State/ParameterDefinitions.h"
+    ],
     "verifiedAt": "2026-09-29"
   },
   "generatedBy": "scripts/generate_modulation_contracts.py"
