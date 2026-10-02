@@ -144,7 +144,7 @@ def build_abdeep():
         ],
         'provenance': {
             'source': (
-                'resources/md/deepmind_fx_modmatrix.md (manual) + '
+                'WebUI/resources/md/deepmind_fx_modmatrix.md (manual) + '
                 'docs/sysex_format.md (rango de byte) + medicion de la Fase 0'),
             # `source` de arriba es para el que LEE: explica la evidencia con
             # palabras. Este es para el que COMPRUEBA: son las rutas tal cual
@@ -155,7 +155,7 @@ def build_abdeep():
             # dato: el dia que el manual se mueva, el contrato sigue mintiendo
             # igual que hoy.
             'sourceFiles': [
-                'ABDEep/resources/md/deepmind_fx_modmatrix.md',
+                'ABDEep/WebUI/resources/md/deepmind_fx_modmatrix.md',
                 'ABDEep/docs/sysex_format.md',
                 'ABDEep/WebUI/js/modmatrix_data.js',
             ],

@@ -45,7 +45,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { CONTRATOS, GENERADOS_FUERA, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, scriptsQueEmpiezanPor, fuentesQueNoExisten, salidasDeclaradas, generadorProduceLoQueDice } from '../scripts/check-generated-contracts.mjs';
+import { CONTRATOS, GENERADOS_FUERA, GENERADORES_HERMANOS, COPIAS, COPIAS_BLOQUEANTES, compararCopia, veredictoCopia, clasificarCopia, esEnlace, correrCheck, correrNode, correrGeneradorHermano, scriptsQueEmpiezanPor, fuentesQueNoExisten, salidasDeclaradas, generadorProduceLoQueDice, generadorHermanoProduceLoQueDice, hermanoDisponible } from '../scripts/check-generated-contracts.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -365,10 +365,16 @@ describe('el preflight de verdad, ejecutado', () => {
     const checks = scriptsQueEmpiezanPor(manifest, 'check:');
     const declarados = [...CONTRATOS, ...GENERADOS_FUERA].map((c) => c.scriptNpm);
 
+    // Los AGREGADOS: los `check:` que no son un generador sino una puerta que
+    // recorre un inventario entero, y que por eso no se esperan en ninguno de
+    // los dos. `check:contracts` es el preflight; `check:hermanos-generadores`
+    // son los generadores de los repos hermanos. Se listan aqui y no se
+    // corrigen anadiendo una entrada mas: la razon por la que un agregado no
+    // esta en el inventario es la misma razon por la que existe la puerta.
+    const agregados = ['check:contracts', 'check:hermanos-generadores'];
+
     for (const c of checks) {
-      // `check:contracts` es el agregado, no un generador: no se espera en el
-      // inventario, que es justo lo que lo hace reconocible como agregado.
-      if (c === 'check:contracts') continue;
+      if (agregados.includes(c)) continue;
       expect(declarados, `${c} no esta en ningun inventario del preflight`).toContain(c);
     }
 
@@ -381,6 +387,49 @@ describe('el preflight de verdad, ejecutado', () => {
       expect(checks, `${c.scriptNpm} lo usa el preflight pero no esta en package.json`)
         .toContain(c.scriptNpm);
     }
+
+    // Y un agregado que este declarado tiene que existir de verdad: un nombre en
+    // el manifiesto que no apunta a nada es un paso de CI que no comprueba nada
+    // y sale en verde.
+    //
+    // El token de la ruta se busca como «el primero que exista en disco», y no
+    // como «el segundo de la linea»: los comandos llevan `node ` delante y
+    // `--check` detras, y quitar el prefijo a pelo se rompe en cuanto alguien
+    // pone `pnpm` o `python` en el medio.
+    for (const c of agregados) {
+      const comando = manifest.scripts[c];
+      const tokens = String(comando ?? '').split(/\s+/).filter(Boolean);
+      const rutas = tokens
+        .map((t) => join(root, ...t.split('/')))
+        .filter((p) => existsSync(p));
+
+      expect(comando, `${c} no esta en package.json`).toBeTruthy();
+      expect(rutas.length, `${c} no apunta a ningun script que exista (${comando})`)
+        .toBeGreaterThan(0);
+    }
+  });
+
+  it('el script de los hermanos existe, y es el que el paso de CI corre', () => {
+    // El paso del workflow corre un fichero concreto. Si ese fichero se renombra
+    // y el workflow no se entera, el paso falla con «no such file» en CI —que si
+    // se ve— pero mientras tanto el preflight sigue vigilando de otra manera y
+    // nadie nota que la puerta con nombre propio dejo de existir. Aqui se ata.
+    const ruta = join(root, 'scripts', 'check-hermanos-generadores.mjs');
+
+    expect(existsSync(ruta), 'no esta el script que el paso de CI corre').toBe(true);
+
+    const cuerpo = readFileSync(ruta, 'utf8');
+
+    expect(cuerpo).toContain('GENERADORES_HERMANOS');
+    expect(manifest.scripts['check:hermanos-generadores'], 'el script no esta en package.json')
+      .toContain('check-hermanos-generadores.mjs');
+
+    // Y el workflow lo nombra. Es lo que hace que el paso de la pestana sea el
+    // mismo script y no otro parecido.
+    const workflow = readFileSync(join(root, '.github', 'workflows', 'docs-audit.yml'), 'utf8');
+
+    expect(workflow, 'el workflow no llama al script de los hermanos')
+      .toContain('check-hermanos-generadores.mjs');
   });
 
   it('el generado de C++ se comprueba sin necesitar al repositorio hermano', () => {
@@ -893,6 +942,331 @@ describe('la fuente que declara un generado exista, o no dice nada', () => {
       'ningun contrato declara provenance.sourceFiles. Sin esa lista la evidencia '
       + 'es prosa y no se puede comprobar, y esta comprobacion pasa sin mirar nada.'
     ).toBeGreaterThan(0);
+  });
+});
+
+describe('los generadores de los HERMANOS producen lo que declaran', () => {
+  // ───────────────────────────────────────────────────────────────────────
+  // QUE COMPRUEBA, Y POR QUE NO BASTA CON LO DE ARRIBA
+  //
+  // `generadorProduceLoQueDice` mira los generadores de `scripts/`, que estan en
+  // este paquete. Los de los hermanos estan alli, con sus fuentes y sus salidas, y
+  // este paquete no puede leer sus JSON ni decidir si estan al dia. Lo unico que
+  // puede es correr su `--check` —que no escribe— y mirar lo que hay en disco.
+  //
+  // Y los dos repos de codigo tienen ya `--check` porque se lo anadio en el mismo
+  // commit que los metio aqui. Sin eso, correr el generador «para comprobar»
+  // dejaria el arbol del hermano modificado y el CI en verde: el peor resultado
+  // posible, un falso verde que ademas pisa otro repo.
+
+  it('la lista de generadores de hermano no esta vacia, y cada entrada esta completa', () => {
+    expect(GENERADORES_HERMANOS.length, 'no hay ningun generador de hermano vigilado').toBeGreaterThan(0);
+
+    for (const h of GENERADORES_HERMANOS) {
+      expect(h.repo, `una entrada sin repo`).toMatch(/^ABD/);
+      expect(h.generador, `${h.repo}: sin generador declarado`).toBeTruthy();
+      expect(h.salidas.length, `${h.repo}: declara que no produce nada`).toBeGreaterThan(0);
+      expect(h.queEs, `${h.repo}: sin descripcion, que es lo que se lee en el rojo`).toBeTruthy();
+      expect(h.deDondeSale, `${h.repo}: sin decir de donde sale`).toBeTruthy();
+
+      // Rutas RELATIVAS al repo. Una absoluta aqui seria verde en esta maquina y
+      // rota en cualquier otra, que es un fallo que no se ve hasta que pasa.
+      for (const rel of h.salidas) {
+        expect(rel, `${h.repo}: salida absoluta, no vale para el CI`).not.toMatch(/^[A-Za-z]:[\\/]|^[\\/]/);
+        expect(rel.includes('..'), `${h.repo}: ${rel} sale del repo`).toBe(false);
+      }
+    }
+  });
+
+  it('los tres repos que se han pedido estan en la lista', () => {
+    // Esta asercion es la que ata el encargo a la realidad: sin ella, borrar una
+    // entrada de la lista deja el preflight en verde y nadie se entera de que un
+    // repo entero ha dejado de vigilarse.
+    const repos = new Set(GENERADORES_HERMANOS.map((h) => h.repo));
+
+    for (const repo of ['ABDEep', 'ABDMS2000', 'ABDNeural'])
+      expect(repos.has(repo), `${repo} no esta vigilado por el preflight`).toBe(true);
+  });
+
+  it('ningun generador se vigila dos veces', () => {
+    // Dos entradas para el MISMO generador serian la misma comprobacion cobrada
+    // dos veces, que ademas sale dos veces en el log. En cambio, VARIOS
+    // generadores del MISMO repo son lo normal: ABDNeural tiene tres
+    // exportadores de C++ y cada uno produce lo suyo. Por eso la clave lleva el
+    // generador y no solo el repo.
+    const vistos = new Set();
+
+    for (const h of GENERADORES_HERMANOS) {
+      const clave = `${h.repo}/${h.generador}`;
+
+      expect(vistos.has(clave), `${clave} esta vigilado dos veces`).toBe(false);
+      vistos.add(clave);
+    }
+  });
+
+  it('un repo con varios generadores declara las salidas de TODOS ellos', () => {
+    // El hueco que se abrio al declarar a ABDNeural solo con su exportador del
+    // catalogo de efectos: tenia tres, y los otros dos —los descriptores de
+    // parametros y la firma del layout— se quedaban sin vigilar. El preflight
+    // daba verde sobre un repo con la mitad de sus generados sin mirar.
+    //
+    // No se puede poner aqui la lista de los que TIENEN que estar: se volveria a
+    // duplicar el dato, que es justo lo que esta comprobacion evita. Lo que se
+    // comprueba es la estructura que hace que el olvido se vea: todo lo que hay
+    // en `WebUI/generated/` de un repo que use generadores tiene que estar
+    // declarado en alguna entrada suya.
+    const porRepo = new Map();
+
+    for (const h of GENERADORES_HERMANOS) {
+      if (!porRepo.has(h.repo)) porRepo.set(h.repo, []);
+      porRepo.get(h.repo).push(h);
+    }
+
+    for (const [repo, entradas] of porRepo) {
+      const declarados = new Set(entradas.flatMap((h) => h.salidas));
+      const dir = join(root, '..', repo, 'WebUI', 'generated');
+
+      if (!existsSync(dir)) continue;
+
+      const enDisco = readdirSync(dir)
+        .filter((f) => /\.(json|js|d\.ts)$/.test(f))
+        .map((f) => `WebUI/generated/${f}`);
+
+      for (const rel of enDisco) {
+        expect(declarados.has(rel),
+          `${repo}: ${rel} esta en WebUI/generated/ pero ningun generador lo declara. `
+          + 'Un .gen sin vigilar es un .gen que se queda viejo sin que nadie mire.'
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('una salida que el generador declara no puede aparecer en dos entradas', () => {
+    // El fallo que mas caro sale: si `registry.gen.js` aparece en la entrada de
+    // ABDEep y en la de otro repo, una de las dos comparaciones mira el fichero
+    // del otro checkout y pasa en verde mientras el suyo esta viejo.
+    const porSalida = new Map();
+
+    for (const h of GENERADORES_HERMANOS) {
+      for (const rel of h.salidas) {
+        const clave = `${h.repo}/${rel}`;
+
+        expect(porSalida.has(clave), `${clave} esta en dos entradas de la lista`).toBe(false);
+        porSalida.set(clave, h.repo);
+      }
+    }
+  });
+
+  it('una salida sin marca de generado se reporta como problema', () => {
+    // El caso que de verdad importa en produccion: el `data.json` de ABDEep no
+    // lleva `AUTO-GENERATED` porque un JSON no admite comentarios, asi que se
+    // identifica por sus claves. Si ese camino se rompe, el fichero se queda sin
+    // marcar y el preflight tiene que decirlo en vez de darlo por bueno.
+    const hermanoFalso = {
+      repo: 'ABDEep',
+      generador: 'scripts/registry_generator.js',
+      salidas: ['schemas/parameter-registry.data.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+      marcas: ['"unaClaveQueNoExiste"'],
+    };
+
+    const r = generadorHermanoProduceLoQueDice(hermanoFalso);
+
+    expect(r.problemas.length, 'una salida sin marca ha pasado el filtro').toBeGreaterThan(0);
+    expect(r.problemas[0]).toContain('marca de generado');
+  });
+
+  it('un generador que no esta en su sitio se lee como fallo de rutas, no como rojo generico', () => {
+    const hermanoFalso = {
+      repo: 'ABDEep',
+      generador: 'scripts/este-generador-no-existe.js',
+      salidas: ['schemas/parameter-registry.data.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+    };
+
+    const r = generadorHermanoProduceLoQueDice(hermanoFalso);
+
+    // Sale antes de correr nada, y lo dice. Un rojo que no nombrara el fichero
+    // dejaria a quien lo lee buscando un problema en el generador.
+    expect(r.problemas.length).toBe(1);
+    expect(r.problemas[0]).toContain('este-generador-no-existe.js');
+
+    // Y `comprobado: true`: se ha mirado y se ha encontrado que el generador no
+    // esta. Es un hallazgo, no una limitacion, y si se contara como lo segundo
+    // el preflight saldria con 0 sobre un repo al que le falta el generador.
+    expect(r.comprobado, 'un generador ausente se ha contado como «no comprobado»').toBe(true);
+  });
+
+  it('una salida que no esta en el disco es un FALLO, no una limitacion', () => {
+    // El bug que este test exista: `comprobado` significa «se ha podido MIRAR»,
+    // no «ha ido bien». Con las dos cosas metidas en la misma bandera, un `.gen`
+    // que falta —que es un fallo de rutas de verdad— se contaba como «no he
+    // podido mirar» y el preflight salia con 0. Verde sobre un repo al que le
+    // falta un fichero que el motor incluye.
+    const hermanoFalso = {
+      repo: 'ABDEep',
+      generador: 'scripts/registry_generator.js',
+      salidas: ['schemas/este-fichero-que-no-existe.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+    };
+
+    const r = generadorHermanoProduceLoQueDice(hermanoFalso);
+
+    expect(r.problemas.length).toBe(1);
+    expect(r.problemas[0]).toContain('este-fichero-que-no-existe.json');
+    expect(r.comprobado, 'una salida ausente se ha contado como «no comprobado»').toBe(true);
+  });
+
+  it('solo lo que NO se ha podido mirar es «no comprobado»', () => {
+    // La frontera, explicita. Si algun dia alguien anade un caso mas que devuelva
+    // `comprobado: false` CON problemas, esta asercion lo delata.
+    const sinClonar = generadorHermanoProduceLoQueDice({
+      repo: 'ABDEesteRepoNoExiste',
+      generador: 'nada.js',
+      salidas: ['nada.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+    });
+
+    expect(sinClonar.comprobado).toBe(false);
+    expect(sinClonar.problemas.length,
+      'un repo sin clonar ha producido problemas, y no puede: no se ha mirado nada')
+      .toBe(0);
+
+    // Y el criterio que las separa: `comprobado === false` implica cero problemas.
+    // Al reves —un problema con `comprobado === false`— es el bug de antes.
+    const conProblema = generadorHermanoProduceLoQueDice({
+      repo: 'ABDEep',
+      generador: 'scripts/registry_generator.js',
+      salidas: ['schemas/este-fichero-que-no-existe.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+    });
+
+    expect(conProblema.comprobado || conProblema.problemas.length === 0,
+      'hay problemas con comprobado=false: se contaria como «no he mirado» y saldria con 0')
+      .toBe(true);
+  });
+
+  it('un repo que no esta clonado NO es un rojo: es «no comprobado»', () => {
+    // El preflight se baja solo en CI y en un clon de un solo paquete. Exigir el
+    // hermano ahi seria un falso rojo permanente, que es la forma de que un rojo
+    // permanente acabe silenciado.
+    const r = generadorHermanoProduceLoQueDice({
+      repo: 'ABDEsteRepoNoExiste',
+      generador: 'nada.js',
+      salidas: ['nada.json'],
+      queEs: 'prueba',
+      deDondeSale: 'prueba',
+    });
+
+    expect(r.problemas.length, 'un repo ausente ha salido como problema').toBe(0);
+    expect(r.avisos.length).toBe(1);
+    expect(r.comprobado).toBe(false);
+  });
+
+  it('los generadores de ABDEep cubren sus DOS artefactos, no solo el registro', () => {
+    // El otro generador de ABDEep: los presets de fabrica. Se declaro aparte
+    // porque es un fallo distinto al del registro. Ahi un `.gen` viejo delata al
+    // motor; aqui el sintoma es que `window.FACTORY_FX_PRESETS` queda a
+    // `undefined` y el filtro de presets deja de encontrar nada, sin error.
+    const deep = GENERADORES_HERMANOS.filter((h) => h.repo === 'ABDEep');
+
+    expect(deep.length, 'ABDEep declara un solo generador, y tiene dos').toBeGreaterThan(1);
+
+    const salidas = new Set(deep.flatMap((h) => h.salidas));
+
+    for (const rel of [
+      'WebUI/js/fx_presets_data/fx_presets_reverbs.js',
+      'WebUI/js/fx_presets_data/fx_presets_delays.js',
+      'WebUI/js/fx_presets_data/fx_presets_modulation.js',
+      'WebUI/js/fx_presets_data/fx_presets_advanced.js',
+      'WebUI/js/factory_fx_presets.js',
+    ]) {
+      expect(salidas.has(rel), `ABDEep: ${rel} no lo declara ningun generador`).toBe(true);
+    }
+  });
+
+  it('un generador con muchos artefactos declara el loader, no solo las categorias', () => {
+    // El loader es el que junta las cuatro categorias, y es el unico que el
+    // WebUI lee por nombre (`window.FACTORY_FX_PRESETS`). Un catalogo con las
+    // cuatro categorias y sin el loader parece completo y deja la WebUI sin
+    // presets: las categorias se cargan, se llenan sus arrays, y nadie los lee.
+    const presets = GENERADORES_HERMANOS.find((h) => h.generador?.includes('build-fx-presets'));
+
+    expect(presets, 'build-fx-presets.js no esta en el catalogo').toBeTruthy();
+    expect(presets.salidas, 'no declara el loader').toContain('WebUI/js/factory_fx_presets.js');
+  });
+
+  it('los generadores de verdad estan al dia, cuando el hermano esta', () => {
+    // El caso bueno, sobre el catalogo REAL. Es lo que hace que los tests de
+    // arriba sean una prueba y no una broda: si aqui pasara con un generador
+    // roto, la comprobacion no miraria nada.
+    const presentes = GENERADORES_HERMANOS.filter((h) => hermanoDisponible(h));
+
+    // Que se haya comprobado alguno. En un clon de un solo paquete esto no se
+    // cumple, y el test tiene que decirlo en vez de pasar en silencio.
+    if (presentes.length === 0)
+      expect(presentes.length, 'ningun hermano clonado: nada se ha comprobado de verdad').toBe(0);
+
+    for (const h of presentes) {
+      const r = generadorHermanoProduceLoQueDice(h);
+
+      expect(r.problemas, `${h.repo}: ${h.queEs} da problemas`).toEqual([]);
+    }
+  });
+
+  it('el ejecutable de C++ de ABDNeural lo dice en voz alta, no se hace el checks', () => {
+    // ABDNeural no genera con un script: genera con un binario. Este paquete no
+    // puede compilarlo, asi que no puede comprobar que sus salidas esten al dia.
+    // Lo que NO puede es dejar que eso pase en silencio: un verde que parece
+    // decir «el catalogo de efectos esta al dia» cuando no se ha mirado es peor
+    // que no comprobar nada.
+    const neural = GENERADORES_HERMANOS.find((h) => h.repo === 'ABDNeural');
+
+    expect(neural, 'ABDNeural no esta en la lista').toBeTruthy();
+    expect(neural.node, 'el generador de ABDNeural deberia estar marcado como no-Node').toBe(false);
+    expect(neural.ejecutable, 'un generador no-Node tiene que decir como se llama').toBeTruthy();
+
+    const r = generadorHermanoProduceLoQueDice(neural);
+
+    expect(r.avisos.length, 'el generador de C++ se ha comprobado en silencio').toBeGreaterThan(0);
+    expect(r.avisos[0]).toContain('ABDNeural');
+  });
+
+  it('correr un generador de hermano con --check no deja el arbol modificado', () => {
+    // El fallo mas caro de todo este mecanismo, y el motivo de que `--check` sea
+    // obligatorio en vez de una cortesia: correr el generador de verdad dejaria
+    // el checkout del hermano con cambios, y el CI en verde. Nadie lo notaria
+    // hasta que un segundo checkout de otra persona apareciera sucio.
+    for (const h of GENERADORES_HERMANOS) {
+      if (h.node === false || !hermanoDisponible(h))
+        continue;
+
+      const antes = h.salidas.map((rel) => {
+        const p = join(root, '..', h.repo, ...rel.split('/'));
+        return { rel, bytes: readFileSync(p) };
+      });
+
+      const r = correrGeneradorHermano(h);
+
+      for (const { rel, bytes } of antes) {
+        const p = join(root, '..', h.repo, ...rel.split('/'));
+
+        expect(readFileSync(p).equals(bytes),
+          `${h.repo}: correr el --check ha MODIFICADO ${rel}. Un check que ensucia el `
+          + 'checkout de otro repo no es un check.')
+        .toBe(true);
+      }
+
+      // Y el codigo de salida es el que dice si algo esta desfasado. En un clon
+      // con los generadores al dia tiene que ser 0; si aqui sale otro, el
+      // problema es real y el test tiene que decirlo, no dejarlo pasar.
+      expect(r.codigo, `${h.repo}: el --check sale con ${r.codigo}: ${r.salida.slice(0, 300)}`).toBe(0);
+    }
   });
 });
 

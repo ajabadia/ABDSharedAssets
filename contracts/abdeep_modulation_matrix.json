@@ -534,9 +534,9 @@
     }
   ],
   "provenance": {
-    "source": "resources/md/deepmind_fx_modmatrix.md (manual) + docs/sysex_format.md (rango de byte) + medicion de la Fase 0",
+    "source": "WebUI/resources/md/deepmind_fx_modmatrix.md (manual) + docs/sysex_format.md (rango de byte) + medicion de la Fase 0",
     "sourceFiles": [
-      "ABDEep/resources/md/deepmind_fx_modmatrix.md",
+      "ABDEep/WebUI/resources/md/deepmind_fx_modmatrix.md",
       "ABDEep/docs/sysex_format.md",
       "ABDEep/WebUI/js/modmatrix_data.js"
     ],

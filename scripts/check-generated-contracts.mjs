@@ -128,6 +128,237 @@ function manifiesto() {
  * comprobar. En el CI de ABDAudioLab el hermano SI esta, y entonces se
  * comprueba de verdad.
  */
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * LOS GENERADORES DE LOS HERMANOS, Y POR QUE SON UNA TERCERA COSA.
+ *
+ * `CONTRATOS` mira lo que se escribe en `contracts/` de ESTE paquete. Lo de
+ * arriba, `GENERADOS_FUERA`, mira salidas que estan en otro repo pero cuyo
+ * generador y cuyo esquema viven aqui, asi que la puerta puede ser esta. Lo de
+ * esta lista es al reves: generador, esquema y salidas estan TODOS en el
+ * hermano. Este paquete no puede ni leer el JSON ni decidir si esta al dia,
+ * porque no tiene ni la mitad de la informacion: lo unico que puede hacer es
+ * correr el generador del hermano y mirar lo que dice.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Y POR QUE ESO NO BASTA, Y QUE HAY QUE COMPROBAR ADEMAS
+ *
+ * Que el generador salga con 0 no prueba nada sobre si produce lo que declara,
+ * y el motivo es el que motivo la aparicion de `--check` en los dos
+ * `registry_generator.js`: un generador sin `--check` escribe siempre y sale
+ * con 0 pase lo que pase. Correrlo «para comprobar» dejaria el arbol del
+ * hermano modificado y el CI en verde, que es el peor resultado posible: un
+ * falso verde que ademas pisa el checkout de otro repo.
+ *
+ * Asi que hay DOS comprobaciones y las dos tienen que hablar:
+ *
+ *   1. El generador SABE `--check` (no se escribe, se compara) y sale con 0.
+ *   2. Lo que el generador DECLARA esta en el disco y tiene la marca de
+ *      generado.
+ *
+ * La 2 es la que hace visible el fallo de rutas. Si el generador declara cuatro
+ * `.gen` y uno se ha movido de sitio, el `--check` del generador puede seguir en
+ * verde —compara lo suyo contra lo suyo— mientras el fichero que consume el
+ * resto del repo ya no existe o lleva una temporada viejo. Aqui se mira que cada
+ * ruta declarada exista Y que el fichero diga que es generado: un `.gen` de
+ * hace tres meses no se distingue de uno al dia por existir, solo por la marca.
+ *
+ * Y la 3, la que hacia falta para que la lista no se pudre: si un generador
+ * anade una salida y no la declara aqui, nada lo pilla. Se mitiga en
+ * `tests/generatedContractsPreflight.test.js`, que contrasta esta lista con lo
+ * que el propio generador imprime en su `--help` —los dos `registry_generator.js`
+ * listan su manifiesto ahi— y con la cabecera `AUTO-GENERATED` de cada salida.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * `necesita` ES LO QUE HACE FALTA PARA PODER COMPROBAR, Y ESTA EN siblings.json
+ *
+ * Este paquete se baja solo a el en CI, y los hermanos se bajan a su SHA con
+ * `fetch-missing-siblings.mjs`. Pero para correr el generador de un hermano hace
+ * falta mas que el fichero de cabecera que leen los contratos: hace falta el
+ * generador, su `package.json` (para el `type: module`) y sus fuentes. Por eso
+ * estos repos estan en `siblings.json` con `necesita` incluyendo al generador,
+ * y no solo la cabecera.
+ *
+ * Y si aun asi el hermano no esta, esto sale con 0 y lo dice. Un rojo por
+ * «no he podido mirar» en un clon que solo trae este paquete seria un falso
+ * rojo permanente; lo que no puede pasar es que el rojo se esconda, asi que
+ * la linea sale siempre.
+ */
+export const GENERADORES_HERMANOS = [
+  {
+    // El `registry_generator.ts` que convivía con este `.js` se ha ido. Escribía
+    // los mismos cuatro artefactos y el `--check` no distinguía quién lo había
+    // hecho: uno era correcto y el otro leía `BIPOLAR_BYTES` —un `Set`— con
+    // `Object.keys()`, que devuelve `[]`, y generaba un registro con
+    // `bipolarCount: 0` en vez de 43.
+    //
+    // Se declara aquí, y no solo el `.js`, para que quede escrito que hubo dos. Lo
+    // que impide que vuelva a pasar es `scripts/registry_generator.test.js`, que
+    // falla si aparece otro fichero `registry_generator.*` o `registry_core.*` en
+    // `scripts/`: un comentario no se ejecuta, un test sí.
+    repo: 'ABDEep',
+    generador: 'scripts/registry_generator.js',
+    scriptNpm: 'check:registry',
+    salidas: [
+      'schemas/parameter-registry.data.json',
+      'WebUI/js/registry.gen.js',
+      'Source/Core/ParameterRegistry.gen.h',
+      'Source/Core/ParameterRegistry.gen.cpp',
+    ],
+    queEs: 'el registro de parametros del DeepMind 12, que el motor y el WebUI leen del mismo sitio',
+    deDondeSale: 'bridge-param-maps.js + byte_map_data.js + parameters_spec.json + el spec del host en C++',
+    // El data.json es JSON y no admite comentario de cabecera, asi que no puede
+    // llevar `AUTO-GENERATED`. Se identifica por las claves que el generador
+    // pone y que un JSON escrito a mano no tendria: el numero de version del
+    // esquema y la fecha de la ultima regeneracion.
+    marcas: ['"schemaVersion"', '"generatedAt"'],
+  },
+  {
+    // El segundo generador de ABDEep, y el que mas superficie tiene para
+    //vigilar: cinco artefactos que el WebUI carga por `<script>` desde
+    // `index.html`, y un loader que los recombina. Si uno falta, el sintoma NO es
+    // un error: es `window.FACTORY_FX_PRESETS` a `undefined`, y el filtro de
+    // presets de fabrica deja de encontrar nada sin decir por que.
+    //
+    // El `--check` es lo que hace falta aqui, y no es opcional: este generador
+    // vivia en CommonJS en un repo `type: module`, luego no corria, luego sus
+    // cinco artefactos se posthicieron a mano y quedaron con un formato que el
+    // generador no produce (comillas simples donde el sale con dobles). Datos
+    // identicos byte a byte una vez parseados; el formato, no. Por eso su
+    // serializador emite comillas simples, para que el check sea verde sobre el
+    // repo tal como esta en vez de obligar a regenerar 30 000 lineas por un
+    // cambio de comillas que no cambia ni un dato.
+    repo: 'ABDEep',
+    generador: 'scripts/build-fx-presets.js',
+    scriptNpm: 'check:presets',
+    salidas: [
+      'WebUI/js/fx_presets_data/fx_presets_reverbs.js',
+      'WebUI/js/fx_presets_data/fx_presets_delays.js',
+      'WebUI/js/fx_presets_data/fx_presets_modulation.js',
+      'WebUI/js/fx_presets_data/fx_presets_advanced.js',
+      'WebUI/js/factory_fx_presets.js',
+    ],
+    queEs: 'los presets de fabrica que el WebUI carga por script y el loader recombina',
+    deDondeSale: 'WebUI/data/factory_fx_presets.json',
+  },
+  {
+    repo: 'ABDMS2000',
+    generador: 'Scripts/registry_generator.js',
+    salidas: [
+      'Source/State/ParameterRegistry.gen.h',
+      'Source/State/ParameterRegistry.gen.cpp',
+      'WebUI/src/contracts/registry.gen.js',
+    ],
+    queEs: 'el registro de parametros del MS-2000, y con el el ParameterLayout que JUCE monta',
+    deDondeSale: 'schemas/parameters-spec.schema.v1.json',
+  },
+  {
+    // El UNICO generador de los tres que NO es un script, y el que mas superficie
+    // tiene: ABDNeural tiene TRES exportadores de C++, no uno. Todos se declaran
+    // aqui, cada uno con sus salidas, porque el fallo que se quiere cazar es
+    // justo el de un `.gen` que se queda viejo al lado de otros que si se
+    // regeneran: con el catalogo declarado a medias, el preflight daba verde
+    // sobre un repo con la mitad de sus generados sin vigilar.
+    //
+    // Y aqui NO se comprueba que esten al dia: los tres son ejecutables, y
+    // compilar un exportador de C++ desde este paquete seria un pipeline entero
+    // (CMake, toolchain y el `ABDSharedCode` de al lado). Lo que se comprueba es
+    // que las salidas existan y sean generadas; que esten al dia lo dice el
+    // build de ABDNeural, que es quien los compila. Se dice en voz alta para que
+    // el verde de este check no se lea como mas de lo que es.
+    repo: 'ABDNeural',
+    generador: 'Source/DSP/FxCatalogExport.cpp',
+    ejecutable: 'NEURONiK_FxExport',
+    node: false,
+    salidas: [
+      'WebUI/generated/fx-catalog.generated.json',
+      'WebUI/generated/fx-catalog.generated.js',
+    ],
+    queEs: 'el catalogo de efectos que la WebUI importa para pintar los slots',
+    deDondeSale: 'Source/DSP/FxCatalogue.h + ABDSharedCode/DspEffects/fxDefaultCatalogue()',
+  },
+  {
+    repo: 'ABDNeural',
+    generador: 'Tests/ParameterExportTool.cpp',
+    ejecutable: 'NEURONiK_ParameterExport',
+    node: false,
+    salidas: [
+      'WebUI/generated/parameters.generated.json',
+      'WebUI/generated/parameters.generated.js',
+      'WebUI/generated/parameters.generated.d.ts',
+    ],
+    queEs: 'los descriptores de parametros, que el motor serializa y la WebUI pinta',
+    deDondeSale: 'Source/State/ParameterDefinitions.h (createParameterLayout)',
+  },
+  {
+    // El masokueto de los tres: una FINGERPRINT, no un catalogo. El `.js` lleva
+    // la firma del layout global y la pagina la compara con la que le da el
+    // `.wasm` que carga, para refuse a arrancar si el binario y la pagina no
+    // fueron construidos contra la misma tabla.
+    //
+    // Esta en la lista por un motivo concreto: si la firma se queda vieja, la
+    // pagina rechaza un binario que SI es el suyo, y el sintoma es «la app no
+    // carga» sin que nadamentione una firma desfasada. Un `.gen` que bloquea el
+    // arranque no puede estar fuera del inventario.
+    repo: 'ABDNeural',
+    generador: 'Tests/LayoutFingerprintExportTool.cpp',
+    ejecutable: 'NEURONiK_LayoutExport',
+    node: false,
+    salidas: [
+      'WebUI/generated/gp-layout.generated.js',
+    ],
+    queEs: 'la firma del layout global, que la WebUI compara con la del .wasm antes de arrancar',
+    deDondeSale: 'Source/Wasm/GlobalParamsLayout.h (globalParamsLayoutFingerprint())',
+  },
+];
+
+/**
+ * La marca que un fichero generado tiene que llevar para no ser una suplantacion.
+ *
+ * Las tres primeras son comentarios de cabecera, que es lo que se puede poner en
+ * un `.h`, un `.cpp` y un `.js`. Un `.json` NO admite comentarios, asi que un
+ * generador que emite JSON no tiene forma de llevar ninguna. Por eso cada
+ * entrada puede declarar `marcas` propias: es lo que hace `parameter-registry.data.json`
+ * de ABDEep, que se identifica por sus claves (`schemaVersion`, `generatedAt`,
+ * `sourceHashes`) en lugar de por un comentario que no se puede escribir.
+ *
+ * Y esa es justo la razon de que el campo exista en vez de relajar la comprobacion
+ * para todos: aceitar «cualquier cosa» como marca dejaria pasar un JSON escrito a
+ * mano. Exigir el comentario a un `.json` daria un rojo permanente. Las dos cosas
+ * son defectos de la regla, y la salida es que la regla la dice el generador.
+ */
+const MARCAS_GENERADO = [
+  'AUTO-GENERATED',
+  'AUTO-GENERATED BY',
+  'DO NOT EDIT',
+  // Los exportadores de C++ de ABDNeural usan la convencion de JSDoc, que es lo
+  // que un `.js` generado por una tool de C++ suele llevar. Se aceptan aqui y no
+  // por entrada porque son marcas de facto, no de un generador concreto.
+  '@generated',
+  // El `.json` de NEURONiK_ParameterExport no puede llevar comentario, asi que
+  // se identifica por el campo que si lleva: el origen del que sale.
+  '"source"',
+  // La convencion de los generadores de ABDEep que ya estaban en el repo, con el
+  // aviso de emoji. Es la marca de los presets de fabrica y de otros artefactos
+  // viejos, y es tan de facto como las tres primeras: aceptarla aqui evita que
+  // cada uno de esos ficheros necesite una entrada con `marcas` propias.
+  'GENERATED FILE',
+];
+
+/**
+ * La raiz del hermano: la CARPETA HERMANA de este paquete, la misma cuenta que
+ * usan los generadores y que `siblings.json` ya fija. Si un dia cambia, cambia
+ * aqui y alla el mismo dia — es lo que `siblingsPins.test.js` vigila.
+ */
+function raizHermano(repo) {
+  return join(root, '..', repo);
+}
+
+/** Un hermano esta disponible si se puede leer al menos uno de sus ficheros. */
+export function hermanoDisponible(hermano) {
+  return hermano.salidas.some((rel) => existsSync(join(raizHermano(hermano.repo), ...rel.split('/'))));
+}
+
 export const GENERADOS_FUERA = [
   {
     script: 'scripts/generar-cuarentena-cpp.mjs',
@@ -767,6 +998,192 @@ export function correrNode(script, args = []) {
   };
 }
 
+/**
+ * Corre un generador del HERMANO, con su `--check`, sin escribir nada.
+ *
+ * `correrNode` de arriba no sirve aqui: resuelve el script contra `root` (este
+ * paquete) y corre con `cwd` en este paquete. Un generador del hermano calcula
+ * sus rutas con `import.meta.dirname` y espera estar en SU repo, asi que correrlo
+ * desde aqui lo haria fallar por el cwd —que es justo la clase de fallo que este
+ * mecanismo quiere hacer visible, no crear—. Por eso va con `cwd` al hermano y
+ * el script resuelto contra el hermano.
+ *
+ * Y el `--check` es OBLIGATORIO, no una cortesia: sin el, correr «para comprobar»
+ * dejaria el arbol del hermano modificado y el CI en verde. Si un generador no
+ * acepta `--check`, se dice en vez de correrlo a pelo.
+ *
+ * @returns {{codigo: number, salida: string, colgado: boolean, noExiste: boolean}}
+ */
+export function correrGeneradorHermano(hermano, args = ['--check']) {
+  const base = raizHermano(hermano.repo);
+  const ruta = join(base, ...hermano.generador.split('/'));
+
+  if (!existsSync(ruta))
+    return { codigo: 2, salida: '', colgado: false, noExiste: true };
+
+  const r = spawnSync(process.execPath, [ruta, ...args], {
+    cwd: base,
+    encoding: 'utf-8',
+    timeout: TIEMPO_MS,
+    windowsHide: true,
+  });
+
+  if (r.error)
+    return { codigo: 2, salida: String(r.error.message ?? r.error), colgado: false, noExiste: false };
+
+  if (r.signal)
+    return { codigo: 2, salida: `el proceso ha terminado con la senal ${r.signal}`, colgado: true, noExiste: false };
+
+  return {
+    codigo: typeof r.status === 'number' ? r.status : 2,
+    salida: `${r.stdout ?? ''}${r.stderr ?? ''}`.trim(),
+    colgado: false,
+    noExiste: false,
+  };
+}
+
+/**
+ * Que el generador de un hermano produces lo que declara. Las TRES cosas.
+ *
+ * 1. `--check` sale con 0. Es la que dice si lo commiteado esta al dia, y es la
+ *    unica que puede decirlo: comparar el contenido commiteado con el que sale
+ *    de las fuentes solo lo sabe el generador, que es quien las lee.
+ * 2. Cada salida DECLARADA existe. Una salida que el generador declara y no esta
+ *    en el disco es un `.gen` que el resto del repo cree que existe.
+ * 3. Y lleva la marca de generado. Un fichero en su sitio no dice si es de hoy:
+ *    `existsSync` da el mismo «si» para un `.gen` regenerado hace un minuto que
+ *    para uno que nadie ha vuelto a generar desde que cambio el motor. Lo que lo
+ *    distingue es la cabecera, y es lo unico que separa «esta al dia» de
+ *    «tiene buena pinta».
+ *
+ * El punto 3 avisa en vez de romper cuando hay marca de fecha en el JSON, porque
+ * un `.gen` con `generatedFrom` pero sin `AUTO-GENERATED` es legitimo —asi lo
+ * emite ABDNeural— y exigirle la marca de C++ seria un falso rojo. Lo que no se
+ * acepta es un `.gen` sin NINGUNA marca: eso no lo ha escrito ningun generador.
+ *
+ * @param {object} hermano una entrada de `GENERADORES_HERMANOS`
+ * @returns {{problemas: string[], avisos: string[], comprobado: boolean}}
+ *   `comprobado` es «se ha podido MIRAR el repo», no «ha ido bien». Un generador
+ *   que no esta en su sitio o una salida que falta DEVUELVEN `comprobado: true`
+ *   con un problema: se ha mirado y se ha encontrado algo roto, que es distinto
+ *   de no haber podido mirar. Confundir las dos cosas hacia que un `.gen` que
+ *   falta —un fallo de rutas de verdad— se contara como «no comprobado» y
+ *   saliera con 0.
+ */
+export function generadorHermanoProduceLoQueDice(hermano) {
+  const problemas = [];
+  const avisos = [];
+  const base = raizHermano(hermano.repo);
+
+  if (!existsSync(base)) {
+    return {
+      problemas: [],
+      avisos: [`${hermano.repo}: no esta clonado, no se ha comprobado`],
+      comprobado: false,
+    };
+  }
+
+  // ── 1. Lo declarado tiene que estar en el disco ──
+  //
+  // Antes que correr nada: si el generador no esta en su sitio, correrlo no
+  // diria nada del fallo de rutas, que es lo que mas duele de todo esto.
+  if (!existsSync(join(base, ...hermano.generador.split('/')))) {
+    problemas.push(
+      `${hermano.repo}: el generador no esta en ${hermano.generador}. O el repo se ha movido de `
+      + 'sitio, o el generador se ha renombrado. El repositorio esta ahi pero no se puede ni '
+      + 'ejecutar, asi que sus salidas no se pueden comprobar.',
+    );
+    return { problemas, avisos, comprobado: true };
+  }
+
+  const ausentes = hermano.salidas.filter((rel) => !existsSync(join(base, ...rel.split('/'))));
+
+  if (ausentes.length > 0) {
+    for (const rel of ausentes) {
+      problemas.push(
+        `${hermano.repo}: declara que produce ${rel} y ese fichero NO esta en el disco. `
+        + 'O el generador escribe a otro sitio, o la salida esta mal escrita aqui. Un fichero '
+        + 'generado que falta no da error: el que lo incluye se queda con la copia vieja y nadie '
+        + 'se entera hasta que un valor sale mal.',
+      );
+    }
+    return { problemas, avisos, comprobado: true };
+  }
+
+  // ── 2. Y tiene que ser de verdad generado ──
+  //
+  // Las marcas son las de cabecera MAS las que declare la entrada. Se exige
+  // CUALQUIERA de ellas, no todas: el `.json` de ABDEep no lleva `AUTO-GENERATED`
+  // porque un JSON no admite comentarios, y exigirlo seria un rojo permanente que
+  // nadie podria arreglar sin romper el formato.
+  const marcas = [...MARCAS_GENERADO, '"generatedFrom"', ...(hermano.marcas ?? [])];
+
+  for (const rel of hermano.salidas) {
+    const bytes = readFileSync(join(base, ...rel.split('/')), 'utf-8');
+
+    if (!marcas.some((marca) => bytes.includes(marca))) {
+      problemas.push(
+        `${hermano.repo}: ${rel} existe pero NO lleva ninguna marca de generado (ni `
+        + `${marcas.join(', ')}). Un .gen sin marca no lo ha `
+        + 'escrito ningun generador: o esta a mano, o lo que hay ahi es un fichero viejo que '
+        + 'nadie ha vuelto a generar y por eso nadie lo ha mirando.',
+      );
+    }
+  }
+
+  // ── 3. Y el generador tiene que saber comprobar ──
+  //
+  // El `node: false` de ABDNeural no entra aqui: su generador es un ejecutable
+  // de C++ y no hay nada que correr con Node desde este paquete. Lo que se
+  // comprueba de el son los puntos 1 y 2, y lo que NO —que este al dia— lo dice
+  // el build de ABDNeural. Se dice en voz alta para que el verde de este check no
+  // se lea como mas de lo que es.
+  if (hermano.node === false) {
+    avisos.push(
+      `${hermano.repo}: ${hermano.ejecutable} es un ejecutable de C++, no se ha corrido. `
+      + 'Comprobadas sus ' + hermano.salidas.length + ' salidas (existen y son generadas); '
+      + 'QUE ESTEN AL DIA lo comprueba el build de ABDNeural, que es quien lo compila.',
+    );
+    return { problemas, avisos, comprobado: true };
+  }
+
+  const r = correrGeneradorHermano(hermano);
+
+  if (r.noExiste) {
+    problemas.push(`${hermano.repo}: el generador no existe (${hermano.generador})`);
+    return { problemas, avisos, comprobado: true };
+  }
+
+  if (r.colgado) {
+    problemas.push(
+      `${hermano.repo}: ${hermano.generador} --check se ha pasado de tiempo sin responder. `
+      + `El limite son ${TIEMPO_MS / 1000} s.`,
+    );
+    return { problemas, avisos, comprobado: true };
+  }
+
+  if (r.codigo !== 0) {
+    // Un generador que acepta `--check` y sale con != 0 esta diciendo que lo
+    // commiteado esta desfasado, o que no ha podido leer una fuente. Las dos
+    // cosas son un rojo, pero se leen distinto y por eso se cita su salida.
+    const pareceFalloDeRutas = /FALLO DE RUTAS/.test(r.salida);
+
+    problemas.push(
+      `${hermano.repo}: ${hermano.generador} --check sale con ${r.codigo}, asi que `
+      + (pareceFalloDeRutas
+        ? 'no se ha podido ni comprobar. El mensaje de arriba dice que FALLA UNA RUTA: '
+          + 'una fuente se ha movido o ha cambiado de nombre.'
+        : `${hermano.queEs} esta DESFASADO. Ejecuta \`node ${hermano.generador}\` en ${hermano.repo} `
+          + 'y commitea lo que salga.'),
+    );
+
+    for (const linea of r.salida.split('\n').filter((l) => l.trim() !== '').slice(-12))
+      problemas.push(`    | ${linea.trim()}`);
+  }
+
+  return { problemas, avisos, comprobado: true };
+}
+
 /** Los `scripts.` de `package.json` cuyo nombre empieza por el prefijo dado. */
 export function scriptsQueEmpiezanPor(man, prefijo) {
   return Object.keys(man.scripts ?? {}).filter((k) => k.startsWith(prefijo));
@@ -1199,7 +1616,56 @@ function main() {
       console.log(`                 ${linea.trim()}`);
   }
 
-  // La fuente que declara cada generado tiene que existir. Va antes de las copias
+  // ── Los generadores de los HERMANOS ──
+  //
+  // Des pus de lo de arriba y antes de las fuentes, porque es lo barato y es
+  // lo que mas duele cuando falla: un `.gen` de un hermano que no esta al dia
+  // deja a SU motor mirando un valor que su panel ya no enseña, y no hay ningun
+  // rojo en ningun sitio porque aqui nadie ha mirado.
+  //
+  // Cada uno dice su estado en una linea y siempre: los que no se han podido
+  // comprobar salen igual que los que estan bien, en su propia linea y con la
+  // palabra `NO COMPROBADO`. Un verde que no distingue «comprobado y bien» de
+  // «no mirado» es un verde que no significa nada.
+  console.log('');
+
+  const hermanosDesfasados = [];
+  const hermanosNoComprobados = [];
+
+  for (const hermano of GENERADORES_HERMANOS) {
+    if (!existsSync(join(root, '..', hermano.repo))) {
+      console.log(`  hermano NO     ${hermano.repo} (no esta clonado, no se comprueba)`);
+      hermanosNoComprobados.push(`${hermano.repo}: no esta clonado`);
+      continue;
+    }
+
+    const r = generadorHermanoProduceLoQueDice(hermano);
+
+    for (const a of r.avisos)
+      console.log(`  hermano aviso  ${a}`);
+
+    if (r.problemas.length === 0) {
+      const etiq = hermano.node === false ? 'generado' : 'al dia';
+      console.log(`  hermano ${etiq.padEnd(7)} ${hermano.repo}: ${hermano.queEs}`);
+      for (const rel of hermano.salidas)
+        console.log(`                 ${rel}`);
+      continue;
+    }
+
+    console.log(`  hermano ROJO   ${hermano.repo}: ${hermano.queEs}`);
+    for (const p of r.problemas)
+      console.log(`                 ${p}`);
+
+    // `comprobado` es «se ha podido mirar», no «ha ido bien»: con la otra
+    // lectura, un `.gen` que falta se contaria como «no he podido mirar» y
+    // este preflight saldria con 0 sobre un repo al que le falta un fichero.
+    if (r.comprobado)
+      hermanosDesfasados.push(hermano);
+    else
+      hermanosNoComprobados.push(`${hermano.repo}: ${r.problemas[0]}`);
+  }
+
+  // ── La fuente que declara cada generado tiene que existir. Va antes de las copias
   // porque es la misma clase de fallo en el otro extremo: un campo que declara un
   // origen y ninguna puerta que lo compruebe.
   const fuentes = fuentesQueNoExisten();
@@ -1395,6 +1861,47 @@ function main() {
   if (generadosDesfasados.length > 0) {
     console.log('');
     console.log(`preflight FALLIDO: ${generadosDesfasados.length} generado(s) fuera de contracts/ desfasado(s).`);
+    return 1;
+  }
+
+  // Un hermano que no se ha podido comprobar NO es un rojo —este paquete se
+  // clona solo en un layout de monorepo, y exigir el hermano ahi seria un falso
+  // rojo permanente— pero si tiene que quedar escrito, porque el resumen de
+  // abajo dice «todo en verde» y ese verde incluiria lo que nadie ha mirado.
+  if (hermanosNoComprobados.length > 0) {
+    console.log('');
+    console.log(`HERMANOS QUE NO SE HAN PODIDO COMPROBAR (${hermanosNoComprobados.length}):`);
+
+    for (const h of hermanosNoComprobados)
+      console.log(`  ${h}`);
+
+    console.log('');
+    console.log('Esto NO es un generador roto: es que no se ha podido ni mirar.');
+    console.log('El resumen de abajo cuenta estos .gen como comprobados, y no lo son.');
+    console.log('Para que se comprueben: `node scripts/fetch-missing-siblings.mjs`.');
+  }
+
+  // Los generadores de los hermanos van con los generados fuera de `contracts/`
+  // y no con `generadoresMienten`, que es lo de los generadores de `scripts/`:
+  // la razon por la que se separan es que aqui el arreglo NO es un
+  // `pnpm generate:*` de este paquete, es ir al repo hermano y regenerar ahi. En
+  // la misma lista, el mensaje de arreglo senalaria al sitio equivocado.
+  if (hermanosDesfasados.length > 0) {
+    console.log('');
+    console.log(`preflight FALLIDO: ${hermanosDesfasados.length} generador(es) de hermano(s) desfasado(s):`);
+
+    for (const h of hermanosDesfasados) {
+      console.log('');
+      console.log(`  ${h.repo} — ${h.queEs}`);
+      console.log(`     Sources:  ${h.deDondeSale}`);
+      console.log(`      Arreglo:  cd ../${h.repo} && node ${h.generador}`);
+      console.log(`      Luego:    commit dea los ${h.salidas.length} ficheros que salida, dentro de ${h.repo}.`);
+    }
+
+    console.log('');
+    console.log('El arreglo NO es regenerar aqui: el generador, sus fuentes y sus salidas');
+    console.log('estan todos en el repo hermano. Este paquete solo los mira.');
+
     return 1;
   }
 

@@ -20,7 +20,19 @@
     "",
     "El fichero que se lista en `necesita` es el que el generador abre. No es un",
     "test de vida del repo: es la comprobacion de que lo que hay ahi es lo que se",
-    "va a leer, para que un clon a medias no pase por un hermano presente."
+    "va a leer, para que un clon a medias no pase por un hermano presente.",
+    "",
+    "Y desde el commit que anadio la vigilancia de los GENERADORES DE LOS HERMANOS",
+    "(`GENERADORES_HERMANOS` en `scripts/check-generated-contracts.mjs`), `necesita`",
+    "de ABDEep, ABDMS2000 y ABDNeural incluye ademas su GENERADOR y sus SALIDAS. El",
+    "motivo es el mismo con un matiz: para CORRER el generador de un hermano hacen",
+    "falta el generador (y las fuentes que este lee), no solo la cabecera que leian",
+    "los contratos. Si aqui solo bajara la cabecera, el preflight diria «no he",
+    "podido comprobar» y saldria con 0, que es un verde que no mira nada.",
+    "",
+    "Las salidas se listan por la misma razon que las fuentes: son los ficheros que",
+    "el preflight tiene que poder LEER para comprobar que existen y que llevan su",
+    "marca de generado. Sin ellos, la comprobacion se degrada a «no he mirado»."
   ],
 
   "hermanos": [
@@ -36,20 +48,65 @@
     {
       "repo": "ABDEep",
       "sha": "9accfd663a20e051efc3a2de605a4cffb557e9a2",
-      "necesita": ["WebUI/js/modmatrix_data.js"],
-      "lee": ["scripts/generate_modulation_contracts.py"]
+      "necesita": [
+        "WebUI/js/modmatrix_data.js",
+        "WebUI/resources/md/deepmind_fx_modmatrix.md",
+        "docs/sysex_format.md",
+        "scripts/registry_generator.js",
+        "scripts/build-fx-presets.js",
+        "WebUI/data/factory_fx_presets.json",
+        "schemas/parameter-registry.data.json",
+        "WebUI/js/registry.gen.js",
+        "Source/Core/ParameterRegistry.gen.h",
+        "Source/Core/ParameterRegistry.gen.cpp",
+        "WebUI/js/fx_presets_data/fx_presets_reverbs.js",
+        "WebUI/js/fx_presets_data/fx_presets_delays.js",
+        "WebUI/js/fx_presets_data/fx_presets_modulation.js",
+        "WebUI/js/fx_presets_data/fx_presets_advanced.js",
+        "WebUI/js/factory_fx_presets.js"
+      ],
+      "lee": [
+        "scripts/generate_modulation_contracts.py",
+        "scripts/registry_generator.js",
+        "scripts/build-fx-presets.js"
+      ]
     },
     {
       "repo": "ABDNeural",
       "sha": "157da1b06abcc0c3706899423d5ae2f4fae35b3b",
-      "necesita": ["Source/State/ModDestinationTable.h"],
-      "lee": ["scripts/generate_modulation_contracts.py"]
+      "necesita": [
+        "Source/State/ModDestinationTable.h",
+        "Source/DSP/FxCatalogExport.cpp",
+        "Tests/ParameterExportTool.cpp",
+        "Tests/LayoutFingerprintExportTool.cpp",
+        "WebUI/generated/fx-catalog.generated.json",
+        "WebUI/generated/fx-catalog.generated.js",
+        "WebUI/generated/parameters.generated.json",
+        "WebUI/generated/parameters.generated.js",
+        "WebUI/generated/parameters.generated.d.ts",
+        "WebUI/generated/gp-layout.generated.js"
+      ],
+      "lee": [
+        "scripts/generate_modulation_contracts.py",
+        "Source/DSP/FxCatalogExport.cpp",
+        "Tests/ParameterExportTool.cpp",
+        "Tests/LayoutFingerprintExportTool.cpp"
+      ]
     },
     {
       "repo": "ABDMS2000",
       "sha": "b954062457f230257f4a65ff5ec12aaf7e30e377",
-      "necesita": ["Source/DSP/Modulation/VirtualPatchMatrix.h"],
-      "lee": ["scripts/generate_modulation_contracts.py"]
+      "necesita": [
+        "Source/DSP/Modulation/VirtualPatchMatrix.h",
+        "Scripts/registry_generator.js",
+        "Source/State/ParameterRegistry.gen.h",
+        "Source/State/ParameterRegistry.gen.cpp",
+        "WebUI/src/contracts/registry.gen.js"
+      ],
+      "lee": [
+        "scripts/generate_modulation_contracts.py",
+        "Scripts/registry_generator.js"
+      ]
     }
   ]
 }

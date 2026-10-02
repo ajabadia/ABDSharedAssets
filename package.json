@@ -46,6 +46,7 @@
     "generate:claves-export-cpp": "node scripts/generar-claves-export-cpp.mjs",
     "check:claves-export-cpp": "node scripts/generar-claves-export-cpp.mjs --check",
     "check:contracts": "node scripts/check-generated-contracts.mjs",
+    "check:hermanos-generadores": "node scripts/check-hermanos-generadores.mjs",
     "ci": "node scripts/ci-local.mjs",
     "ci:list": "node scripts/ci-local.mjs --list"
   },

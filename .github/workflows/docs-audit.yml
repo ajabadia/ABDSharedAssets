@@ -210,6 +210,28 @@ jobs:
           pnpm run check:s950-contract
           pnpm run check:s950-cal
 
+      # LOS GENERADORES DE LOS HERMANOS, CON SU NOMBRE PROPIO.
+      #
+      # Esta puerta vigila `GENERADORES_HERMANOS` en el preflight: los generadores
+      # de ABDEep, ABDMS2000 y ABDNeural, que viven alli con sus fuentes y sus
+      # salidas. Cada uno se corre con su `--check` —que NO escribe, y por eso se
+      # puede correr desde un pipeline sin ensuciar el checkout del hermano— y
+      # ademas se mira que sus salidas existan y lleven marca de generado.
+      #
+      # Va como paso aparte, y no solo porque el nombre se lea mejor. Es que su
+      # verde NO significa lo mismo que el del preflight: el generador de ABDNeural
+      # es un ejecutable de C++ que este repo no compila, asi que de el solo se
+      # comprueban las salidas, no que esten al dia —eso lo dice el build de
+      # ABDNeural—. Con un paso con nombre propio, quien lee la pestana ve que los
+      # .gen de ABDNeural NO estan cubiertos aqui, en vez de tener que deducirlo
+      # del log.
+      #
+      # Y el arreglo que cita el mensaje NO es un `pnpm generate:*` de este
+      # paquete: es `cd ../<repo> && node <generador>`. Por eso el mensaje dice
+      # eso y no el nombre de un script de aqui, que no existe.
+      - name: "Hermanos: sus generadores producen lo que declaran"
+        run: node scripts/check-hermanos-generadores.mjs
+
 
       # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
       # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
