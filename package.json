@@ -53,8 +53,8 @@
     "ci:list": "node scripts/ci-local.mjs --list"
   },
   "devDependencies": {
-    "vite": "^5.4.0",
-    "vitest": "^1.6.0",
+    "vite": "^8.3.2",
+    "vitest": "^4.1.11",
     "jsdom": "^24.0.0",
     "mermaid": "^12.0.0"
   },
