@@ -61,7 +61,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1321,6 +1321,52 @@ function correrGenerador(script) {
 }
 
 /**
+ * Poner `desde` en `hasta` cambiando de sitio, que es distinto de reescribir.
+ *
+ * Reescribir un contrato que otro proceso esta leyendo tiene una ventana: el
+ * fichero se trunca al abrirlo y se vuelve a llenar detras, y quien lea en medio
+ * se encuentra un JSON a medias. Un `rename` no tiene ventana, porque el lector
+ * que ya tiene abierto el fichero sigue leyendo el viejo entero y el que abre
+ * despues abre el nuevo entero.
+ *
+ * En Windows el `rename` encima de un destino abierto puede salir con
+ * EPERM/EBUSY —un antivirus, un indexador, o el worker que esta leyendo ese
+ * contrato en este instante—, y ese es justo el caso que atraviesa la carrera
+ * que esta restauracion arregla. Por eso se reintenta: dar por buena una
+ * restauracion que fallo por un instante seria inventarse un problema que no
+ * tiene.
+ *
+ * @param {string} desde temporal, ya escrito y con sus permisos puestos.
+ * @param {string} hasta contrato a sustituir.
+ */
+function renombrar(desde, hasta) {
+  const reintentables = ['EPERM', 'EBUSY', 'EACCES'];
+  const espera = 20;
+  const intentos = 25;
+
+  // En Windows un fichero no se puede sustituir mientras otro proceso lo tiene
+  // abierto, y aqui hay otro worker leyendo `contracts/` en este instante. Por
+  // eso la espera es de verdad y no un reintento a pelo: MEDIDO con un lector
+  // leyendo en bucle por encima, cinco intentos seguidos fallan con EPERM en
+  // cuanto el lector pilla el fichero, y dar por restaurado lo que no se ha
+  // restaurado seria un rojo que no existe.
+  const dormir = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+  for (let intento = 1; ; intento++) {
+    try {
+      renameSync(desde, hasta);
+      return;
+    }
+    catch (e) {
+      if (intento >= intentos || !reintentables.includes(e.code))
+        throw e;
+
+      dormir(espera);
+    }
+  }
+}
+
+/**
  * Que el generador toque de verdad cada fichero que declara en `salidas`.
  *
  * @param {object} contrato una entrada de `CONTRATOS`.
@@ -1338,7 +1384,15 @@ export function generadorProduceLoQueDice(contrato) {
   for (const [nombre] of antes) {
     const origen = join(root, 'contracts', nombre);
     const copiaFichero = join(copia, nombre);
-    respaldos.set(nombre, { origen, copia: copiaFichero, bytes: readFileSync(origen) });
+    // El modo se guarda aparte porque la restauracion va a terminar en un
+    // `rename`, y un `rename` cambia el inodo: los permisos del temporal no se
+    // heredan solos y hay que volver a ponerlos a mano.
+    respaldos.set(nombre, {
+      origen,
+      copia: copiaFichero,
+      bytes: readFileSync(origen),
+      modo: lstatSync(origen).mode,
+    });
     writeFileSync(copiaFichero, respaldos.get(nombre).bytes);
   }
 
@@ -1419,14 +1473,42 @@ export function generadorProduceLoQueDice(contrato) {
     // cambiar sin que nadie lo haya cambiado.
     let restaurado = true;
 
-    for (const [nombre, { origen, bytes }] of respaldos) {
+    // Y se restaura MOVIENDO el temporal encima, no reescribiendo el contrato.
+    // La razon de que sea un `rename` y no un `writeFileSync` esta en `renombrar`:
+    // reescribir deja el fichero truncado un rato, y hay otro worker leyendo
+    // `contracts/` a la vez que esto.
+    //
+    // El temporal va en un directorio PROPIO, y eso no es una manera de escribir
+    // mas elegante, son dos exclusiones:
+    //
+    //   · No puede ir en `tmpdir()`: `rename` solo es atomico dentro del mismo
+    //     sistema de ficheros, y en Windows `tmpdir()` esta en `C:` mientras que
+    //     este repo vive en `D:`. Ahi el `rename` daria EXDEV, que es exactamente
+    //     la escritura no atomica que se viene a evitar.
+    //   · No puede ir dentro de `contracts/`: `fechasDeContratos()` lista TODO lo
+    //     que encuentra ahi sin filtrar nada, y un temporal se contaria como un
+    //     fichero mas que el generador ha escrito. Apareceria un problema que no
+    //     existe —«escribe X, que NO esta en sus salidas declaradas»— apuntando
+    //     a un fichero que el generador no ha escrito.
+    //
+    // En la raiz del repo si: ahi no enumera nadie, y `rmSync` se lleva el
+    // rastro en cuanto termina.
+    const dirTemporal = mkdtempSync(join(root, '.preflight-restaurar-'));
+
+    for (const [nombre, { origen, bytes, modo }] of respaldos) {
+      const temporal = join(dirTemporal, nombre);
+
       try {
-        writeFileSync(origen, bytes);
+        writeFileSync(temporal, bytes);
+        chmodSync(temporal, modo);
+        renombrar(temporal, origen);
       }
       catch (e) {
         restaurado = false;
       }
     }
+
+    rmSync(dirTemporal, { recursive: true, force: true });
 
     // Y se BORRA lo que el generador creo que no estaba. Sin esto, correr el
     // preflight con `--comprobar-generadores` deja en `contracts/` ficheros que
