@@ -383,6 +383,52 @@ export const GENERADOS_FUERA = [
     queEs: 'la cabecera de C++ con las claves de JSON que el laboratorio escribe al exportar',
     deDondeSale: 'scripts/claves-export-medicion.json',
   },
+  {
+    // Y AQUI SI SE ROMPE EL PATRON DE ARRIBA, Y HAY QUE DECIR POR QUE.
+    //
+    // Los dos anteriores se comprueban SIN el hermano, y por eso viven aqui:
+    // su fuente esta en este repo, asi que un clon limpio tambien puede
+    // mirarlos. Este no puede. `generar-guardas-escritura.mjs` escanea las
+    // carpetas `scripts/`, `WebUI/scripts/` y `tools/` de ABDEep, ABDMS2000 y
+    // ABDNeural para descubrir QUIEN ESCRIBE, y las listas de escritores que
+    // hornea en el guard estan sacadas de ahi. Sin esos tres repos el motor no
+    // tiene nada que mirar y el `--check` sale con 1.
+    //
+    // Se mete igualmente, y el motivo es que la alternativa es peor: dejarlo
+    // fuera del inventario significa que `pnpm check:guardas` corre solo cuando
+    // alguien se acuerda, y un guard de escritura que se queda viejo no da
+    // ningun rojo en ningun sitio. Aqui el rojo sale en el preflight.
+    //
+    // Lo que cambia respecto a los otros dos es QUE PASA SI FALTA UN HERMANO, y
+    // por eso el mensaje tiene que decirlo en voz alta en vez de dejar que se
+    // lea como un guard desfasado. En local, un clon limpio de este repo solo da
+    // este rojo y no ningun otro.
+    //
+    // ── CI, Y LO QUE HACE FALTA ANTES DE QUE ESTE ──
+    //
+    // MEDIDO, y es el motivo de que esta entrada sea un ROJO DE CI y no solo una
+    // mejora del preflight local. Los tres guards siguen SIN COMMITEAR en sus
+    // repos (`git log` sale vacio en los tres), y `docs-audit.yml` clona los
+    // hermanos con un SHA FIJADO, no con `main`. Con el estado de ahora, el
+    // checkout de CI llega al SHA fijado SIN `guardasDeEscritura.test.js`, el
+    // `--check` responde `DESFASADO - no existe` y sale con 1.
+    //
+    // O sea: esta entrada da por hecho que los tres guards estan commiteados en
+    // sus repos Y que los SHA de `docs-audit.yml` los incluyen. Para que el
+    // preflight de CI vuelva a verde hacen falta las dos mitades, en este
+    // orden: commitear el guard en ABDEep, ABDMS2000 y ABDNeural; despues subir
+    // los tres SHA de `docs-audit.yml` a un commit que ya los contenga. Si se
+    // sube el SHA sin el commit, el rojo es el mismo pero con otro motivo.
+    script: 'scripts/generar-guardas-escritura.mjs',
+    scriptNpm: 'check:guardas',
+    salidas: [
+      '../ABDEep/scripts/guardasDeEscritura.test.js',
+      '../ABDMS2000/WebUI/tests/guardasDeEscritura.test.js',
+      '../ABDNeural/WebUI/tests/guardasDeEscritura.test.js',
+    ],
+    queEs: 'los tres guardas de escritura, que enumeran quien escribe en cada hermano y como se le pide antes',
+    deDondeSale: 'los scripts de ABDEep, ABDMS2000 y ABDNeural, que el generador escanea: sin los tres clonados este rojo es "no clonado", no "guard viejo"',
+  },
 ];
 
 /**

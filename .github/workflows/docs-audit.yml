@@ -232,6 +232,25 @@ jobs:
       - name: "Hermanos: sus generadores producen lo que declaran"
         run: node scripts/check-hermanos-generadores.mjs
 
+      # LOS TRES GUARDAS DE ESCRITURA, GENERADOS DESDE AQUI
+      #
+      # Los `guardasDeEscritura.test.js` de ABDEep, ABDMS2000 y ABDNeural son copias
+      # MATERIALIZADAS: cada repo tiene el suyo y no importa de nadie, porque un
+      # guard que dependiera del hermano dejaria de vigilar justo cuando ese hermano
+      # no esta clonado. El precio de esa copia es que se pueden separar, y de ahi
+      # este paso: compara cada uno contra lo que sale de
+      # `scripts/generar-guardas-escritura.mjs`, que es el motor comun de los tres.
+      #
+      # Sin esto, el fallo es silencioso y con una forma concreta: el guard de un repo
+      # aprende a ver algo que los otros dos no ven, y nadie se entera hasta que el
+      # otro repo escribe sin que nadie mire. Que ya paso con PowerShell.
+      #
+      # Sale en rojo si alguno se edito a mano o si el motor cambio y ese repo no se
+      # regenero. El arreglo que dice es `pnpm generar:guardas`, y el mensaje nombra
+      # el repo: el problema es de uno, no de los tres.
+      - name: "Hermanos: sus guardas de escritura no se han separado del motor"
+        run: node scripts/generar-guardas-escritura.mjs --check
+
 
       # El paso que bloquea el merge, suelto y antes de la suite: asi un fallo de
       # documentacion se lee como tal y no como "un test rojo" entre seiscientos.
