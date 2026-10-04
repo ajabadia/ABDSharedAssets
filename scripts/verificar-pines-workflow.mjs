@@ -65,7 +65,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ficherosDe, inventarioDe, pinesDe } from './pines-hermanos.mjs';
+import { delHermanoDe, ficherosDe, inventarioDe, leidosDe, pinesDe } from './pines-hermanos.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PAQUETE = dirname(here);
@@ -372,11 +372,12 @@ function mismaLista(a, b) {
  * @param {object} opciones.inventario  El contenido de `siblings.json`.
  * @param {Record<string,string>} opciones.pines   `repo -> sha`, de `pinesDe`.
  * @param {Record<string,string>} opciones.ficheros `repo -> necesita`, de `ficherosDe`.
+ * @param {Record<string,string>} opciones.leidos   `repo -> lee`, de `leidosDe`.
  * @param {Record<string,string>} opciones.pasos   Los outputs REALES de `pines-hermanos.mjs`,
  *                                                  tal cual los escribe: cadenas.
  * @returns {{errores: string[], lineas: string[]}}
  */
-export function verificar({ workflows, inventario, pines, ficheros, pasos }) {
+export function verificar({ workflows, inventario, pines, ficheros, leidos, pasos }) {
   const errores = [];
   const lineas = [];
   const hermanos = inventario.hermanos ?? [];
@@ -540,10 +541,12 @@ export function verificar({ workflows, inventario, pines, ficheros, pasos }) {
           bajo(`${donde}: ${path} se baja dos veces`);
         else bajados.set(path, ref);
 
-        // La lista de ficheros que el checkout debe traer tambien sale del
-        // inventario. Si el paso la recibiera escrita en el propio workflow seria
-        // una segunda copia, y desincronizada por el mismo motivo que el SHA.
-        comprobarFicheros(delJob, donde, resolverPata, path, ficheros, bajo);
+        // Las dos listas de rutas que el checkout debe traer salen del inventario:
+        // lo que se abre (`ficheros`) y lo que se corre (`leidos`). Si el paso las
+        // recibiera escritas en el propio workflow serian dos copias mas, y
+        // desincronizadas por el mismo motivo que el SHA.
+        comprobarLista(delJob, donde, resolverPata, path, 'NECESITA', ficheros[path], bajo);
+        comprobarLista(delJob, donde, resolverPata, path, 'LEIDOS', delHermanoDe(leidos[path] ?? []), bajo);
       }
     }
   }
@@ -564,19 +567,25 @@ export function verificar({ workflows, inventario, pines, ficheros, pasos }) {
 }
 
 /**
- * El paso que comprueba los ficheros del hermano baja su lista del output
- * `ficheros`, y no de una lista escrita en el workflow.
+ * El paso que comprueba una lista de rutas del hermano la baja del output que la
+ * publica, y no de una lista escrita en el workflow.
  *
  * Se comprueba aqui y no en el runner porque el fallo de la lista escrita a mano no
  * sale en el runner: el paso abre lo que le digan y se pone verde.
+ *
+ * @param {string} variable  `NECESITA` o `LEIDOS`: la variable de entorno.
+ * @param {string[]} esperada  Lo que el inventario dice para ese repo.
  */
-function comprobarFicheros(delJob, donde, resolverPata, repo, ficheros, bajo) {
-  const conLista = delJob.filter((p) => p.env.NECESITA !== undefined);
+function comprobarLista(delJob, donde, resolverPata, repo, variable, esperada, bajo) {
+  const conLista = delJob.filter((p) => p.env[variable] !== undefined);
 
+  // Una variable que el workflow no declara: no es un fallo. El `ref:` del
+  // checkout de este propio repo tampoco lo es, y por lo mismo: lo que se
+  // comprueba es lo que se ha declarado, no que se declare todo.
   if (conLista.length === 0) return;
 
   if (conLista.length > 1) {
-    bajo(`${donde}: hay ${conLista.length} pasos con NECESITA; solo puede comprobar la lista uno`);
+    bajo(`${donde}: hay ${conLista.length} pasos con ${variable}; la lista solo la puede comprobar uno`);
     return;
   }
 
@@ -586,9 +595,9 @@ function comprobarFicheros(delJob, donde, resolverPata, repo, ficheros, bajo) {
   let recibido;
 
   try {
-    recibido = evaluar(paso.env.NECESITA, resolverPata, `${dondeLista}, NECESITA`);
+    recibido = evaluar(paso.env[variable], resolverPata, `${dondeLista}, ${variable}`);
   } catch (exc) {
-    bajo(`${dondeLista}: la lista de ficheros no se puede resolver (${exc.message}); si se queda vacia, la comprobacion pasa sin mirar nada`);
+    bajo(`${dondeLista}: ${variable} no se puede resolver (${exc.message}); si se queda vacia, la comprobacion pasa sin mirar nada`);
     return;
   }
 
@@ -597,12 +606,12 @@ function comprobarFicheros(delJob, donde, resolverPata, repo, ficheros, bajo) {
   try {
     lista = typeof recibido === 'string' ? JSON.parse(recibido) : recibido;
   } catch {
-    bajo(`${dondeLista}: NECESITA no es una lista, es ${JSON.stringify(recibido)}`);
+    bajo(`${dondeLista}: ${variable} no es una lista, es ${JSON.stringify(recibido)}`);
     return;
   }
 
-  if (!mismaLista(lista, ficheros[repo]))
-    bajo(`${dondeLista}: comprueba ${JSON.stringify(lista)} y el inventario dice ${JSON.stringify(ficheros[repo])}`);
+  if (!mismaLista(lista, esperada))
+    bajo(`${dondeLista}: comprueba ${JSON.stringify(lista)} y el inventario dice ${JSON.stringify(esperada)}`);
 }
 
 /* ───────────────────────────────────────────────────────────────────────────────
@@ -640,7 +649,7 @@ export function pasosReales() {
       if (at > 0) salidas[linea.slice(0, at)] = linea.slice(at + 1);
     }
 
-    for (const clave of ['hermanos', 'ficheros']) {
+    for (const clave of ['hermanos', 'ficheros', 'delHermano']) {
       if (salidas[clave] === undefined)
         throw new Error(`pines-hermanos.mjs no publico el output "${clave}"; nada mas puede leerlo`);
     }
@@ -657,6 +666,7 @@ function main() {
   const inventario = inventarioDe();
   const pines = pinesDe(inventario);
   const ficheros = ficherosDe(inventario);
+  const leidos = leidosDe(inventario);
 
   const workflows = soloWorkflow
     ? [{ nombre: soloWorkflow.split(/[\\/]/).pop(), txt: readFileSync(soloWorkflow, 'utf-8') }]
@@ -664,7 +674,9 @@ function main() {
         .filter((n) => n.endsWith('.yml') || n.endsWith('.yaml'))
         .map((n) => ({ nombre: n, txt: readFileSync(join(PAQUETE, '.github', 'workflows', n), 'utf-8') }));
 
-  const { errores, lineas } = verificar({ workflows, inventario, pines, ficheros, pasos: pasosReales() });
+  const { errores, lineas } = verificar({
+    workflows, inventario, pines, ficheros, leidos, pasos: pasosReales(),
+  });
 
   console.log('::group::Pines de los hermanos, leidos del inventario');
   for (const l of lineas) console.log(`  ${l}`);

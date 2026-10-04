@@ -43,6 +43,7 @@ jobs:
     outputs:
       hermanos: ${{ steps.pines.outputs.hermanos }}
       ficheros: ${{ steps.pines.outputs.ficheros }}
+      delHermano: ${{ steps.pines.outputs.delHermano }}
 
     steps:
       # Este checkout va a `ABDSharedAssets/` por el mismo motivo que en el job de
@@ -154,6 +155,53 @@ jobs:
               process.exit(1);
             }
             console.log("::notice::" + donde + ": los " + rel.length + " ficheros que se le van a abrir estan");
+          '
+
+      # LO QUE ADEMAS HAY QUE COMPROBAR QUE ESTA, que no es lo mismo que lo que se
+      # abre, y por eso es un paso aparte con su propia lista.
+      #
+      # `necesita` son las CABECERAS: los ficheros de los que sale el contrato. Esta
+      # lista son los GENERADORES y los ejecutables que producen esos ficheros. La
+      # diferencia no es academica: el inventario las declara por separado porque
+      # hacen falta por razones distintas, y con una sola el fallo sale como
+      # "falta una cabecera" cuando lo que falta es el programa que la genera.
+      #
+      # Y sin esta comprobacion, mover un generador de sitio DENTRO de un hermano no
+      # da ningun error aqui: el checkout llega sin el, el paso de "los ficheros que
+      # se le van a abrir" sigue en verde porque esas cabeceras si estan, y el
+      # problema sale tres jobs mas tarde como un contrato que no se regenero. Es la
+      # misma forma de fallo que la que motivo el inventario entero, unCommit mas
+      # abajo: un dato en un sitio y su comprobacion en otro.
+      - name: Los generadores que se le van a correr estan en ese commit
+        working-directory: ${{ matrix.hermano.repo }}
+        env:
+          REPO: ${{ matrix.hermano.repo }}
+          SHA_PULSADO: ${{ matrix.hermano.sha }}
+          LEIDOS: ${{ toJSON(fromJSON(needs.pines.outputs.delHermano)[matrix.hermano.repo]) }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("node:fs");
+            const rel = JSON.parse(process.env.LEIDOS);
+            const faltan = rel.filter((r) => !fs.existsSync(r));
+            const donde = process.env.REPO + " @ " + process.env.SHA_PULSADO;
+            if (rel.length === 0) {
+              console.log("::notice::" + donde + ": no declara generadores PROPIOS.");
+              console.log("Los que se le van a correr estan en ABDSharedAssets/scripts/, asi que");
+              console.log("este paso no tiene nada que mirar aqui. No es un fallo: el checkout es de");
+              console.log("un repo cuyo generador esta en otro sitio, y eso lo dice el inventario.");
+              process.exit(0);
+            }
+            if (faltan.length > 0) {
+              console.error("::error::" + donde + " no trae: " + faltan.join(", "));
+              console.error("El inventario dice que se le van a correr, asi que el generador");
+              console.error("va a ejecutar o a compilar algo que no esta en ese commit. Puede");
+              console.error("que la ruta se haya movido dentro de " + process.env.REPO + ":");
+              console.error("corrige la ruta en siblings.json, o sube su SHA a un commit que ya");
+              console.error("la tenga en el sitio viejo. Si la moviste, regenera los contratos.");
+              process.exit(1);
+            }
+            console.log("::notice::" + donde + ": los " + rel.length + " generadores que se le van a correr estan");
           '
 
   audit:

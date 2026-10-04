@@ -59,7 +59,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ficherosDe, hermanosDe, inventarioDe, pinesDe } from '../scripts/pines-hermanos.mjs';
+import { delHermanoDe, ficherosDe, hermanosDe, inventarioDe, leidosDe, pinesDe } from '../scripts/pines-hermanos.mjs';
 import { pasosReales, verificar } from '../scripts/verificar-pines-workflow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,6 +73,7 @@ const inventario = inventarioDe(PINES);
 const hermanos = inventario.hermanos ?? [];
 const pines = pinesDe(inventario);
 const ficheros = ficherosDe(inventario);
+const leidos = leidosDe(inventario);
 
 const todosLosWorkflows = readdirSync(WORKFLOWS)
   .filter((n) => n.endsWith('.yml') || n.endsWith('.yaml'))
@@ -89,7 +90,7 @@ const workflowsConHermanos = todosLosWorkflows.filter(
  * @returns {string[]}  Los errores, ya en texto.
  */
 function erroresDe(workflows) {
-  return verificar({ workflows, inventario, pines, ficheros, pasos: pasosReales() }).errores;
+  return verificar({ workflows, inventario, pines, ficheros, leidos, pasos: pasosReales() }).errores;
 }
 
 /** El verificador sobre los workflows de verdad. */
@@ -243,6 +244,88 @@ describe('el inventario no se puede publicar si no sirve', () => {
       Object.fromEntries(hermanos.map((h) => [h.repo, [...h.necesita]])),
     );
   });
+
+  it('cada hermano declara que lee, y con rutas que no se salen de un repo', () => {
+    for (const h of hermanos) {
+      expect(Array.isArray(h.lee) && h.lee.length > 0, `${h.repo} sin lee`).toBe(true);
+
+      for (const rel of h.lee) {
+        expect(rel, `${h.repo}: ${rel}`).not.toMatch(/^[\\/]|[A-Z]:|\.\./);
+      }
+    }
+  });
+
+  it('un hermano sin "lee" no se publica', () => {
+    // Es el mismo motivo que `necesita`: una lista vacia hace que la comprobacion
+    // pase sin mirar nada, que es el verde que no mira nada.
+    const base = { repo: 'ABDEep', sha: 'a'.repeat(40) };
+
+    expect(() => leidosDe({ hermanos: [base] })).toThrow(/ABDEep/);
+    expect(() => leidosDe({ hermanos: [{ ...base, lee: [] }] })).toThrow(/ABDEep/);
+  });
+
+  it('lo que se comprueba en el checkout son las rutas DEL HERMANO', () => {
+    // Y no todas las de `lee`: los `scripts/generate_*` de este paquete existen en
+    // el arbol de trabajo y no en el checkout del hermano. Pedir al job `hermanos`
+    // que los busque ahi seria un rojo siempre, y un rojo siempre es un rojo que
+    // nadie lee.
+    //
+    // LA REGLA ES DONDE EXISTE EL FICHERO. Lo que se probo primero fue mirar si la
+    // ruta empezaba por `scripts/`, y es FALSO: `ABDEep/scripts/registry_generator.js`
+    // y `ABDMS2000/Scripts/registry_generator.js` empiezan por lo que parece la
+    // misma cosa y son generadores del HERMANO. Con ese filtro el job se comia dos
+    // generadores sin comprobar, que es justo el fallo que este paso existe para
+    // cazar. Por eso el test afirma los DOS lados de la particion: lo que queda
+    // fuera tiene que existir aqui, y lo que queda dentro tiene que existir al lado
+    // del hermano.
+    for (const h of hermanos) {
+      const delHermano = delHermanoDe(h.lee, root);
+
+      // Lo que NO se comprueba en el checkout tiene que estar en este paquete.
+      for (const rel of h.lee.filter((r) => !delHermano.includes(r)))
+        expect(
+          existsSync(join(root, ...rel.split('/'))),
+          `${rel} no esta en este paquete ni en ${h.repo}`,
+        ).toBe(true);
+
+      // Y lo que se comprueba tiene que existir de verdad en el hermano. En local se
+      // mira al lado; en CI lo comprueba la pata del job `hermanos`, con el checkout
+      // delante, que es lo unico que puede dar por cierto.
+      const raizHermano = join(root, '..', h.repo);
+
+      for (const rel of delHermano)
+        expect(
+          existsSync(join(raizHermano, ...rel.split('/'))),
+          `${h.repo}: ${rel} no esta en el checkout, y el job lo dira alli`,
+        ).toBe(true);
+    }
+
+    // Y el reparto no puede ser "todo de un lado": si `lee` fuera solo de este
+    // paquete, el paso no miraria nada en el checkout de nadie, que es el verde que
+    // no mira nada con dos pasos de nombre.
+    expect(
+      hermanos.some((h) => delHermanoDe(h.lee, root).length > 0),
+      'ningun hermano declara rutas que haya que comprobar en su checkout',
+    ).toBe(true);
+  });
+
+  it('un hermano sin generadores propios LO DICE, no sale en verde callado', () => {
+    // ABDSharedCode no tiene ningun generador en su propio repo: los suyos estan en
+    // `ABDSharedAssets/scripts/`. Su lista queda vacia y el paso no tiene nada que
+    // mirar ahi. Lo que NO puede es decirlo con un "los 0 generadores estan": eso es
+    // un verde que no mira nada, que es la forma de fallo que motive todo esto.
+    const sinPropios = hermanos.filter((h) => delHermanoDe(h.lee, root).length === 0);
+
+    expect(sinPropios.length, 'ningun hermano se queda sin generadores propios que probar').toBeGreaterThan(0);
+
+    const paso = todosLosWorkflows
+      .find((w) => w.nombre === AUDIT)
+      .txt.split('\n      - name: ')
+      .find((b) => b.includes('LEIDOS'));
+
+    expect(paso).toMatch(/rel\.length === 0/);
+    expect(paso).toMatch(/no declara generadores PROPIOS/);
+  });
 });
 
 describe('el inventario es la unica fuente de los SHA', () => {
@@ -370,6 +453,39 @@ describe('el verificador se pone en rojo cuando el workflow deja de cuadrar', ()
     expect(errores.join('\n')).not.toBe('');
   });
 
+  it('una lista de generadores escrita a mano en el paso que la comprueba', () => {
+    // Es la segunda copia del mismo dato que el `ref:` a mano era, con la misma
+    // consecuencia: si un generador se mueve DENTRO de un hermano, la lista del
+    // workflow se queda vieja y el paso se pone verde mirando una ruta que ya no
+    // existe. Sin esta comprobacion el fallo sale tres jobs mas tarde, como un
+    // contrato que no se regenero.
+    const errores = erroresConMutacion(
+      AUDIT,
+      '          LEIDOS: ${{ toJSON(fromJSON(needs.pines.outputs.delHermano)[matrix.hermano.repo]) }}',
+      "          LEIDOS: '[\"Source/DSP/FxCatalogExport.cpp\"]'",
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('el filtro de que rutas son de quien NO esta en el workflow', () => {
+    // Va en el publicador (`delHermanoDe`), no en el `run:`. Si vuelve al workflow
+    // es una segunda copia, y esta vez de una REGLA y no de un dato: se desincroniza
+    // sin que ningun cambio de SHA la delate.
+    //
+    // Se comprueba sobre el TEXTO y no con el verificador a proposito: el
+    // verificador mira que la lista que le llega sea la del inventario, y una lista
+    // filtrada aqui puede coincidir con la del inventario sin que el filtro haya
+    // dejado de ser una copia. Esto es lo que mira si hay ALGO, no si encaja.
+    const paso = todosLosWorkflows
+      .find((w) => w.nombre === AUDIT)
+      .txt.split('\n      - name: ')
+      .find((b) => b.includes('LEIDOS'));
+
+    expect(paso, 'no se encuentra el paso que comprueba los generadores').toBeTruthy();
+    expect(paso).not.toMatch(/\.filter\(.*\^scripts/);
+  });
+
   it('un workflow sin el paso que publica los pines', () => {
     // Sin el, no hay de donde sacar el pin y el `fromJSON` no resuelve. Aqui
     // parece una modificacion pequena —borrar un paso— y deja el job entero
@@ -411,6 +527,7 @@ describe('el layout que necesitan los generadores', () => {
       inventario,
       pines,
       ficheros,
+      leidos,
       pasos: pasosReales(),
     });
 

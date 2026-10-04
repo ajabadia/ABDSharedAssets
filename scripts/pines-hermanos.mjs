@@ -25,11 +25,14 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * QUE PUBLICA, Y COMO
  *
- * Una lista `[{ "repo": ..., "sha": ... }, ...]` en el output `hermanos`, y un
+ * Una lista `[{ "repo": ..., "sha": ... }, ...]` en el output `hermanos`, un
  * objeto `{ "<repo>": ["<fichero>", ...] }` en `ficheros`, con lo que hay que
- * encontrar en cada uno. El job `pines` los expone como outputs de job y de ahi
- * los usa todo lo demas: la matriz de checkouts y la comprobacion de ficheros de
- * cada pata. Uno y otro salen de aqui y de ningun otro sitio.
+ * ENCONTRAR en cada uno, y un objeto igual en `delHermano`, con lo que ademas hay
+ * que COMPROBAR QUE ESTA: los generadores y ejecutables de cada hermano, ya sin
+ * los de este paquete, que en el checkout del hermano no estan y no tienen que
+ * estar. El job `pines` los expone como outputs de job y de ahi los usa todo lo
+ * demas: la matriz de checkouts y las dos comprobaciones de cada pata. Los tres
+ * salen de aqui y de ningun otro sitio.
  *
  * La lista y no un mapa a proposito, porque es lo que GitHub convierte en patas de
  * matriz: un array da una pata por elemento, y un objeto da UNA sola pata con
@@ -67,7 +70,7 @@
  * en el log de la corrida, que es donde se busca.
  */
 
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -141,6 +144,99 @@ export function hermanosDe(inventario) {
   return Object.entries(pines).map(([repo, sha]) => ({ repo, sha }));
 }
 
+/**
+ * El mapa `{ repo -> lee }` de los generadores y ficheros que el checkout tiene
+ * que traer, o de los que este paquete tiene que compilar.
+ *
+ * Va en el MISMO output y por el mismo motivo que `necesita`: son rutas, y una
+ * ruta escrita en el workflow es una segunda copia. Pero no es lo mismo que
+ * `necesita` y por eso no se mezcla: `necesita` es lo que el generador ABRE, y
+ * esto es lo que ademas hay que COMPROBAR QUE ESTA.
+ *
+ * Lo que se comprueba, y por que cada rama:
+ *
+ *   - Una ruta que NO empieza por `scripts/` es del HERMANO: tiene que existir en
+ *     el checkout que acaba de bajar el job `hermanos`. Es lo que se va a abrir o
+ *     lo que se va a compilar, y si la movieron de sitio el checkout llega sin
+ *     ella y el fallo sale mas tarde como "falta una cabecera", que es la forma
+ *     mas cara de enterarse.
+ *   - Una ruta que empieza por `scripts/` sin mayuscula es de ESTE paquete: la
+ *     comprueba el propio repo, no el checkout del hermano, y por eso no se pide
+ *     al job `hermanos` que la busque donde no esta.
+ *
+ * La distincion es por el nombre del directorio y no por un campo mas porque los
+ * tres repos tienen `Scripts/` con mayuscula y `scripts/` sin ella: es lo unico
+ * que los distingue sin ambiguedad.
+ *
+ * @param {object} inventario  El contenido de `siblings.json`, ya parseado.
+ * @returns {Record<string, string[]>}  `repo -> lee`, en el orden del fichero.
+ */
+export function leidosDe(inventario) {
+  const hermanos = inventario?.hermanos;
+
+  if (!Array.isArray(hermanos) || hermanos.length === 0)
+    throw new Error('siblings.json no declara ninguna lista de hermanos');
+
+  const leidos = {};
+
+  for (const h of hermanos) {
+    const repo = h?.repo;
+
+    if (typeof repo !== 'string' || repo === '')
+      throw new Error('siblings.json: hay un hermano sin "repo"');
+
+    if (!Array.isArray(h.lee) || h.lee.length === 0)
+      throw new Error(`siblings.json: ${repo} no declara que lee ("lee")`);
+
+    for (const rel of h.lee) {
+      if (typeof rel !== 'string' || rel === '')
+        throw new Error(`siblings.json: ${repo} tiene una entrada vacia en "lee"`);
+
+      if (/^[\\/]|[A-Z]:|\.\./.test(rel))
+        throw new Error(`siblings.json: ${repo} lee "${rel}", que no es una ruta relativa dentro de un repo`);
+    }
+
+    leidos[repo] = [...h.lee];
+  }
+
+  return leidos;
+}
+
+/**
+ * Las rutas de `lee` que tienen que existir en el CHECKOUT DEL HERMANO.
+ *
+ * Y no todas las de `lee`, que es justo el punto: `scripts/generate_s950_...` y
+ * `scripts/generate_modulation_contracts.py` son generadores de ESTE paquete, que
+ * existen en el arbol de trabajo y no en el checkout del hermano. Pedirle al job
+ * `hermanos` que las compruebe ahi seria un rojo siempre, y un rojo siempre es un
+ * rojo que nadie lee.
+ *
+ * LA REGLA ES DONDE EXISTE EL FICHERO, Y NO COMO SE LLAMA. Lo primero que se probo
+ * fue `!/^scripts\//`, por la costumbre de que aqui los generadores estan en
+ * `scripts/`. Y es falso: `ABDEep/scripts/registry_generator.js` y
+ * `ABDMS2000/Scripts/registry_generator.js` empiezan los dos por lo que parece la
+ * misma cosa y son generadores del HERMANO. Con ese filtro el job `hermanos` se
+ * comia dos generadores sin comprobar, que es el fallo que este paso existe para
+ * cazar.
+ *
+ * Asi que la particion es la unica que no se puede equivocar: si el fichero esta
+ * bajo este paquete, es de este paquete; si no esta, es del hermano, y que lo
+ * compruebe la pata con el checkout delante. Si no esta en ninguno de los dos, el
+ * job `hermanos` lo dice nombrando repo y ruta, que es donde se arregla.
+ *
+ * La particion va AQUI y no en el `run:` del workflow por la misma razon por la que
+ * los SHA no estan escritos en ningun `ref:`: una regla de que rutas son de quien,
+ * escrita en el workflow, es una segunda copia que se desincroniza sin que nadie lo
+ * note. Aqui la lee un `node --check`; alla, solo una carrera.
+ *
+ * @param {string[]} lee
+ * @param {string} raizPaquete  Donde esta este repo en disco.
+ * @returns {string[]}
+ */
+export function delHermanoDe(lee, raizPaquete = RAIZ_PAQUETE) {
+  return lee.filter((rel) => !existsSync(join(raizPaquete, ...rel.split('/'))));
+}
+
 /** El inventario tal cual esta en disco. */
 export function inventarioDe(ruta = join(RAIZ_PAQUETE, 'siblings.json')) {
   return JSON.parse(readFileSync(ruta, 'utf-8'));
@@ -202,6 +298,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const pines = pinesDe(inventario);
   const hermanos = hermanosDe(inventario);
   const ficheros = ficherosDe(inventario);
+  const leidos = leidosDe(inventario);
   const destino = process.env.GITHUB_OUTPUT;
 
   if (!destino)
@@ -214,6 +311,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   // principio de la linea.
   appendFileSync(destino, `hermanos=${JSON.stringify(hermanos)}\n`);
   appendFileSync(destino, `ficheros=${JSON.stringify(ficheros)}\n`);
+  appendFileSync(destino, `delHermano=${JSON.stringify(
+    Object.fromEntries(Object.entries(leidos).map(([repo, lee]) => [repo, delHermanoDe(lee)])),
+  )}\n`);
 
   console.log('::group::Pines de los hermanos, leidos de siblings.json');
   for (const [repo, sha] of Object.entries(pines))
