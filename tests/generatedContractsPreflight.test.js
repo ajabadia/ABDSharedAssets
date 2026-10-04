@@ -1364,6 +1364,62 @@ describe('el generador PRODUCE lo que dice, no solo existir', () => {
     ).toBe(false);
   });
 
+  // Generador que se ESCAPA de la arena y escribe en el `contracts/` de verdad,
+// por ruta absoluta. Ademas reescribe uno que ya existe, con el mismo contenido
+// pero con fecha de hoy: el caso que hace que alguien mire un `git status` y
+// piense que el contrato se ha editado.
+//
+// Los tres generadores de verdad NO pueden hacer esto —los tres resuelven sus
+// rutas desde `HERE`, que dentro de la arena es la arena—, asi que este test no
+// mira un fallo que exista hoy: mira que la red de seguridad que queda debajo de
+// la arena funciona, y que cuando un generador se sale dice QUE ficheros ha
+// tocado en vez de deshacerlo en silencio.
+  const GENERADOR_ESCAPISTA = [
+    'import os, sys',
+    'REAL = %s',
+    'def main():',
+    '    ruta = os.path.join(REAL, "s950_calibration.json")',
+    '    with open(ruta, encoding="utf-8") as fh:',
+    '        texto = fh.read()',
+    '    with open(ruta, "w", encoding="utf-8") as fh:',
+    '        fh.write(texto)',
+    '    with open(os.path.join(REAL, "CONTRATO_ESCAPADO.json"), "w", encoding="utf-8") as fh:',
+    '        fh.write(texto)',
+    '    print("al dia   s950_calibration.json            6 curvas")',
+    '    return 0',
+    'sys.exit(main())',
+  ].join('\n');
+
+  it('un generador que se escapa al arbol de verdad se dice y se deshace', () => {
+    const colado = join(root, 'contracts', 'CONTRATO_ESCAPADO.json');
+    const tocado = join(root, 'contracts', 's950_calibration.json');
+    const antes = [statSync(tocado).mtimeMs, readFileSync(tocado).toString('base64')];
+
+    const r = conGeneradorTemporal(
+      GENERADOR_ESCAPISTA.replace('%s', JSON.stringify(join(root, 'contracts'))),
+      () => generadorProduceLoQueDice({
+        script: 'scripts/generador_temporal.py',
+        salidas: ['s950_calibration.json'],
+      }),
+    );
+
+    // Que se diga. Un preflight que deshace un desastre sin decir nada parece
+    // sano, y la proxima vez que alguien mire el arbol ya no sabra nadie cuando
+    // aparecio. El mensaje tiene que NOMBRAR los ficheros, no solo decir que
+    // algo se toco.
+    const elQueLoDice = r.problemas.filter((p) => p.includes('contracts/ de verdad'));
+    expect(elQueLoDice.length, 'un generador que escribe en el arbol real no se ha dicho').toBe(1);
+    expect(elQueLoDice[0]).toContain('CONTRATO_ESCAPADO.json');
+    expect(elQueLoDice[0]).toContain('s950_calibration.json');
+
+    // Y que se deshaga: el colado fuera, y el reescrito con su contenido y su
+    // fecha de antes. Una fecha distinta es lo que hace que un `git status` diga
+    // que alguien toco un contrato.
+    expect(existsSync(colado), 'el preflight ha dejado el fichero colado en contracts/').toBe(false);
+    expect([statSync(tocado).mtimeMs, readFileSync(tocado).toString('base64')],
+      'el contrato reescrito no ha vuelto a ser el que era').toEqual(antes);
+  });
+
   it('los generadores de verdad producen todo lo que su catalogo declara', () => {
     // El caso bueno, y sobre el catalogo REAL. Es lo que hace que los dos tests
     // de arriba sean una prueba y no unaBroda: si aqui pasara con un

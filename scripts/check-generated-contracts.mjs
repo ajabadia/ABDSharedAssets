@@ -61,9 +61,9 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // La regla de cuarentena, desde el sitio unico donde vive. Se importa del
@@ -1275,8 +1275,17 @@ export function scriptsQueEmpiezanPor(man, prefijo) {
 // es un preflight del que nadie se fia la segunda vez que lo corre.
 
 /** Los ficheros de `contracts/` con su fecha de ultima modificacion. */
-function fechasDeContratos() {
-  const dir = join(root, 'contracts');
+/**
+ * Los ficheros de un directorio de contratos y cuando se tocaron por ultima vez.
+ *
+ * El parametro existe porque ahora hay DOS directorios de contratos: el de
+ * verdad, que no se debe tocar, y el de la arena, que es donde escribe el
+ * generador. Antes solo habia uno y por eso no lo necesitaba.
+ *
+ * @param {string} dir directorio a listar; por defecto, `contracts/` de verdad.
+ * @returns {Map<string, number>} nombre -> mtimeMs.
+ */
+function fechasDeContratos(dir = join(root, 'contracts')) {
   const fechas = new Map();
 
   if (!existsSync(dir))
@@ -1293,14 +1302,99 @@ function fechasDeContratos() {
 }
 
 /** Corre un generador SIN `--check`, para ver que ficheros toca de verdad. */
-function correrGenerador(script) {
-  const ruta = join(root, script);
+/**
+ * Montar una COPIA de este repo para correr dentro el generador.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POR QUE UNA COPIA Y NO UN PARAMETRO
+ *
+ * Los tres generadores resuelven sus rutas desde su propio fichero —`HERE =
+ * dirname(abspath(__file__))` en los tres— asi que no hay forma de decirles
+ * «escribe en otro sitio» sin tocar los tres, y tocar los tres para que el
+ * preflight no ensucie es cambiar los generadores por culpa del preflight.
+ *
+ * Lo que si se puede es ponerlos en un sitio donde ese «otro sitio» sea una
+ * copia. La arena tiene la MISMA forma que el repo: `scripts/` y `contracts/` de
+ * verdad, y los hermanos del monorepo apuntando a los de verdad. El generador no
+ * se entera de nada y escribe donde escribiria —que es justo lo que se quiere
+ * medir—.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POR QUE LOS HERMANOS SON ENLACES Y NO COPIAS
+ *
+ * Porque los generadores LEEN las tablas de los synths
+ * (`ABDSharedCode/SynthCore/S950PatchFields.h`, `ABDNeural/.../ModDestinationTable.h`,
+ * `ABDEep/WebUI/js/modmatrix_data.js`). Copiar esas tablas seria una foto: el dia
+ * que cambie una, la arena leeria la foto y el preflight compararia contra lo que
+ * el generador ve HOY en el codigo de verdad. Con un enlace la lectura es la de
+ * siempre, que es lo que hace que la comprobacion signifique algo.
+ *
+ * Y la lista de hermanos NO esta escrita en ningun sitio: se lee el directorio de
+ * al lado. Un repo nuevo queda enlazado sin que nadie tenga que acordarse de
+ * anadirlo aqui, que es como se queda viejo un catalogo de este tipo.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POR QUE ESTA EN `tmpdir()` Y NO DENTRO DEL REPO
+ *
+ * Porque los enlaces apuntan al monorepo, y el monorepo contiene este repo. Un
+ * enlace a si mismo metido dentro del arbol es un bucle para cualquier cosa que
+ * lo recorra —un `git status`, un indexador, un antivirus—, y eso si que puede
+ * colgar una maquina.
+ *
+ * @returns {{raiz: string, paquete: string, contratos: string}}
+ */
+function montarArena() {
+  const arena = mkdtempSync(join(tmpdir(), 'preflight-arena-'));
+  const paquete = basename(root);
+  const arenaPaquete = join(arena, paquete);
+
+  mkdirSync(arenaPaquete, { recursive: true });
+
+  // `preserveTimestamps` es el que importa y no es el de serie explicito: sin el,
+  // los ficheros de la arena tendrian fecha de AHORA, y la deteccion de «lo que
+  // el generador ha escrito» que compara fechas dejaria de funcionar —todo
+  // pareceria escrito—. Con el, se parece a como lo hacia el respaldo.
+  const copia = { recursive: true, preserveTimestamps: true };
+
+  cpSync(join(root, 'scripts'), join(arenaPaquete, 'scripts'), copia);
+  cpSync(join(root, 'contracts'), join(arenaPaquete, 'contracts'), copia);
+
+  const monorepo = dirname(root);
+
+  for (const nombre of readdirSync(monorepo)) {
+    if (nombre === paquete)
+      continue;
+
+    const origen = join(monorepo, nombre);
+    const est = lstatSync(origen);
+
+    if (!est.isDirectory() && !est.isSymbolicLink())
+      continue;
+
+    // 'junction' en Windows es un enlace de directorio que no necesita
+    // privilegios —a diferencia de un symlink— y fuera de Windows Node lo
+    // trata como un enlace normal. Asi que el mismo codigo funciona en la
+    // maquina de desarrollo y en el runner de Linux sin mirar la plataforma.
+    symlinkSync(origen, join(arena, nombre), 'junction');
+  }
+
+  return { raiz: arena, paquete: arenaPaquete, contratos: join(arenaPaquete, 'contracts') };
+}
+
+/**
+ * Correr el generador `script` con la raiz de `raiz`.
+ *
+ * @param {string} script ruta relativa dentro del repo, como `scripts/x.py`.
+ * @param {string} [raiz] donde se corre; por defecto, el repo de verdad.
+ */
+function correrGenerador(script, raiz = root) {
+  const ruta = join(raiz, script);
 
   if (!existsSync(ruta))
     return { codigo: 2, salida: '', colgado: false, noExiste: true };
 
   const r = spawnSync(PYTHON, [ruta], {
-    cwd: root,
+    cwd: raiz,
     encoding: 'utf-8',
     timeout: TIEMPO_MS,
     windowsHide: true,
@@ -1375,14 +1469,16 @@ function renombrar(desde, hasta) {
 export function generadorProduceLoQueDice(contrato) {
   const problemas = [];
   const copia = mkdtempSync(join(tmpdir(), 'preflight-gen-'));
-  const antes = fechasDeContratos();
+  const contratosReales = join(root, 'contracts');
+  const antes = fechasDeContratos(contratosReales);
   const respaldos = new Map();
+  let arena = null;
 
   // Respaldo ANTES de correr nada. Es lo que hace esta comprobacion destructiva
   // y por eso se hace con tanto cuidado: se copia el contrato entero a un sitio
   // fuera, y se restaura pase lo que pase.
-  for (const [nombre] of antes) {
-    const origen = join(root, 'contracts', nombre);
+  for (const [nombre, fecha] of antes) {
+    const origen = join(contratosReales, nombre);
     const copiaFichero = join(copia, nombre);
     // El modo se guarda aparte porque la restauracion va a terminar en un
     // `rename`, y un `rename` cambia el inodo: los permisos del temporal no se
@@ -1392,6 +1488,7 @@ export function generadorProduceLoQueDice(contrato) {
       copia: copiaFichero,
       bytes: readFileSync(origen),
       modo: lstatSync(origen).mode,
+      fecha,
     });
     writeFileSync(copiaFichero, respaldos.get(nombre).bytes);
   }
@@ -1399,7 +1496,15 @@ export function generadorProduceLoQueDice(contrato) {
   let r;
 
   try {
-    r = correrGenerador(contrato.script);
+    // El generador corre en la arena, y la comparacion tambien. `antes` son las
+    // fechas del `contracts/` DE VERDAD, que es el que hay que dejar como estaba;
+    // `antesArena` son las de la copia, que es donde el generador va a escribir
+    // y donde hay que mirar si ha escrito algo.
+    arena = montarArena();
+
+    const antesArena = fechasDeContratos(arena.contratos);
+
+    r = correrGenerador(contrato.script, arena.paquete);
 
     if (r.noExiste) {
       problemas.push(`${contrato.script}: el generador no existe`);
@@ -1411,7 +1516,7 @@ export function generadorProduceLoQueDice(contrato) {
       problemas.push(`${contrato.script}: al regenerar sale con ${r.codigo}, asi que no se puede comprobar que produzca lo que declara`);
     }
     else {
-      const despues = fechasDeContratos();
+      const despues = fechasDeContratos(arena.contratos);
 
     // Lo que el generador ha escrito son los ficheros NUEVOS mas los que han
     // cambiado de fecha. Un fichero que se regenera con el mismo contenido puede
@@ -1420,19 +1525,19 @@ export function generadorProduceLoQueDice(contrato) {
     const escritos = new Set();
 
     for (const [nombre, fecha] of despues) {
-      const previo = antes.get(nombre);
+      const previo = antesArena.get(nombre);
       const copiaPrevia = respaldos.get(nombre);
 
       const nuevo = (previo !== fecha)
         || (copiaPrevia !== undefined
-          && !readFileSync(join(root, 'contracts', nombre)).equals(copiaPrevia.bytes));
+          && !readFileSync(join(arena.contratos, nombre)).equals(copiaPrevia.bytes));
 
       if (nuevo)
         escritos.add(nombre);
     }
 
     for (const nombre of despues.keys())
-      if (!antes.has(nombre))
+      if (!antesArena.has(nombre))
         escritos.add(nombre);
 
     // 1. Lo declarado tiene que haberse escrito.
@@ -1467,35 +1572,59 @@ export function generadorProduceLoQueDice(contrato) {
     problemas.push(`${contrato.script}: al regenerar ha lanzado ${e.message}`);
   }
   finally {
-    // Se restaura SIEMPRE, tambien en verde. Y se restauran las fechas, que es
-    // lo que un `copyFileSync` no haria por si solo: si el contrato queda con
-    // la fecha de hoy, el siguiente que mire el arbol Cree que se acaba de
-    // cambiar sin que nadie lo haya cambiado.
+    // ─────────────────────────────────────────────────────────────────────
+    // EL GENERADOR HA CORRIDO EN LA ARENA, ASI QUE AQUI NO DEBERIA HABER NADA
+    // QUE RESTAURAR. Y «no deberia» no es «no va a pasar»: esto sigue siendo la
+    // red de seguridad para un generador que se escape —una ruta absoluta, un
+    // `../..` de mas— y que escriba en el arbol de verdad.
+    //
+    // Lo que cambia respecto a antes es que se RESTAURA SOLO LO QUE SE HA
+    // TOCADO, y ademas se DICE. Antes se reescribian los cuarenta contratos
+    // siempre, y un generador que escribiera en el arbol real se deshacia en
+    // silencio: un silencio asi es un fallo que no se ve hasta que alguien
+    // compara el contrato con el codigo del synth a mano.
+    // ─────────────────────────────────────────────────────────────────────
     let restaurado = true;
+    const tocados = [];
 
-    // Y se restaura MOVIENDO el temporal encima, no reescribiendo el contrato.
-    // La razon de que sea un `rename` y no un `writeFileSync` esta en `renombrar`:
-    // reescribir deja el fichero truncado un rato, y hay otro worker leyendo
-    // `contracts/` a la vez que esto.
-    //
-    // El temporal va en un directorio PROPIO, y eso no es una manera de escribir
-    // mas elegante, son dos exclusiones:
-    //
-    //   · No puede ir en `tmpdir()`: `rename` solo es atomico dentro del mismo
-    //     sistema de ficheros, y en Windows `tmpdir()` esta en `C:` mientras que
-    //     este repo vive en `D:`. Ahi el `rename` daria EXDEV, que es exactamente
-    //     la escritura no atomica que se viene a evitar.
-    //   · No puede ir dentro de `contracts/`: `fechasDeContratos()` lista TODO lo
-    //     que encuentra ahi sin filtrar nada, y un temporal se contaria como un
-    //     fichero mas que el generador ha escrito. Apareceria un problema que no
-    //     existe —«escribe X, que NO esta en sus salidas declaradas»— apuntando
-    //     a un fichero que el generador no ha escrito.
-    //
-    // En la raiz del repo si: ahi no enumera nadie, y `rmSync` se lleva el
-    // rastro en cuanto termina.
-    const dirTemporal = mkdtempSync(join(root, '.preflight-restaurar-'));
+    // Y la arena se borra pase lo que pase: si el generador se cuelga, el
+    // temporal se queda en el disco de por vida.
+    if (arena !== null)
+      rmSync(arena.raiz, { recursive: true, force: true });
 
-    for (const [nombre, { origen, bytes, modo }] of respaldos) {
+    // El directorio del temporal se crea solo si hay algo que restaurar: un
+    // preflight que no ha tocado nada no deja un directorio de mas en la raiz
+    // aunque se le olvide borrar.
+    let dirTemporal = null;
+
+    for (const [nombre, { origen, bytes, modo, fecha }] of respaldos) {
+      let intacto = false;
+
+      try {
+        intacto = existsSync(origen)
+          && lstatSync(origen).mtimeMs === fecha
+          && readFileSync(origen).equals(bytes);
+      }
+      catch (e) {
+        intacto = false;
+      }
+
+      // Intacto es el caso NORMAL, y no escribir nada en ese caso es parte del
+      // arreglo: restaurar «por si acaso» son cuarenta `rename` por generador
+      // sobre el arbol de verdad, y ese trabajo no hacia falta para nada.
+      if (intacto)
+        continue;
+
+      tocados.push(nombre);
+
+      // Y aqui se restaura MOVIENDO el temporal encima, no reescribiendo: la
+      // razon esta en `renombrar`. El temporal va en un directorio con punto
+      // en la raiz del repo porque `rename` solo es atomico dentro del mismo
+      // sistema de ficheros, y `tmpdir()` esta en `C:` mientras que el repo
+      // vive en `D:`.
+      if (dirTemporal === null)
+        dirTemporal = mkdtempSync(join(root, '.preflight-restaurar-'));
+
       const temporal = join(dirTemporal, nombre);
 
       try {
@@ -1508,33 +1637,55 @@ export function generadorProduceLoQueDice(contrato) {
       }
     }
 
-    rmSync(dirTemporal, { recursive: true, force: true });
+    if (dirTemporal !== null)
+      rmSync(dirTemporal, { recursive: true, force: true });
 
-    // Y se BORRA lo que el generador creo que no estaba. Sin esto, correr el
-    // preflight con `--comprobar-generadores` deja en `contracts/` ficheros que
-    // antes no estaban, y el siguiente que mire el arbol se encuentra un
-    // contrato nuevo que nadie ha decided tener. Restaurar los que ya existen no
-    // basta: hay que deshacer tambien lo que se anadio.
-    for (const nombre of readdirSync(join(root, 'contracts'))) {
+    // Y se BORRA lo que el generador haya creado en el arbol de verdad. Con la
+    // arena esto no deberia ocurrir —el generador escribe en su copia—, pero un
+    // generador que se escape por una ruta absoluta lo haria, y su fichero se
+    // quedaria en `contracts/` para siempre si nadie lo quita. Restaurar los que ya
+    // existen no basta: hay que deshacer tambien lo que se anadio.
+    for (const nombre of readdirSync(contratosReales)) {
       if (antes.has(nombre))
         continue;
 
+      tocados.push(nombre);
+
       try {
-        rmSync(join(root, 'contracts', nombre), { force: true });
+        rmSync(join(contratosReales, nombre), { force: true });
       }
       catch (e) {
         restaurado = false;
       }
     }
 
-    // Y las fechas tambien, para que el arbol quede EXACTAMENTE como estaba.
-    for (const [nombre, mtime] of antes) {
+    // Y las fechas de los que se han restaurado, para que el arbol quede
+    // EXACTAMENTE como estaba. Solo de esos: los demas no se han escrito, y su
+    // fecha sigue siendo la que tenian.
+    for (const nombre of tocados) {
+      const respaldo = respaldos.get(nombre);
+
+      if (respaldo === undefined)
+        continue;
+
       try {
-        utimesSync(join(root, 'contracts', nombre), mtime / 1000, mtime / 1000);
+        utimesSync(respaldo.origen, respaldo.fecha / 1000, respaldo.fecha / 1000);
       }
       catch (e) {
         restaurado = false;
       }
+    }
+
+    // Y si se ha tocado algo, se dice POR QUE se ha tocado. Un preflight que
+    // deshace un desastre en silencio parece sano, y la proxima vez que se
+    // compruebe el arbol ya no sabra nadie cuando aparecio.
+    if (tocados.length > 0) {
+      problemas.push(
+        `${contrato.script} ha escrito en el contracts/ de verdad `
+        + `(${[...new Set(tocados)].sort().join(', ')}), que es justo lo que la arena `
+        + 'existe para evitar. Se ha restaurado, pero un generador que escriba en el '
+        + 'arbol real no se puede comprobar sin ensuciarlo.'
+      );
     }
 
     rmSync(copia, { recursive: true, force: true });
