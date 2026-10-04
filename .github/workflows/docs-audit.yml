@@ -47,6 +47,37 @@ jobs:
           path: ABDSharedAssets
           fetch-depth: 1
 
+# ── LOS PINES, LEIDOS DEL INVENTARIO ──
+      #
+      # El SHA de cada hermano vive en `siblings.json` y en NINGUN otro sitio de
+      # este repositorio. Este paso lo lee y lo publica, y los cuatro checkout de
+      # abajo lo toman de aqui con `fromJSON`.
+      #
+      # Antes cada SHA estaba escrito dos veces —este fichero y `siblings.json`— y
+      # dos veces es donde se desincroniza: se sube en un sitio al cambiar una
+      # cabecera, se olvida el otro, y el checkout baja el codigo nuevo mientras
+      # el fallback se queda en el commit viejo. Cuando eso llega a notarse, el
+      # fallo se presenta como "falta una cabecera", que no es lo que paso. Ya ha
+      # pasado una vez.
+      #
+      # Por eso va DESPUES del checkout de este repo y no antes: lo que lee es
+      # `siblings.json`, del checkout de arriba. El script solo necesita `node`,
+      # que el runner trae de serie, asi que no espera al "Setup Node.js" de mas
+      # abajo: los checkout tienen que salir antes de esa linea de todos modos.
+      #
+      # Publica un mapa `repo -> sha` en el output `shas`, y los `ref:` lo toman
+      # POR CLAVE. Si fuese por indice, reordenar `siblings.json` cambiaria en
+      # silencio que repo baja cada paso, y un checkout del repositorio equivocado
+      # es de las cosas mas caras de diagnosticar en un workflow.
+      #
+      # El paso falla si el inventario no esta, no se parsea, o si un hermano llega
+      # sin SHA de 40 hex. Es que un `ref:` vacio en un `actions/checkout` no es un
+      # error: es un checkout de la rama por defecto, justo lo que el diseno de
+      # los pines prohibe.
+      - name: Pins de los hermanos (la fuente es siblings.json)
+        id: pins
+        run: node scripts/pines-hermanos.mjs
+
       # ── LOS HERMANOS, Y POR QUE VAN FIJADOS A UN SHA ──
       #
       # No son opcionales. Los tres generadores de `contracts/` leen cabeceras de
@@ -56,18 +87,25 @@ jobs:
       # mensaje seria exactamente el que un contrato desfasado no merece.
       #
       # Un SHA y no una rama, por la razon de siempre: `main` aqui se moveria
-      # sola y un PR pasaria en verde con los contratos al dia contra el codigo
-      # de hoy y en rojo contra el de dentro de dos dias, sin que nadie haya
+      # sola y un PR pasaria en verde con los contratos al dia contra el codigo de
+      # hoy y en rojo contra el de dentro de dos dias, sin que nadie haya
       # tocado nada. Fijado, el fallo es siempre el mismo y siempre este.
       #
-      # Cuando cambie una cabecera de estos repos, hay que subir el SHA de aqui
-      # Y regenerar los contratos en el mismo commit. Ese es el precio de que el
-      # preflight signifique algo, y es un precio pagado una vez por cambio.
+      # El SHA NO esta escrito en estas cuatro lineas, y no es descuido: sale del
+      # paso de arriba. Para cambiarlo se edita `siblings.json` y se regeneran los
+      # contratos en el mismo commit; no queda un segundo sitio que se pueda
+      # quedar viejo por debajo.
+      #
+      # Los cuatro pasos siguen siendo cuatro, y visibles, a proposito: lo que hay
+      # que mirar cuando algo se pone rojo es que checkout bajo el repo, y un
+      # `fromJSON` en un unico paso para los cuatro no lo enseña. Lo que se pierde
+      # —el SHA a la vista en el propio paso— lo devuelve el grupo que imprime el
+      # paso de los pines.
       - name: Checkout ABDSharedCode (Immutable Sibling Ref)
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDSharedCode
-          ref: 3d4006a0db07771d6d39ee225f073a0ce8d3b4a1
+          ref: ${{ fromJSON(steps.pins.outputs.shas)['ABDSharedCode'] }}
           path: ABDSharedCode
           fetch-depth: 1
 
@@ -75,7 +113,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDEep
-          ref: f32163f83986dcf6780cf847b5e45223730174ea
+          ref: ${{ fromJSON(steps.pins.outputs.shas)['ABDEep'] }}
           path: ABDEep
           fetch-depth: 1
 
@@ -83,7 +121,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDNeural
-          ref: d4a64294d39e8e89b5ab654feb96f08455d01f97
+          ref: ${{ fromJSON(steps.pins.outputs.shas)['ABDNeural'] }}
           path: ABDNeural
           fetch-depth: 1
 
@@ -91,7 +129,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDMS2000
-          ref: 592323f84e13ab517e8c60e0a86ab41057bbf5fe
+          ref: ${{ fromJSON(steps.pins.outputs.shas)['ABDMS2000'] }}
           path: ABDMS2000
           fetch-depth: 1
 
