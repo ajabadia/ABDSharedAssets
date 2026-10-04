@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDSharedCode
-          ref: 8113c8b02d2de3f2608632cb94488bed46ebc0bd
+          ref: 3d4006a0db07771d6d39ee225f073a0ce8d3b4a1
           path: ABDSharedCode
           fetch-depth: 1
 
@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDEep
-          ref: 9accfd663a20e051efc3a2de605a4cffb557e9a2
+          ref: f32163f83986dcf6780cf847b5e45223730174ea
           path: ABDEep
           fetch-depth: 1
 
@@ -83,7 +83,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDNeural
-          ref: 157da1b06abcc0c3706899423d5ae2f4fae35b3b
+          ref: d4a64294d39e8e89b5ab654feb96f08455d01f97
           path: ABDNeural
           fetch-depth: 1
 
@@ -91,7 +91,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: ajabadia/ABDMS2000
-          ref: b954062457f230257f4a65ff5ec12aaf7e30e377
+          ref: 592323f84e13ab517e8c60e0a86ab41057bbf5fe
           path: ABDMS2000
           fetch-depth: 1
 
