@@ -18,34 +18,35 @@
  *
  * La solucion no es mirar mas de cerca el mismo par de sitios, sino dejar de
  * tenerlos. Ahora `siblings.json` es la fuente, `scripts/pines-hermanos.mjs` la lee
- * y publica un output `shas`, y cada `ref:` del workflow se calcula con
- * `fromJSON` sobre ese output.
+ * y publica los outputs `hermanos` y `ficheros`, y el workflow los usa con
+ * `fromJSON`: una matriz de checkouts y la comprobacion de ficheros de cada pata.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * LO QUE ESTE TEST HACE, Y POR QUE NO BASTA CON MIRAR LA CADENA
  *
  * Con `fromJSON` en el `ref:` ya no hay ningun SHA de 40 hex en el workflow, asi
- * que el test viejo —que buscaba el SHA dentro del bloque del checkout— daria
- * CERO checkouts y pasaria en verde sin comprobar nada. Un verde que no mira nada
- * es peor que un rojo, y por eso aqui no se sustituye la comprobacion por una
- * expresion: se EVALUA.
+ * que un test que buscara el SHA dentro del bloque del checkout daria CERO
+ * checkouts y pasaria en verde sin comprobar nada. Un verde que no mira nada es
+ * peor que un rojo, y por eso aqui no se sustituye la comprobacion por una
+ * expresion: se EJECUTA la comprobacion de verdad.
  *
- * Se evaluan las expresiones del workflow contra el mismo mapa de pines que
- * publica el script real —importado, no reimplementado—, y se compara lo que sale
- * con lo que dice `siblings.json`. Si alguien escribe `['ABDNeura1']` con una `l`
- * de menos, el `fromJSON` de GitHub devuelve vacio y el `actions/checkout` baja la
- * RAMA por defecto sin quejarse. Aqui eso sale en rojo, nombrando el repo.
+ * Se importa `verificar()` de `scripts/verificar-pines-workflow.mjs` —el mismo
+ * script que corre el job `pines`— y se le pasan los workflows de verdad, con los
+ * outputs REALES de `pines-hermanos.mjs`, no una reimplementacion. Si el verificador
+ * se queda ciego, este test se queda ciego con el, que es a proposito: la garantia
+ * de que el workflow baja el pin no la da este test, la da el verificador, y un
+ * test con otra copia de la logica solo anadiria el sitio donde puede mentir.
  *
- * Y el otro sentido, que es el que de verdad cierra la puerta: NINGUN workflow
- * puede volver a escribir un SHA de 40 hex. Ese es el test que hace imposible la
- * contradiccion, en vez de detectarla cuando ya ha pasado.
+ * Y cada mutacion del workflow se pasa por el verificador, para que se vea que la
+ * puerta se cierra y no solo que existe. Un test que solo mira el caso bueno
+ * comprueba que el codigo se ejecuta, no que verifique.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * Y LO QUE ESTE TEST NO HACE
  *
  * No comprueba que los SHA existan en GitHub, ni que el commit tenga lo que la
- * rama dice. Eso lo comprueba `scripts/fetch-missing-siblings.mjs` en cada
- * corrida, y sale con 2 diciendo cual, que es donde se enteran de verdad.
+ * rama dice. Eso lo comprueba el job `hermanos`, una pata por hermano, en un runner
+ * de verdad, y sale con 1 diciendo cual.
  *
  * Aqui se mira la ESTRUCTURA y la CONEXION: que el inventario tenga lo que tiene
  * que tener, que el workflow lo lea en vez de escribirlo, y que lo que sale de la
@@ -58,7 +59,8 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { inventarioDe, pinesDe } from '../scripts/pines-hermanos.mjs';
+import { ficherosDe, hermanosDe, inventarioDe, pinesDe } from '../scripts/pines-hermanos.mjs';
+import { pasosReales, verificar } from '../scripts/verificar-pines-workflow.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -70,36 +72,51 @@ const FALLBACK = join(root, 'scripts', 'fetch-missing-siblings.mjs');
 const inventario = inventarioDe(PINES);
 const hermanos = inventario.hermanos ?? [];
 const pines = pinesDe(inventario);
-
-/** La expresion de un `ref:` que toma su SHA del output del paso de los pines. */
-const EXPRESION = /^\$\{\{\s*fromJSON\(\s*steps\.pins\.outputs\.shas\s*\)\s*\[\s*['"]?([A-Za-z0-9_-]+)['"]?\s*\]\s*\}\}$/;
-
-/** Los checkout del workflow, con su `path:` y su `ref:` tal cual aparecen. */
-function checkoutsDe(txt) {
-  const out = [];
-
-  // Se lee como texto y no con un parser de YAML a proposito: `js-yaml` no es
-  // dependencia de este paquete, y lo que hace falta son dos lineas contiguas.
-  for (const bloque of txt.split(/\n\s+- name:/).slice(1)) {
-    const path = /\n\s+path:\s*(\S+)/.exec(bloque)?.[1];
-    // El `ref:` se lleva hasta el FIN DE LINEA y no un `\S+`: ahora es una
-    // expresion con espacios (`${{ fromJSON(...)['ABDEep'] }}`) y un `\S+` solo
-    // leeria el `${{`, que ademas empieza por `$` y es justo el caso raro que
-    // este test tiene que saber distinguir de un SHA escrito a mano.
-    const ref = /\n\s+ref:\s*(.+)/.exec(bloque)?.[1]?.trim();
-    if (path && ref) out.push({ path, ref });
-  }
-
-  return out;
-}
+const ficheros = ficherosDe(inventario);
 
 const todosLosWorkflows = readdirSync(WORKFLOWS)
   .filter((n) => n.endsWith('.yml') || n.endsWith('.yaml'))
   .map((n) => ({ nombre: n, txt: readFileSync(join(WORKFLOWS, n), 'utf-8') }));
 
-const workflowsConCheckout = todosLosWorkflows.filter(
+const workflowsConHermanos = todosLosWorkflows.filter(
   (w) => w.txt.includes('fetch-missing-siblings') || w.txt.includes('siblings.json'),
 );
+
+/**
+ * Lo que el verificador dice de un conjunto de workflows.
+ *
+ * @param {Array<{nombre: string, txt: string}>} workflows
+ * @returns {string[]}  Los errores, ya en texto.
+ */
+function erroresDe(workflows) {
+  return verificar({ workflows, inventario, pines, ficheros, pasos: pasosReales() }).errores;
+}
+
+/** El verificador sobre los workflows de verdad. */
+const erroresReales = erroresDe(todosLosWorkflows);
+
+/**
+ * El mismo verificador sobre el workflow de verdad con un trozo cambiado.
+ *
+ * @param {string} nombre
+ * @param {string} viejo
+ * @param {string} nuevo
+ * @returns {string[]}
+ */
+function erroresConMutacion(nombre, viejo, nuevo) {
+  const original = todosLosWorkflows.find((w) => w.nombre === nombre);
+
+  expect(original, `no hay ningun workflow llamado ${nombre}`).toBeTruthy();
+  expect(original.txt, `${nombre}: el texto a mutar no esta`).toContain(viejo);
+
+  const mutado = todosLosWorkflows.map((w) => (w.nombre === nombre
+    ? { nombre: w.nombre, txt: w.txt.replace(viejo, nuevo) }
+    : w));
+
+  return erroresDe(mutado);
+}
+
+const AUDIT = 'docs-audit.yml';
 
 describe('el inventario de hermanos', () => {
   it('esta y se lee', () => {
@@ -110,7 +127,7 @@ describe('el inventario de hermanos', () => {
 
   it('cada hermano tiene repo, SHA, y el fichero que se le va a abrir', () => {
     // El `necesita` no es un test de vida del repo: es lo que permite al
-    // fallback preguntar "¿esta esto?" en vez de "¿existe este directorio?",
+    // checkout preguntar "¿esta esto?" en vez de "¿existe este directorio?",
     // que daria presente un clon a medias.
     for (const h of hermanos) {
       expect(h.repo, 'falta repo').toBeTruthy();
@@ -124,7 +141,7 @@ describe('el inventario de hermanos', () => {
   it('cada generador que lee un hermano esta declarado', () => {
     // El otro sentido del inventario: un generador nuevo lee un repo nuevo, y si
     // no aparece aqui el fallback no lo baja y el preflight dice "no he podido
-    // comprobar" contra un hermano que nadie hatraido. El fallo se lee como si
+    // comprobar" contra un hermano que nadie ha traido. El fallo se lee como si
     // fuera del contrato, y es de la lista.
     const declarados = new Set(hermanos.flatMap((h) => h.lee ?? []));
 
@@ -179,8 +196,8 @@ describe('el inventario no se puede publicar si no sirve', () => {
   });
 
   it('un repo que no sirve como clave de expresion no se publica', () => {
-    // Con un espacio o unas comillas, el `fromJSON(...)['<repo>']` del workflow no
-    // se puede escribir. Aqui se avisa, que es donde se puede arreglar.
+    // Con un espacio o unas comillas, el `matrix.hermano.repo` del workflow no se
+    // puede escribir. Aqui se avisa, que es donde se puede arreglar.
     expect(() => pinesDe({ hermanos: [{ repo: "ABD'Neural", sha: 'a'.repeat(40) }] })).toThrow(/ABD'Neural/);
   });
 
@@ -189,9 +206,42 @@ describe('el inventario no se puede publicar si no sirve', () => {
     expect(() => pinesDe({})).toThrow();
   });
 
+  it('un hermano sin ficheros que abrir no se publica', () => {
+    // Una lista vacia haria que la comprobacion del checkout pasara sin mirar nada,
+    // que es el verde que no mira nada.
+    expect(() => ficherosDe({ hermanos: [{ repo: 'ABDEep', sha: 'a'.repeat(40) }] })).toThrow(/ABDEep/);
+    expect(() => ficherosDe({ hermanos: [{ repo: 'ABDEep', sha: 'a'.repeat(40), necesita: [] }] })).toThrow(/ABDEep/);
+  });
+
+  it('un fichero que se sale del repo no se publica', () => {
+    const base = { repo: 'ABDEep', sha: 'a'.repeat(40) };
+
+    expect(() => ficherosDe({ hermanos: [{ ...base, necesita: ['/etc/passwd'] }] })).toThrow(/passwd/);
+    expect(() => ficherosDe({ hermanos: [{ ...base, necesita: ['../ABDEep/x.h'] }] })).toThrow(/x\.h/);
+  });
+
   it('el inventario real si se publica, con un SHA por repo', () => {
     expect(Object.keys(pines)).toEqual(hermanos.map((h) => h.repo));
     for (const [repo, sha] of Object.entries(pines)) expect(sha, repo).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it('la lista que se publica es una pata por hermano, en el orden del fichero', () => {
+    // Y aqui esta la razon de que el output sea una LISTA y no un mapa, que parece lo
+    // contrario y no lo es: `strategy.matrix` convierte un array en una pata por
+    // elemento, y un objeto en UNA pata sola. Un `fromJSON` de `{repo: sha}` daria un
+    // unico `matrix.hermano` con todos los repos dentro, `matrix.hermano.repo` no
+    // existiria, y el job bajaria el primer repo cuatro veces.
+    const lista = hermanosDe(inventario);
+
+    expect(lista).toHaveLength(hermanos.length);
+    expect(lista.map((h) => h.repo)).toEqual(hermanos.map((h) => h.repo));
+    for (const h of lista) expect(h.sha, h.repo).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it('la lista de ficheros que se publica es la del inventario', () => {
+    expect(ficheros).toEqual(
+      Object.fromEntries(hermanos.map((h) => [h.repo, [...h.necesita]])),
+    );
   });
 });
 
@@ -211,53 +261,11 @@ describe('el inventario es la unica fuente de los SHA', () => {
     }
   });
 
-  it('cada hermano del inventario se baja con el SHA que dice el inventario', () => {
-    // Se EVALUA la expresion del `ref:` contra el mapa que publica el script real,
-    // en vez de buscar el SHA con una regex. Una clave mal escrita —una `l` de
-    // menos— daria `undefined` en el `fromJSON` de GitHub y el checkout bajaria la
-    // rama por defecto sin decir nada; aqui sale en rojo nombrando el repo.
-    const problemas = [];
-
-    for (const w of workflowsConCheckout) {
-      const bajados = new Map(checkoutsDe(w.txt).map((c) => [c.path, c.ref]));
-
-      for (const h of hermanos) {
-        const ref = bajados.get(h.repo);
-
-        if (ref === undefined) {
-          problemas.push(`${w.nombre}: ${h.repo} esta en siblings.json y no se descarga`);
-          continue;
-        }
-
-        const clave = EXPRESION.exec(ref)?.[1];
-
-        if (clave === undefined) {
-          problemas.push(`${w.nombre}: el checkout de ${h.repo} no pide su pin a siblings.json (ref: ${ref})`);
-          continue;
-        }
-
-        if (clave !== h.repo)
-          problemas.push(`${w.nombre}: el checkout de ${h.repo} pide el pin de "${clave}"`);
-
-        // El valor que GitHub resolveria de verdad: el `fromJSON` sobre el output
-        // del paso, por clave.
-        const resuelto = pines[clave];
-
-        if (resuelto === undefined)
-          problemas.push(`${w.nombre}: ${clave} no esta en siblings.json, asi que su fromJSON da vacio y el checkout baja la rama por defecto`);
-        else if (resuelto !== h.sha)
-          problemas.push(`${w.nombre}: ${h.repo} baja ${resuelto.slice(0, 8)} y el inventario dice ${h.sha.slice(0, 8)}`);
-      }
-    }
-
-    expect(problemas.join('\n')).toBe('');
-  });
-
-  it('el checkout de un hermano se pide por clave, no por su posicion', () => {
-    // Los cuatro `ref:` van por clave y no por indice a proposito. Si alguien los
-    // pasa a `fromJSON(...)[0]`, `fromJSON(...)[1]`, reordenar `siblings.json`
-    // cambiaria en silencio que repo baja cada paso, y un checkout del repositorio
-    // equivocado no se parece a nada que se pueda leer en el log.
+  it('ningun checkout pide su pin por posicion', () => {
+    // Los cuatro repos se piden por NOMBRE dentro de la matriz. Si alguien pasa la
+    // matriz a `fromJSON(...)[0]`, reordenar `siblings.json` cambiaria en silencio
+    // que repo baja cada pata, y un checkout del repositorio equivocado no se
+    // parece a nada que se pueda leer en el log.
     const posicionales = todosLosWorkflows.flatMap((w) =>
       [...w.txt.matchAll(/fromJSON\([^)]*\)\s*\[\s*\d+\s*\]/g)].map((m) => `${w.nombre}: ${m[0]}`),
     );
@@ -265,38 +273,124 @@ describe('el inventario es la unica fuente de los SHA', () => {
     expect(posicionales.join('\n')).toBe('');
   });
 
-  it('los pines se publican antes de que los checkout los usen', () => {
-    // `actions/checkout` no lee ficheros: solo ve el output de un paso ANTERIOR.
-    // Con el paso de los pines despues de los checkout, cada `ref:` se quedaria
-    // vacio, y vacio en un checkout es la rama por defecto.
-    for (const w of workflowsConCheckout) {
-      const pines_ = w.txt.indexOf('id: pins');
-      const primerRef = w.txt.indexOf('ref: ${{');
+  it('el verificador da en verde el workflow de verdad', () => {
+    // El mismo script que corre el job `pines`, con los mismos datos: los outputs
+    // REALES de `pines-hermanos.mjs`, leidos de un `GITHUB_OUTPUT` de mentira.
+    // Si aqui sale un error, el workflow bajaria un repo que el inventario no
+    // declara, o bajaria la rama por defecto, y lo haria en silencio.
+    expect(erroresReales.join('\n')).toBe('');
+  });
+});
 
-      expect(pines_, `${w.nombre}: no hay ningun paso que publique los pines`).toBeGreaterThan(-1);
+describe('el verificador se pone en rojo cuando el workflow deja de cuadrar', () => {
+  // Cada caso es una forma de que el checkout baje la RAMA POR DEFECTO, que no es un
+  // error en el runner: el paso se pone verde y baja el codigo de hoy en vez del de
+  // ayer. Todas se probaron tambien contra el workflow de verdad, mutandolo en
+  // disco; aqui se muta en memoria, que es lo mismo sin dejar el fichero a medias.
 
-      if (primerRef === -1) continue;
+  it('un SHA escrito a mano en el ref', () => {
+    const errores = erroresConMutacion(
+      AUDIT,
+      '          ref: ${{ matrix.hermano.sha }}',
+      `          ref: ${pines.ABDSharedCode}`,
+    );
 
-      expect(
-        pines_ < primerRef,
-        `${w.nombre}: el paso que publica los pines va DESPUES del checkout que los usa`,
-      ).toBe(true);
-    }
-
-    for (const w of workflowsConCheckout) {
-      expect(
-        /id:\s*pins[\s\S]{0,200}pines-hermanos\.mjs/.test(w.txt),
-        `${w.nombre}: el paso pins no es el que lee siblings.json`,
-      ).toBe(true);
-    }
+    expect(errores.join('\n')).not.toBe('');
   });
 
+  it('una matriz con un objeto en vez de una lista', () => {
+    // El mapa `ficheros` es un objeto: una pata sola con todos los repos dentro, y
+    // `matrix.hermano.repo` no existe. El job bajaria el primer repo una vez.
+    const errores = erroresConMutacion(
+      AUDIT,
+      '        hermano: ${{ fromJSON(needs.pines.outputs.hermanos) }}',
+      '        hermano: ${{ fromJSON(needs.pines.outputs.ficheros) }}',
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('una matriz que coge un indice en vez de la dimension', () => {
+    const errores = erroresConMutacion(
+      AUDIT,
+      '        hermano: ${{ fromJSON(needs.pines.outputs.hermanos) }}',
+      '        hermano: ${{ fromJSON(needs.pines.outputs.hermanos)[0] }}',
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('un ref que lee una clave que no existe', () => {
+    const errores = erroresConMutacion(
+      AUDIT,
+      '          ref: ${{ matrix.hermano.sha }}',
+      '          ref: ${{ matrix.hermano.shaXX }}',
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('la lista de ficheros escrita a mano en el paso que la comprueba', () => {
+    // Esa lista es un dato del inventario. Escrita aqui seria la segunda copia, y
+    // desincronizada por el mismo motivo que el SHA: el generador abre un fichero
+    // nuevo, el inventario lo lista, y la lista del workflow sigue sin el.
+    const errores = erroresConMutacion(
+      AUDIT,
+      '          NECESITA: ${{ toJSON(fromJSON(needs.pines.outputs.ficheros)[matrix.hermano.repo]) }}',
+      "          NECESITA: '[\"uno.h\"]'",
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('una matriz que no baja a ningun hermano', () => {
+    const errores = erroresConMutacion(
+      AUDIT,
+      [
+        '        hermano: ${{ fromJSON(needs.pines.outputs.hermanos) }}',
+        '',
+        '    steps:',
+        '      - name: Checkout ${{ matrix.hermano.repo }} (Immutable Sibling Ref)',
+        '        uses: actions/checkout@v7',
+        '        with:',
+        '          repository: ajabadia/${{ matrix.hermano.repo }}',
+        '          ref: ${{ matrix.hermano.sha }}',
+        '          path: ${{ matrix.hermano.repo }}',
+        '          fetch-depth: 1',
+      ].join('\n'),
+      [
+        '        hermano: ${{ fromJSON(needs.pines.outputs.hermanos) }}',
+        '',
+        '    steps:',
+        '      - name: Solo el aviso',
+        '        run: echo nada que bajar',
+      ].join('\n'),
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+
+  it('un workflow sin el paso que publica los pines', () => {
+    // Sin el, no hay de donde sacar el pin y el `fromJSON` no resuelve. Aqui
+    // parece una modificacion pequena —borrar un paso— y deja el job entero
+    // bajando la rama por defecto sin que ningun paso se ponga rojo.
+    const errores = erroresConMutacion(
+      AUDIT,
+      '        run: node scripts/pines-hermanos.mjs',
+      '        run: echo sin pines',
+    );
+
+    expect(errores.join('\n')).not.toBe('');
+  });
+});
+
+describe('el layout que necesitan los generadores', () => {
   it('el workflow baja tambien al propio repo al nivel de los hermanos', () => {
     // Los generadores buscan `<raiz>/<repo>`, y la raiz es la carpeta hermana de
     // ESTE paquete. Si el checkout de ABDSharedAssets se queda en la raiz del
     // workspace, los generadores calculan una raiz de mas y no encuentran nada:
     // el preflight daria 2 con los cuatro hermanos descargados a la vista.
-    for (const w of workflowsConCheckout) {
+    for (const w of workflowsConHermanos) {
       expect(
         /path:\s*ABDSharedAssets/.test(w.txt),
         `${w.nombre}: ABDSharedAssets no se descarga en ABDSharedAssets/`,
@@ -308,19 +402,19 @@ describe('el inventario es la unica fuente de los SHA', () => {
     }
   });
 
-  it('el fallback se ejecuta aunque un checkout no llegue a correr', () => {
-    // `if: always()` es lo unico que hace que la red sirva: sin el, el paso se
-    // salta junto con el checkout que fallo, que es justo cuando hace falta.
-    for (const w of workflowsConCheckout) {
-      const paso = w.txt
-        .split(/\n\s+- name:/)
-        .find((b) => b.includes('fetch-missing-siblings.mjs'));
+  it('el job que corre los generadores depende de la puerta que baja los hermanos', () => {
+    // Los generadores necesitan los cuatro hermanos en SU workspace, y en GitHub un
+    // job es un workspace. Por eso el job `audit` no los baja y depende del que si.
+    // Si el `needs` se cae, `audit` correria con lo que hubiera en el disco.
+    const { errores, lineas } = verificar({
+      workflows: todosLosWorkflows,
+      inventario,
+      pines,
+      ficheros,
+      pasos: pasosReales(),
+    });
 
-      expect(paso, `${w.nombre}: el paso del fallback no se encuentra`).toBeTruthy();
-      expect(
-        /if:\s*always\(\)/.test(paso),
-        `${w.nombre}: el fallback no lleva if: always(), asi que no corre si un checkout falla`,
-      ).toBe(true);
-    }
+    expect(errores.join('\n')).toBe('');
+    expect(lineas.join('\n')).toMatch(/Pines comprobados: 4 de 4 hermanos/);
   });
 });

@@ -408,17 +408,23 @@ export const GENERADOS_FUERA = [
     //
     // MEDIDO, y es el motivo de que esta entrada sea un ROJO DE CI y no solo una
     // mejora del preflight local. Los tres guards siguen SIN COMMITEAR en sus
-    // repos (`git log` sale vacio en los tres), y `docs-audit.yml` clona los
-    // hermanos con un SHA FIJADO, no con `main`. Con el estado de ahora, el
-    // checkout de CI llega al SHA fijado SIN `guardasDeEscritura.test.js`, el
-    // `--check` responde `DESFASADO - no existe` y sale con 1.
+    // repos (`git log` sale vacio en los tres), y el job `hermanos` de
+    // `docs-audit.yml` baja los hermanos al SHA que dice `siblings.json`, no con
+    // `main`. Con el estado de ahora, el checkout de CI llega al SHA fijado SIN
+    // `guardasDeEscritura.test.js`, el `--check` responde `DESFASADO - no existe` y
+    // sale con 1.
     //
     // O sea: esta entrada da por hecho que los tres guards estan commiteados en
-    // sus repos Y que los SHA de `docs-audit.yml` los incluyen. Para que el
+    // sus repos Y que los SHA de `siblings.json` los incluyen. Para que el
     // preflight de CI vuelva a verde hacen falta las dos mitades, en este
     // orden: commitear el guard en ABDEep, ABDMS2000 y ABDNeural; despues subir
-    // los tres SHA de `docs-audit.yml` a un commit que ya los contenga. Si se
+    // en `siblings.json` el SHA de cada uno a un commit que ya lo contenga. Si se
     // sube el SHA sin el commit, el rojo es el mismo pero con otro motivo.
+    //
+    // Y desde el workflow con matriz, el SHA que baja una pata es el que sale del
+    // output `hermanos`, y ese output lo publica `scripts/pines-hermanos.mjs` desde
+    // `siblings.json`. Los `ref:` ya no estan escritos en ningun sitio: no hay un
+    // segundo sitio que se pueda quedar viejo.
     script: 'scripts/generar-guardas-escritura.mjs',
     scriptNpm: 'check:guardas',
     salidas: [

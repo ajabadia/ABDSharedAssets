@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * EL CI DE ESTE PAQUETE, EN LOCAL. Monta el layout del monorepo y corre los
- * diecisiete pasos del job de `docs-audit.yml`, en orden y con sus condiciones.
+ * dieciocho pasos de los jobs `pines` y `audit` de `docs-audit.yml`, en orden y
+ * con sus condiciones.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * PARA QUE
@@ -62,11 +63,11 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * USO
  *
- *   node scripts/ci-local.mjs              # los diecisiete pasos
+ *   node scripts/ci-local.mjs              # los dieciocho pasos
  *   node scripts/ci-local.mjs --list       # solo enumerarlos
- *   node scripts/ci-local.mjs --from 11    # desde el paso 11
- *   node scripts/ci-local.mjs --to 10      # hasta el 10
- *   node scripts/ci-local.mjs --only 8,11,14
+ *   node scripts/ci-local.mjs --from 10    # desde el paso 10
+ *   node scripts/ci-local.mjs --to 9       # hasta el 9
+ *   node scripts/ci-local.mjs --only 7,10,16
  *   node scripts/ci-local.mjs --keep        # no borrar el lab al terminar
  *   node scripts/ci-local.mjs --lab <dir>  # otro sitio para el lab
  *
@@ -123,18 +124,6 @@ if (onlyRaw !== null && ONLY.length === 0)
 
 const LAB = resolve(flagValue('--lab') ?? join(tmpdir(), 'abd-ci-local'));
 
-if (!Number.isInteger(FROM) || FROM < 1)
-{
-    sayRaw(`ERROR: --from ha de ser un numero de paso (1..17), no "${String(FROM)}".`);
-    process.exit(2);
-}
-
-if (!(TO === Infinity || (Number.isInteger(TO) && TO >= 1)))
-{
-    sayRaw(`ERROR: --to ha de ser un numero de paso (1..17), no "${String(TO)}".`);
-    process.exit(2);
-}
-
 /* ── Salida ───────────────────────────────────────────────────────────────── */
 
 // La consola de Windows va en cp1252 y revienta con un caracter fuera de ella.
@@ -176,32 +165,96 @@ function rule (title)
  * fallback de los hermanos sirva de algo.
  */
 const STEPS = [
+    // Job `pines`: donde vive el dato de los SHA, y que se lea antes de gastar nada.
     { n: 1, name: 'Checkout ABDSharedAssets', kind: 'self' },
-    { n: 2, name: 'Checkout ABDSharedCode (Immutable Sibling Ref)', kind: 'checkout', repo: 'ABDSharedCode' },
-    { n: 3, name: 'Checkout ABDEep (Immutable Sibling Ref)', kind: 'checkout', repo: 'ABDEep' },
-    { n: 4, name: 'Checkout ABDNeural (Immutable Sibling Ref)', kind: 'checkout', repo: 'ABDNeural' },
-    { n: 5, name: 'Checkout ABDMS2000 (Immutable Sibling Ref)', kind: 'checkout', repo: 'ABDMS2000' },
-    { n: 6, name: 'Setup pnpm', kind: 'tool', tool: 'pnpm' },
-    { n: 7, name: 'Setup Node.js', kind: 'tool', tool: 'node' },
-    { n: 8, name: 'Fetch missing siblings (pinned SHA)', kind: 'run', cmd: 'node scripts/fetch-missing-siblings.mjs', ifAlways: true },
-    { n: 9, name: 'Setup Python', kind: 'tool', tool: 'python' },
-    { n: 10, name: 'Install dependencies', kind: 'run', cmd: 'pnpm install --frozen-lockfile' },
-    { n: 11, name: 'Preflight: generated contracts are up to date', kind: 'run', cmd: 'pnpm run preflight' },
-    { n: 12, name: 'S950: el contrato coincide con la tabla de C++', kind: 'run', cmd: 'pnpm run check:s950-contract\npnpm run check:s950-cal' },
-    { n: 13, name: 'Audit documentation (13 rules)', kind: 'run', cmd: 'pnpm exec vitest run tests/documentedOptions.test.js' },
-    { n: 14, name: 'Run full Vitest suite', kind: 'run', cmd: 'pnpm test' },
-    { n: 15, name: 'Install Chromium for the ARIA smoke (Playwright cache)', kind: 'browser' },
-    { n: 16, name: 'Export the Chromium path (and say which one it is)', kind: 'resolve-chrome' },
-    { n: 17, name: 'Smoke ARIA on real Chromium', kind: 'run', cmd: 'pnpm run smoke:a11y', env: { CHROME_PATH: '$RESOLVED' } },
+    { n: 2, name: 'Publicar los pines (la fuente es siblings.json)', kind: 'run', cmd: 'node scripts/pines-hermanos.mjs', githubOutput: true },
+    { n: 3, name: 'Comprobar que cada checkout resuelve a un SHA, no a una rama', kind: 'run', cmd: 'node scripts/verificar-pines-workflow.mjs' },
+
+    // Job `audit`: los quince pasos que corren los generadores y la suite.
+    { n: 4, name: 'Checkout ABDSharedAssets', kind: 'self' },
+    { n: 5, name: 'Setup pnpm', kind: 'tool', tool: 'pnpm' },
+    { n: 6, name: 'Setup Node.js', kind: 'tool', tool: 'node' },
+    { n: 7, name: 'Fetch missing siblings (pinned SHA)', kind: 'run', cmd: 'node scripts/fetch-missing-siblings.mjs' },
+    { n: 8, name: 'Setup Python', kind: 'tool', tool: 'python' },
+    { n: 9, name: 'Install dependencies', kind: 'run', cmd: 'pnpm install --frozen-lockfile' },
+    { n: 10, name: 'Preflight: generated contracts are up to date', kind: 'run', cmd: 'pnpm run preflight' },
+    { n: 11, name: 'S950: el contrato coincide con la tabla de C++', kind: 'run', cmd: 'pnpm run check:s950-contract\npnpm run check:s950-cal' },
+    { n: 12, name: 'Hermanos: sus generadores producen lo que declaran', kind: 'run', cmd: 'node scripts/check-hermanos-generadores.mjs' },
+    { n: 13, name: 'Hermanos: sus guardas de escritura no se han separado del motor', kind: 'run', cmd: 'node scripts/generar-guardas-escritura.mjs --check' },
+    { n: 14, name: 'Audit documentation (13 rules)', kind: 'run', cmd: 'pnpm exec vitest run tests/documentedOptions.test.js' },
+    { n: 15, name: 'Run full Vitest suite', kind: 'run', cmd: 'pnpm test' },
+    { n: 16, name: 'Install Chromium for the ARIA smoke (Playwright cache)', kind: 'browser' },
+    { n: 17, name: 'Export the Chromium path (and say which one it is)', kind: 'resolve-chrome' },
+    { n: 18, name: 'Smoke ARIA on real Chromium', kind: 'run', cmd: 'pnpm run smoke:a11y', env: { CHROME_PATH: '$RESOLVED' } },
 ];
 
-/** Los nombres que declara el workflow, para comparar con la lista de arriba. */
-function workflowStepNames ()
+/**
+ * Los nombres que declara el workflow, POR JOB, para comparar con la lista de
+ * arriba.
+ *
+ * El workflow tiene tres jobs y este script emula dos. El que falta, `hermanos`,
+ * es una matriz de checkouts: una pata por hermano, cada una en su propio runner,
+ * comprobando que el SHA existe en GitHub y que el commit trae los ficheros que el
+ * inventario dice. Eso NO se puede hacer en local sin red y sin una copia entera
+ * del repo por hermano, asi que se excluye de la comparacion en vez de fingir que
+ * se corre. Lo que el job `hermanos` comprueba, lo comprueba aqui el paso 7: los
+ * hermanos estan al lado y se montan desde `siblings.json`, no desde una rama.
+ *
+ * @returns {Record<string, string[]>}  `job -> [nombre de paso, ...]`.
+ */
+function workflowStepsByJob ()
 {
     const text = readFileSync(WORKFLOW, 'utf8');
+    const jobs = {};
+    let dentro = false;
+    let actual = null;
 
-    return [...text.matchAll(/^\s+- name: (.+)$/gm)]
-        .map((m) => m[1].trim().replace(/^["']|["']$/g, ''));
+    for (const linea of text.split('\n'))
+    {
+        if (/^jobs:\s*$/.test(linea))
+        {
+            dentro = true;
+            continue;
+        }
+
+        if (!dentro)
+            continue;
+
+        const cabecera = /^ {2}([A-Za-z_][A-Za-z0-9_-]*):\s*$/.exec(linea);
+
+        if (cabecera)
+        {
+            actual = cabecera[1];
+            jobs[actual] = [];
+            continue;
+        }
+
+        const paso = /^ {6}- name: (.+)$/.exec(linea);
+
+        if (paso && actual !== null)
+            jobs[actual].push(paso[1].trim().replace(/^["']|["']$/g, ''));
+    }
+
+    return jobs;
+}
+
+/** Los pasos del workflow que este script se compromete a correr. */
+const JOBS_EMULADOS = ['pines', 'audit'];
+
+// El rango se valida DESPUES de `STEPS`, no antes: el mensaje dice cuantos pasos hay
+// y ese numero sale de la lista. Con la validacion antes, `--from 0` reventaba con
+// un `ReferenceError` de la lista sin declarar en vez de con el error que el que lo
+// escribio queria ver.
+if (!Number.isInteger(FROM) || FROM < 1)
+{
+    sayRaw(`ERROR: --from ha de ser un numero de paso (1..${String(STEPS.length)}), no "${String(FROM)}".`);
+    process.exit(2);
+}
+
+if (!(TO === Infinity || (Number.isInteger(TO) && TO >= 1)))
+{
+    sayRaw(`ERROR: --to ha de ser un numero de paso (1..${String(STEPS.length)}), no "${String(TO)}".`);
+    process.exit(2);
 }
 
 /** La version que el workflow fija, leida del propio `with:`. */
@@ -309,7 +362,7 @@ function execLine (line, options = {})
 
 function announce (n, name, extra = '')
 {
-    const tag = `\u001b[1m[${String(n).padStart(2)}/17]\u001b[0m`;
+    const tag = `\u001b[1m[${String(n).padStart(2)}/${String(STEPS.length).padStart(2)}]\u001b[0m`;
 
     sayRaw(`${tag} ${name}${extra ? `  \u001b[2m${extra}\u001b[0m` : ''}`);
 }
@@ -327,9 +380,9 @@ function mountSelfQuiet ()
     }
 }
 
-/** Los cuatro hermanos, sin anunciar. Los pasos 2..5 los vuelven a montar y lo
- *  dicen, pero el lab tiene que estar montado ANTES del primer paso que lo
- *  necesite, o ese paso pasaria sin tener nada que mirar. */
+/** Los cuatro hermanos, sin anunciar. El paso 7 vuelve a montarlos y lo dice, pero
+ *  el lab tiene que estar montado ANTES del primer paso que lo necesite, o ese
+ *  paso pasaria sin tener nada que mirar. */
 function mountSiblingsQuiet ()
 {
     for (const entry of SIBLING_LIST)
@@ -352,8 +405,8 @@ function mountSelf ()
     rmSync(dst, { recursive: true, force: true });
     mkdirSync(dst, { recursive: true });
 
-    // `cpSync` con filtro: `node_modules` pesa y se rehace en el paso 10, y
-    // `.git` no hace falta para correr el job (el paso 8 no lo consulta).
+    // `cpSync` con filtro: `node_modules` pesa y se rehace en el paso 9, y
+    // `.git` no hace falta para correr el job (el paso 7 no lo consulta).
     cpSync(PACKAGE, dst, {
         recursive: true,
         verbatimSymlinks: true,
@@ -364,7 +417,7 @@ function mountSelf ()
             const rel = src.slice(PACKAGE.length + 1);
             const name = rel.split('\\')[0].split('/')[0];
 
-            // `node_modules` se rehace en el paso 10, `temp` pesa y no se usa, y
+            // `node_modules` se rehace en el paso 9, `temp` pesa y no se usa, y
             // `.git` no lo consulta el job.
             if (name === 'node_modules' || name === 'temp' || name === '.git')
                 return false;
@@ -445,41 +498,14 @@ function record (n, ok)
     return ok;
 }
 
-function stepSelf ()
+function stepSelf (step)
 {
     const dst = mountSelf();
 
-    announce(1, 'Checkout ABDSharedAssets', `-> ${relative(LAB, dst)}`);
+    announce(step.n, step.name, `-> ${relative(LAB, dst)}`);
     sayRaw('        (copiado del arbol de trabajo: incluye lo que no esta commiteado)');
 
-    return record(1, existsSync(join(dst, 'package.json')));
-}
-
-function stepCheckout (step)
-{
-    const entry = SIBLING_LIST.find((e) => e.repo === step.repo);
-
-    if (entry == null)
-    {
-        announce(step.n, step.name, 'el repo no esta en siblings.json');
-
-        return record(step.n, false);
-    }
-
-    const result = mountSibling(entry);
-
-    announce(step.n, step.name, `${seguro(entry.repo)} @ ${entry.sha.slice(0, 12)}`);
-
-    if (!result.ok)
-    {
-        sayRaw(`        \u001b[31m${seguro(result.why)}\u001b[0m`);
-
-        return record(step.n, false);
-    }
-
-    sayRaw(`        ${result.count} fichero(s) que el generador abre`);
-
-    return record(step.n, true);
+    return record(step.n, existsSync(join(dst, 'package.json')));
 }
 
 function stepTool (step)
@@ -564,11 +590,22 @@ function stepRun (step)
 
     const env = { ...process.env, CI: 'true' };
 
+    // El paso de los pines escribe en `GITHUB_OUTPUT`, que en CI es un fichero que
+    // el runner lee y convierte en outputs de job. Aqui se le da uno de mentira, en
+    // el lab, y se imprime al final: lo que se ve en el log local es exactamente lo
+    // que veria el runner, no un resumen inventado por el script.
+    if (step.githubOutput === true)
+    {
+        env.GITHUB_OUTPUT = join(LAB, 'github_output.txt');
+
+        rmSync(env.GITHUB_OUTPUT, { force: true });
+    }
+
     if (step.env?.CHROME_PATH === '$RESOLVED')
     {
         if (resolvedChrome == null)
         {
-            sayRaw('        \u001b[31msin CHROME_PATH: el paso 16 no se ejecuto\u001b[0m');
+            sayRaw('        \u001b[31msin CHROME_PATH: el paso 17 no se ejecuto\u001b[0m');
 
             return record(step.n, false);
         }
@@ -591,6 +628,23 @@ function stepRun (step)
         }
     }
 
+    if (ok && step.githubOutput === true && existsSync(env.GITHUB_OUTPUT))
+    {
+        const publicado = readFileSync(env.GITHUB_OUTPUT, 'utf8').trim();
+
+        if (publicado !== '')
+        {
+            sayRaw('        \u001b[2mGITHUB_OUTPUT:\u001b[0m');
+
+            for (const linea of publicado.split('\n'))
+            {
+                const [clave, ...resto] = linea.split('=');
+
+                sayRaw(`          \u001b[2m${seguro(clave)}\u001b[0m=${seguro(resto.join('=').slice(0, 90))}`);
+            }
+        }
+    }
+
     return record(step.n, ok);
 }
 
@@ -600,7 +654,7 @@ function stepBrowser ()
 
     // NO se instala. `--with-deps` necesita permisos de administrador del sistema
     // y un script que se ejecuta sin querer no debe hacer eso. Lo que se hace es
-    // mirar si el paso 16 va a encontrar algo, que es la pregunta que de verdad
+    // mirar si el paso 17 va a encontrar algo, que es la pregunta que de verdad
     // importa, y decir como conseguirlo si no.
     sayRaw('        \u001b[2men local NO se instala (--with-deps pide permisos de administrador)\u001b[0m');
 
@@ -621,7 +675,7 @@ function stepResolveChrome ()
 
     if (result.status !== 0 || !found || found === 'null')
     {
-        sayRaw(`        \u001b[33mningun Chromium. En CI lo baja el paso 15; en local, uno de:\u001b[0m`);
+        sayRaw(`        \u001b[33mningun Chromium. En CI lo baja el paso 16; en local, uno de:\u001b[0m`);
         sayRaw('          pnpm dlx playwright@1.63.0 install chromium');
         sayRaw('          CHROME_PATH=/ruta/al/chrome node scripts/ci-local.mjs');
         resolvedChrome = null;
@@ -650,7 +704,8 @@ function relative (from, to)
  */
 function checkAgainstWorkflow ()
 {
-    const delWorkflow = workflowStepNames();
+    const porJob = workflowStepsByJob();
+    const delWorkflow = JOBS_EMULADOS.flatMap((j) => porJob[j] ?? []);
     const mios = STEPS.map((s) => s.name);
     const diferencias = [];
 
@@ -734,9 +789,7 @@ for (const step of seleccionados)
     try
     {
         if (step.kind === 'self')
-            stepSelf();
-        else if (step.kind === 'checkout')
-            stepCheckout(step);
+            stepSelf(step);
         else if (step.kind === 'tool')
             stepTool(step);
         else if (step.kind === 'browser')

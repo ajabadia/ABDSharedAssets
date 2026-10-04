@@ -25,15 +25,22 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * QUE PUBLICA, Y COMO
  *
- * Un objeto JSON `{ "<repo>": "<sha>", ... }` en el output `shas`, que el workflow
- * lee por CLAVE y no por posicion:
+ * Una lista `[{ "repo": ..., "sha": ... }, ...]` en el output `hermanos`, y un
+ * objeto `{ "<repo>": ["<fichero>", ...] }` en `ficheros`, con lo que hay que
+ * encontrar en cada uno. El job `pines` los expone como outputs de job y de ahi
+ * los usa todo lo demas: la matriz de checkouts y la comprobacion de ficheros de
+ * cada pata. Uno y otro salen de aqui y de ningun otro sitio.
  *
- *     ref: ${{ fromJSON(steps.pins.outputs.shas)['ABDEep'] }}
+ * La lista y no un mapa a proposito, porque es lo que GitHub convierte en patas de
+ * matriz: un array da una pata por elemento, y un objeto da UNA sola pata con
+ * todos los repos dentro. Con la lista, cada pata es un hermano y lleva su
+ * propio nombre:
  *
- * Por clave y no por indice a proposito: con un indice, reordenar `siblings.json`
- * cambiaria en silencio el repo que baja cada paso, y el fallo seria un checkout
- * del repositorio equivocado, que es de las cosas mas caras de diagnosticar en un
- * workflow. Con una clave, reordenar no cambia nada.
+ *     repo: ${{ matrix.hermano.repo }}
+ *     ref:  ${{ matrix.hermano.sha }}
+ *
+ * Por eso anadir un quinto hermano es tocar `siblings.json` y nada mas: no hay
+ * ningun sitio mas donde declararlo, ni un `ref:` mas en ningun fichero.
  *
  * Y se escribe una sola vez, en el mismo paso que las lee: si el fichero no esta,
  * no es parseable, o un hermano llega sin SHA, este script falla AHORA y con un
@@ -44,13 +51,18 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * LO QUE ESTE SCRIPT NO HACE
  *
- * No comprueba que los SHA existan en GitHub, ni que el commit tenga lo que la
- * rama dice. Eso lo comprueba `scripts/fetch-missing-siblings.mjs` en cada corrida,
- * y sale con 2 diciendo cual. Aqui solo se publica lo que dice `siblings.json`, y
- * se comprueba que sea utilizable: 40 hex, y los cuatro.
+ * No baja nada. Publicar los pines y clonar el hermano son dos trabajos
+ * distintos: este es el que puede fallar con un inventario roto, y el otro es el
+ * que necesita la red. Un paso que hace las dos cosas no puede decir cual de las
+ * dos fallo.
  *
- * Tambien imprime el grupo de pines en el log. Se pierde una cosa al mover el SHA
- * del `ref:` al output: que se veia a ojo en el propio paso del checkout. El
+ * No comprueba tampoco que los SHA existan en GitHub, ni que el commit tenga lo que
+ * el inventario dice. Eso lo comprueba el job `hermanos`, una pata por hermano, y
+ * sale con 1 diciendo cual. Aqui solo se publica lo que dice `siblings.json`, y se
+ * comprueba que sea utilizable: 40 hex, y los cuatro.
+ *
+ * Tambien imprime el grupo de pines en el log. Lo que se pierde al mover el SHA
+ * del `ref:` al output es que se veia a ojo en el propio paso del checkout; el
  * grupo lo devuelve, asi que la pregunta de "que commit se compro" tiene respuesta
  * en el log de la corrida, que es donde se busca.
  */
@@ -109,28 +121,102 @@ export function pinesDe(inventario) {
   return pines;
 }
 
+/**
+ * La lista de `{ repo, sha }`, que es la forma que GitHub convierte en patas.
+ *
+ * Y aqui esta la razon de que el output sea una LISTA y no un mapa, que parece lo
+ * contrario y no lo es: `strategy.matrix` convierte un array en una pata por
+ * elemento, y un objeto en UNA pata sola. Un `fromJSON` de `{repo: sha}` da un
+ * unico `matrix.hermano` con todos los repos dentro, y `matrix.hermano.repo` no
+ * existe: el job baja el primer repo cuatro veces y el rojo, si lo hay, no dice de
+ * quien. Con una lista de objetos, una pata por hermano, y `matrix.hermano.repo` y
+ * `matrix.hermano.sha` son los de ese.
+ *
+ * @param {object} inventario  El contenido de `siblings.json`, ya parseado.
+ * @returns {Array<{repo: string, sha: string}>}  en el orden del fichero.
+ */
+export function hermanosDe(inventario) {
+  const pines = pinesDe(inventario);
+
+  return Object.entries(pines).map(([repo, sha]) => ({ repo, sha }));
+}
+
 /** El inventario tal cual esta en disco. */
 export function inventarioDe(ruta = join(RAIZ_PAQUETE, 'siblings.json')) {
   return JSON.parse(readFileSync(ruta, 'utf-8'));
 }
 
-// Solo cuando se ejecuta, no cuando se importa: el test usa las dos funciones de
-// arriba y no tiene por que escribir en ningun sitio.
+/**
+ * El mapa `{ repo: [fichero, ...] }` de lo que hay que encontrar en cada hermano.
+ *
+ * Va en el MISMO output que los pines y por el mismo motivo: la lista de ficheros
+ * que un checkout debe traer es, igual que su SHA, un dato del inventario. Si el
+ * workflow la escribiera en un `run:` seria otra copia, y la copia es la que se
+ * queda vieja: el generador abre un fichero nuevo, el inventario lo lista, y la
+ * lista del workflow sigue sin el. El rojo sale entonces como "falta una
+ * cabecera", que es justo lo que paso.
+ *
+ * @param {object} inventario  El contenido de `siblings.json`, ya parseado.
+ * @returns {Record<string, string[]>}  `repo -> necesita`, en el orden del fichero.
+ */
+export function ficherosDe(inventario) {
+  const hermanos = inventario?.hermanos;
+
+  if (!Array.isArray(hermanos) || hermanos.length === 0)
+    throw new Error('siblings.json no declara ninguna lista de hermanos');
+
+  const ficheros = {};
+
+  for (const h of hermanos) {
+    const repo = h?.repo;
+
+    if (typeof repo !== 'string' || repo === '')
+      throw new Error('siblings.json: hay un hermano sin "repo"');
+
+    // Una lista vacia haria que la comprobacion del checkout pasara sin mirar
+    // nada, que es el verde que no mira nada. Se avisa aqui, que es donde se
+    // arregla: o el hermano declara lo que se le va a abrir, o no se baja.
+    if (!Array.isArray(h.necesita) || h.necesita.length === 0)
+      throw new Error(`siblings.json: ${repo} no declara que ficheros necesita`);
+
+    for (const rel of h.necesita) {
+      if (typeof rel !== 'string' || rel === '')
+        throw new Error(`siblings.json: ${repo} tiene una entrada vacia en "necesita"`);
+
+      // Absoluta o con `..` no la comprueba el checkout del hermano: se sale de su
+      // arbol y el paso se pone verde con algo que no esta en el repo.
+      if (/^[\\/]|[A-Z]:|\.\./.test(rel))
+        throw new Error(`siblings.json: ${repo} necesita "${rel}", que no es una ruta relativa dentro del repo`);
+    }
+
+    ficheros[repo] = [...h.necesita];
+  }
+
+  return ficheros;
+}
+
+// Solo cuando se ejecuta, no cuando se importa: el test usa las funciones de arriba
+// y no tiene por que escribir en ningun sitio.
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const pines = pinesDe(inventarioDe());
+  const inventario = inventarioDe();
+  const pines = pinesDe(inventario);
+  const hermanos = hermanosDe(inventario);
+  const ficheros = ficherosDe(inventario);
   const destino = process.env.GITHUB_OUTPUT;
 
   if (!destino)
     throw new Error('GITHUB_OUTPUT no esta: este script se ejecuta desde un paso del workflow');
 
-  // Una sola linea, porque `GITHUB_OUTPUT` es un formato de `clave=valor` y un
-  // JSON partido entre lineas se leeria como cuatro outputs distintos. El mapa no
-  // tiene saltos de linea, y el `JSON.stringify` no escapa los `{` ni las `"`,
-  // que en `echo key=value >> GITHUB_OUTPUT` solo darian problema al principio de
-  // la linea.
-  appendFileSync(destino, `shas=${JSON.stringify(pines)}\n`);
+  // Una sola linea cada uno, porque `GITHUB_OUTPUT` es un formato de `clave=valor` y
+  // un JSON partido entre lineas se leeria como cuatro outputs distintos. Ni la
+  // lista ni el mapa tienen saltos de linea, y el `JSON.stringify` no escapa los
+  // `{` ni las `"`, que en `echo key=value >> GITHUB_OUTPUT` solo darian problema al
+  // principio de la linea.
+  appendFileSync(destino, `hermanos=${JSON.stringify(hermanos)}\n`);
+  appendFileSync(destino, `ficheros=${JSON.stringify(ficheros)}\n`);
 
   console.log('::group::Pines de los hermanos, leidos de siblings.json');
-  for (const [repo, sha] of Object.entries(pines)) console.log(`  ${repo} -> ${sha.slice(0, 8)}`);
+  for (const [repo, sha] of Object.entries(pines))
+    console.log(`  ${repo} -> ${sha.slice(0, 8)}  (${ficheros[repo].length} ficheros que se le van a abrir)`);
   console.log('::endgroup::');
 }
