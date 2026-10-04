@@ -38,7 +38,7 @@
   "hermanos": [
     {
       "repo": "ABDSharedCode",
-      "sha": "8113c8b02d2de3f2608632cb94488bed46ebc0bd",
+      "sha": "3d4006a0db07771d6d39ee225f073a0ce8d3b4a1",
       "necesita": ["SynthCore/S950PatchFields.h", "SynthCore/S950Calibration.h"],
       "lee": [
         "scripts/generate_s950_patch_contract.py",
@@ -47,7 +47,7 @@
     },
     {
       "repo": "ABDEep",
-      "sha": "9accfd663a20e051efc3a2de605a4cffb557e9a2",
+      "sha": "f32163f83986dcf6780cf847b5e45223730174ea",
       "necesita": [
         "WebUI/js/modmatrix_data.js",
         "WebUI/resources/md/deepmind_fx_modmatrix.md",
@@ -73,7 +73,7 @@
     },
     {
       "repo": "ABDNeural",
-      "sha": "157da1b06abcc0c3706899423d5ae2f4fae35b3b",
+      "sha": "d4a64294d39e8e89b5ab654feb96f08455d01f97",
       "necesita": [
         "Source/State/ModDestinationTable.h",
         "Source/DSP/FxCatalogExport.cpp",
@@ -95,7 +95,7 @@
     },
     {
       "repo": "ABDMS2000",
-      "sha": "b954062457f230257f4a65ff5ec12aaf7e30e377",
+      "sha": "592323f84e13ab517e8c60e0a86ab41057bbf5fe",
       "necesita": [
         "Source/DSP/Modulation/VirtualPatchMatrix.h",
         "Scripts/registry_generator.js",
