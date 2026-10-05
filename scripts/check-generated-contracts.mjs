@@ -1300,6 +1300,28 @@ export function scriptsQueEmpiezanPor(man, prefijo) {
  * @param {string} dir directorio a listar; por defecto, `contracts/` de verdad.
  * @returns {Map<string, number>} nombre -> mtimeMs.
  */
+/**
+ * Si dos `mtimeMs` son el MISMO instante.
+ *
+ * La fecha se restaura con `utimesSync(origen, fecha / 1000, fecha / 1000)`, y al
+ * viaje por el `Date` de medio segundo se pierde precision: `1786…58.8184` vuelve
+ * como `1786…58.818`. No es un fichero distinto, es el mismo instante expresado con
+ * menos digitos, y comparar con `===` lo daba por tocado cuando no lo esta.
+ *
+ * MEDIDO en el runner de Ubuntu; en Windows las dos cadenas coinciden y el rojo no
+ * sale. La tolerancia es de un milisegundo, tres ordenes de magnitud por debajo de lo
+ * que distingue dos escrituras reales, asi que un generador que escribe un contrato
+ * sigue cambiando la fecha y sigue detectandose: lo que se deja de contar como
+ * cambio es solo el ruido de la cuenta atras.
+ *
+ * @param {number} a
+ * @param {number} b
+ * @returns {boolean}
+ */
+function mismaFecha(a, b) {
+  return Math.abs(a - b) < 1;
+}
+
 function fechasDeContratos(dir = join(root, 'contracts')) {
   const fechas = new Map();
 
@@ -1617,7 +1639,7 @@ export function generadorProduceLoQueDice(contrato) {
 
       try {
         intacto = existsSync(origen)
-          && lstatSync(origen).mtimeMs === fecha
+          && mismaFecha(lstatSync(origen).mtimeMs, fecha)
           && readFileSync(origen).equals(bytes);
       }
       catch (e) {

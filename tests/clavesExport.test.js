@@ -25,6 +25,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   CATALOGO,
@@ -34,7 +35,16 @@ import {
   main,
 } from '../scripts/generar-claves-export-cpp.mjs';
 
-const aqui = path.dirname(new URL(import.meta.url).pathname.replace(/^\//, ''));
+// `fileURLToPath` y no `new URL(...).pathname`: el `pathname` de una URL `file:` en
+// Linux empieza por `/`, y quitarlo con un `replace` deja una ruta RELATIVA. Un
+// `path.resolve` de una ruta relativa la pega al directorio de trabajo, y aqui el
+// resultado era `<cwd>/home/runner/work/ABDSharedAssets/...`: una ruta que existe
+// solo en el runner, con el workspace entero repetido dentro.
+//
+// En Windows no se nota, porque el `pathname` es `/D:/...` y quitar la barra
+// inicial deja `D:/...`, que es absoluta de verdad. Por eso esto solo se rompia en
+// el CI de Linux, y en local el test pasaba.
+const aqui = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(aqui, '..');
 const LABORATORIO = path.resolve(RAIZ, '..', 'ABDAudioLab', 'src', 'measurement');
 
