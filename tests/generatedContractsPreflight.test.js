@@ -50,6 +50,19 @@ import { CONTRATOS, GENERADOS_FUERA, GENERADORES_HERMANOS, COPIAS, COPIAS_BLOQUE
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 
+// EL INSTANTE DE UN FICHERO, PARA COMPARARLO. La fecha se restaura con
+// `utimesSync`, que pasa por un `Date` de precision de milisegundo, asi que el
+// `mtimeMs` que sale de ella vuelve con menos digitos que el que se guardo:
+// `…809.2185` se vuelve `…809.218`. El fichero es el mismo y la fecha es el mismo
+// instante, pero `toEqual` los da por distintos.
+//
+// Se redondea al milisegundo en lugar de comparar con tolerancia para que el resto
+// del test siga siendo `toEqual` sobre un array, y para que estos tres sitios no
+// tengan cada uno su propia aritmetica. Redondear a 1 ms no cambia lo que estos
+// tests afirman: un generador que reescribe un contrato mueve su fecha bastante
+// mas de un milisegundo, y el test que lo comprueba sigue en verde.
+const instanteDe = (p) => Math.round(statSync(p).mtimeMs);
+
 const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
 const PREFLIGHT = join(root, 'scripts', 'check-generated-contracts.mjs');
 const preflightSrc = existsSync(PREFLIGHT) ? readFileSync(PREFLIGHT, 'utf-8') : '';
@@ -1393,7 +1406,7 @@ describe('el generador PRODUCE lo que dice, no solo existir', () => {
   it('un generador que se escapa al arbol de verdad se dice y se deshace', () => {
     const colado = join(root, 'contracts', 'CONTRATO_ESCAPADO.json');
     const tocado = join(root, 'contracts', 's950_calibration.json');
-    const antes = [statSync(tocado).mtimeMs, readFileSync(tocado).toString('base64')];
+    const antes = [instanteDe(tocado), readFileSync(tocado).toString('base64')];
 
     const r = conGeneradorTemporal(
       GENERADOR_ESCAPISTA.replace('%s', JSON.stringify(join(root, 'contracts'))),
@@ -1416,7 +1429,7 @@ describe('el generador PRODUCE lo que dice, no solo existir', () => {
     // fecha de antes. Una fecha distinta es lo que hace que un `git status` diga
     // que alguien toco un contrato.
     expect(existsSync(colado), 'el preflight ha dejado el fichero colado en contracts/').toBe(false);
-    expect([statSync(tocado).mtimeMs, readFileSync(tocado).toString('base64')],
+    expect([instanteDe(tocado), readFileSync(tocado).toString('base64')],
       'el contrato reescrito no ha vuelto a ser el que era').toEqual(antes);
   });
 
@@ -1444,7 +1457,7 @@ describe('el generador PRODUCE lo que dice, no solo existir', () => {
     // nadie lo haya cambiado.
     const antes = readdirSync(join(root, 'contracts')).map((f) => {
       const p = join(root, 'contracts', f);
-      return [f, statSync(p).mtimeMs, readFileSync(p).toString('base64')];
+      return [f, instanteDe(p), readFileSync(p).toString('base64')];
     });
 
     for (const c of CONTRATOS) {
@@ -1454,7 +1467,7 @@ describe('el generador PRODUCE lo que dice, no solo existir', () => {
 
     const despues = readdirSync(join(root, 'contracts')).map((f) => {
       const p = join(root, 'contracts', f);
-      return [f, statSync(p).mtimeMs, readFileSync(p).toString('base64')];
+      return [f, instanteDe(p), readFileSync(p).toString('base64')];
     });
 
     expect(despues.length, 'comprobar los generadores ha anadido o quitado ficheros en contracts/')
