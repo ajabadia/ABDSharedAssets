@@ -102,11 +102,27 @@ const FLAGS_PS = [
   { cabecera: '-WhatIf', codigo: '$WhatIf' },
 ];
 
+// LAS RUTAS DE ESTE BLOQUE VAN CON BARRA, SIEMPRE, Y NO CON `path.join`.
+//
+// MEDIDO, y no es hipotesis: el rojo de CI eran tres guardas "DESFASADO" en un
+// repo donde el motor no habia cambiado. La causa es que `carpetas` se hornea
+// LITERAL en el fichero generado con `JSON.stringify`, asi que el separador del
+// sistema que genera se queda escrito dentro del guard. El commiteado tenia
+// `path.join(RAIZ, "WebUI\\scripts")` porque se genero en Windows; el runner de
+// Ubuntu produce `path.join(RAIZ, "WebUI/scripts")` y el `--check` ve un fichero
+// distinto. Y el fallo solo aparece en CI, porque en local los dos lados se
+// generan en la misma maquina y se compensan solos.
+//
+// Que `path.join` este aqui no era un descuido de estilo: en Linux `WebUI/scripts`
+// y en Windows `WebUI\\scripts` apuntan al mismo directorio. El problema no es la
+// ruta que se abre, es la que se ESCRIBE DENTRO del fichero. Un fichero
+// generado tiene que ser el mismo en las dos plataformas, y para eso la ruta
+// tiene que estar en la notacion que las dos comparten.
 const REPOS = {
   ABDEep: {
     raizRelativo: '..',
     destino: 'scripts/guardasDeEscritura.test.js',
-    carpetas: ['scripts', path.join('WebUI', 'scripts')],
+    carpetas: ['scripts', 'WebUI/scripts'],
     ps: false,
     exencion: null,
     titulo: 'scripts/ — el que escribe, pregunta antes',
@@ -131,9 +147,9 @@ const REPOS = {
   },
 
   ABDMS2000: {
-    raizRelativo: path.join('..', '..'),
-    destino: path.join('WebUI', 'tests', 'guardasDeEscritura.test.js'),
-    carpetas: ['Scripts', path.join('WebUI', 'scripts'), 'tools'],
+    raizRelativo: '../..',
+    destino: 'WebUI/tests/guardasDeEscritura.test.js',
+    carpetas: ['Scripts', 'WebUI/scripts', 'tools'],
     ps: false,
     exencion: 'SIN-GUARDIA:',
     titulo: 'Scripts/ — el que escribe, pregunta antes',
@@ -165,9 +181,9 @@ const REPOS = {
   },
 
   ABDNeural: {
-    raizRelativo: path.join('..', '..'),
-    destino: path.join('WebUI', 'tests', 'guardasDeEscritura.test.js'),
-    carpetas: [path.join('WebUI', 'scripts'), 'Scripts', 'tools'],
+    raizRelativo: '../..',
+    destino: 'WebUI/tests/guardasDeEscritura.test.js',
+    carpetas: ['WebUI/scripts', 'Scripts', 'tools'],
     ps: true,
     exencion: 'SIN-GUARDIA:',
     titulo: 'ABDNeural — el que escribe, pregunta antes',
