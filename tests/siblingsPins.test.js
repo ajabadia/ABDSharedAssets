@@ -532,6 +532,11 @@ describe('el layout que necesitan los generadores', () => {
     });
 
     expect(errores.join('\n')).toBe('');
-    expect(lineas.join('\n')).toMatch(/Pines comprobados: 4 de 4 hermanos/);
+    // El numero sale del inventario, no de un literal. La linea tiene que decir
+    // que se han comprobado TODOS y no uno menos, que es lo unico que el "de N de
+    // N" afirma; el numero concreto es el del inventario y este test no lo vigila,
+    // porque escribirlo aqui lo que se vigila es el numero, no la comprobacion.
+    const cuantos = inventario.hermanos.length;
+    expect(lineas.join('\n')).toMatch(new RegExp(`Pines comprobados: ${cuantos} de ${cuantos} hermanos`));
   });
 });

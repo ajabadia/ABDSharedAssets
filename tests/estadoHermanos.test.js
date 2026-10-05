@@ -28,7 +28,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -297,15 +297,23 @@ describe('estadosDe, contra el arbol de verdad', () => {
     expect(estadosDe(join(raiz, 'este-inventario-no-existe.json'))).toEqual([]);
   });
 
-  it('lee los cuatro hermanos del inventario y dice que commit hay en cada uno', () => {
+  it('lee los hermanos del inventario y dice que commit hay en cada uno', () => {
     if (!existsSync(inventario))
       return;
 
     const estados = estadosDe(inventario);
 
-    expect(estados.map((e) => e.repo)).toEqual([
-      'ABDSharedCode', 'ABDEep', 'ABDNeural', 'ABDMS2000',
-    ]);
+    // La lista esperada sale del INVENTARIO y no esta escrita aqui a proposito: con
+    // los cuatro estaba, y anadir un quinto hermano -ABDAudioLab, que es destino
+    // de dos generadores de este paquete- ponia el test en rojo sin que el codigo
+    // estuviera mal. Un test que repite la lista no vigila la lista: la congela, y
+    // el dia que se anada un hermano el unico rojo que sale es este.
+    //
+    // Lo que si tiene que ser verdad es que `estadosDe` recorre el inventario
+    // entero y en el MISMO ORDEN, que es lo que hacia que este test valiera algo.
+    const declarados = JSON.parse(readFileSync(inventario, 'utf8')).hermanos.map((h) => h.repo);
+
+    expect(estados.map((e) => e.repo)).toEqual(declarados);
 
     // ABDSharedAssets esta junto al propio paquete, asi que si este clon tiene
     // hermanos, este los tiene a todos. El caso puede ser cualquiera de los
