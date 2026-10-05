@@ -50,6 +50,11 @@
  */
 
 import { GENERADORES_HERMANOS, generadorHermanoProduceLoQueDice } from './check-generated-contracts.mjs';
+// El bloque de que commit se ha mirado, y el motivo de que este script lo
+// imprima tambien: es el paso del workflow cuyo NOMBRE ya dice que mira a los
+// hermanos, asi que es el primero al que se mira cuando sale rojo, y sin esto
+// su rojo no se puede comparar con el del runner.
+import { bloqueDeEstado, estadosDe } from './estado-hermanos.mjs';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +65,9 @@ const raiz = dirname(aqui);
 function main() {
 console.log('LOS GENERADORES DE LOS HERMANOS');
 console.log('='.repeat(72));
+
+for (const linea of bloqueDeEstado(estadosDe(join(raiz, 'siblings.json'), join(raiz, '..'))))
+  console.log(linea);
 
 const desfasados = [];
 const noComprobados = [];

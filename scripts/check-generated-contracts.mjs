@@ -77,6 +77,15 @@ import {
   ningunEsquemaAplica,
 } from '../utils/index.js';
 
+// El bloque que dice QUE CODIGO de cada hermano se ha leido, y por que va aqui
+// y no dentro de la seccion de hermanos: porque su objeto no es el codigo de
+// un hermano, sino el de todos. Un rojo de `abdeep_modulation_matrix.json`
+// se lee IGUAL tanto si ABDEep esta en el SHA fijado como si esta 152 rutas por
+// delante, y ese es justo el punto: el mensaje no lo decia y por eso el rojo
+// local y el de CI parecian el mismo fallo cuando no lo son. Va antes de los
+// contratos porque es el marco en el que se leen todos los demas.
+import { bloqueDeEstado, estadosDe } from './estado-hermanos.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 
@@ -1736,6 +1745,13 @@ function main() {
 
   console.log('PREFLIGHT de contratos generados');
   console.log('='.repeat(72));
+
+  // Que codigo se ha leido, antes de cualquier veredicto. Es un lector y no una
+  // puerta —no cambia el codigo de salida— por lo que `estado-hermanos.mjs`
+  // explica el por que: un arbol con cambios locales es el estado normal de
+  // quien programa, y un preflight que sale con 1 por eso enseña a ignorar el 1.
+  for (const linea of bloqueDeEstado(estadosDe()))
+    console.log(linea);
 
   // `--comprobar-generadores` regenera de verdad, y solo se pide a mano.
   //
