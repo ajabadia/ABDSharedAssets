@@ -81,7 +81,7 @@
     },
     {
       "repo": "ABDEep",
-      "sha": "f32163f83986dcf6780cf847b5e45223730174ea",
+      "sha": "afccd49ec8f60d6cbd1f5cc3c5ceeb6f19cf632b",
       "necesita": [
         "WebUI/js/modmatrix_data.js",
         "WebUI/resources/md/deepmind_fx_modmatrix.md",
@@ -107,7 +107,7 @@
     },
     {
       "repo": "ABDNeural",
-      "sha": "d4a64294d39e8e89b5ab654feb96f08455d01f97",
+      "sha": "1a25ef3d5ea281cd1e5516648fe1e0b3a88130ab",
       "necesita": [
         "Source/State/ModDestinationTable.h",
         "Source/DSP/FxCatalogExport.cpp",
@@ -129,7 +129,7 @@
     },
     {
       "repo": "ABDMS2000",
-      "sha": "592323f84e13ab517e8c60e0a86ab41057bbf5fe",
+      "sha": "8a521fc8995958bf6caea058404b8689915209d6",
       "necesita": [
         "Source/DSP/Modulation/VirtualPatchMatrix.h",
         "Scripts/registry_generator.js",
