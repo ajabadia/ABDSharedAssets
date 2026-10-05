@@ -83,41 +83,37 @@ const MAX_BUFFER = 256 * 1024 * 1024;
  * @returns {Record<string, string>|null}
  */
 export function pinesDe(rutaInventario = join(PAQUETE, 'siblings.json')) {
-  if (!existsSync(rutaInventario))
-    return null;
+  const problema = problemaDelInventario(rutaInventario);
 
-  let inventario;
-
-  try {
-    inventario = JSON.parse(readFileSync(rutaInventario, 'utf-8'));
-  } catch {
-    return null;
-  }
-
-  if (!Array.isArray(inventario?.hermanos) || inventario.hermanos.length === 0)
+  if (problema !== null)
     return null;
 
   const pines = {};
 
-  for (const h of inventario.hermanos) {
-    if (typeof h?.repo !== 'string' || h.repo === '')
-      return null;
-
-    if (typeof h.sha !== 'string' || !SHA.test(h.sha))
-      return null;
-
+  for (const h of JSON.parse(readFileSync(rutaInventario, 'utf-8')).hermanos)
     pines[h.repo] = h.sha;
-  }
 
   return pines;
 }
 
-/** Por que no hay pines utilizables, en una frase que se pueda imprimir tal cual. */
-export function motivoSinPines(rutaInventario = join(PAQUETE, 'siblings.json')) {
+/**
+ * Por que este inventario NO sirve, o `null` si sirve.
+ *
+ * Existe como funcion aparte, y no porque quede mas comodo, sino porque
+ * `pinesDe` y `motivoSinPines` tienen que DECIR LO MISMO. Con las dos politicas
+ * escritas por separado ya paso: un hermano sin `repo` lo rechazaba `pinesDe` y
+ * `motivoSinPines` se caia en su frase generica, «el inventario no sirve», que
+ * no dice nada de lo que hay que arreglar. Dos reglas para lo mismo se separan
+ * solas; esta devuelve el veredicto y las dos la consultan.
+ *
+ * @param {string} rutaInventario
+ * @returns {string|null} la frase, o null si el inventario sirve.
+ */
+export function problemaDelInventario(rutaInventario) {
   if (!existsSync(rutaInventario))
     return `no encuentro el inventario en ${rutaInventario}`;
 
-  let inventario = null;
+  let inventario;
 
   try {
     inventario = JSON.parse(readFileSync(rutaInventario, 'utf-8'));
@@ -125,15 +121,28 @@ export function motivoSinPines(rutaInventario = join(PAQUETE, 'siblings.json')) 
     return `el inventario no se puede leer: ${String(exc.message ?? exc)}`;
   }
 
-  if (!Array.isArray(inventario?.hermanos) || inventario.hermanos.length === 0)
+  if (!Array.isArray(inventario?.hermanos))
+    return 'el inventario no declara una lista de hermanos';
+
+  if (inventario.hermanos.length === 0)
     return 'el inventario no declara ninguna lista de hermanos';
+
+  const sinRepo = inventario.hermanos.filter((h) => typeof h?.repo !== 'string' || h.repo === '');
+
+  if (sinRepo.length > 0)
+    return `${sinRepo.length} hermano(s) sin "repo", y sin repo no hay donde materializarlo`;
 
   const malos = inventario.hermanos.filter((h) => typeof h?.sha !== 'string' || !SHA.test(h.sha));
 
   if (malos.length > 0)
     return `${malos.map((h) => h.repo).join(', ')} no tiene un SHA de 40 hex`;
 
-  return 'el inventario no sirve';
+  return null;
+}
+
+/** Por que no hay pines utilizables, en una frase que se pueda imprimir tal cual. */
+export function motivoSinPines(rutaInventario = join(PAQUETE, 'siblings.json')) {
+  return problemaDelInventario(rutaInventario) ?? 'el inventario no sirve';
 }
 
 /** Un `git` contra un repo del monorepo, con el directorio marcado como seguro. */
@@ -350,11 +359,3 @@ export function correr(cwd, args, { maxBuffer = 64 * 1024 * 1024 } = {}) {
   }
 }
 
-/** La salida 2, que es la de «no se puede montar la sonda». */
-export function salirSinPines(motivo, rutaInventario) {
-  console.error(`SONDA: ${motivo}`);
-  console.error(`       inventario: ${rutaInventario}`);
-  console.error('Una sonda sin pines mide un sandbox SIN HERMANOS y sale en verde');
-  console.error('mirando el vacio. No se puede arrancar asi, asi que no se arranca.');
-  process.exit(2);
-}
