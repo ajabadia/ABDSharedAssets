@@ -15,6 +15,8 @@
  *   components/scope.css      -- oscilloscope display
  *   components/keyboard.css   -- piano keyboard
  *   components/fx.css         -- modulos de efecto y sus temas por familia
+ *   components/envelope.css   -- EnvelopePad: curva ADSR compartida
+ *   components/bank.css       -- BankManagerModal: contenedor modal universal
  *
  * Structure:
  *   tokens.css          -- 120+ design tokens
@@ -42,3 +44,4 @@
 @import './components/keyboard.css';
 @import './components/fx.css';   /* modulos de efecto del rack, temas por familia */
 @import './components/envelope.css';  /* EnvelopePad: curva ADSR compartida */
+@import './components/bank.css';      /* BankManagerModal: contenedor modal universal */
