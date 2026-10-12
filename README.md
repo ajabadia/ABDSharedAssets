@@ -1,6 +1,16 @@
-# ABDSharedAssets — Recursos, Estilos, Iconos y Contratos Compartidos
+# ABDSharedAssets [ARCHIVADO / DEPRECATED]
 
-Repositorio centralizado de recursos graficos (modelos y marcas), iconografia vectorial monocromatica, contratos de hardware JSON y sistema de diseno/estilos CSS para todo el ecosistema de software y plugins de ABDSynths (ABDAudioLab, ABDBankManager, ABDMS2000, ABDCZ101, ABDEep, ABDJUNiO601, ABDScope, ABDMIDIKeyb, etc.).
+> [!WARNING]
+> **REPOSITORIO OBSOLETO / ARCHIVADO (DEPRECATED)**
+> Este repositorio ha sido consolidado de forma definitiva en el nuevo repositorio universal canónico:
+> 👉 **[ABDShared](https://github.com/ajabadia/ABDShared.git)** (cuadrantes `Assets/`, `Components/`, `Contracts/`)
+> 
+> Todos los recursos gráficos, contratos JSON, componentes WebUI y tokens CSS viven ahora en el paquete unificado `@abdsynths/shared` dentro de `ABDShared`.
+> **No realizar nuevos desarrollos ni commits en este repositorio.**
+
+Repositorio centralizado histórico de recursos gráficos (modelos y marcas), iconografía vectorial, contratos de hardware JSON y estilos CSS.
+
+Repositorio canónico sustituto: https://github.com/ajabadia/ABDShared.git
 
 ---
 
@@ -22,11 +32,20 @@ D:desarrollosABDSynthsABDSharedAssets+-- brands/       <- Logotipos vectoriales 
 +-- contracts/    <- Contratos JSON: hardware, tablas de modulacion Y catalogos
                     de patch GENERADOS desde el motor en C++
 +-- styles/       <- Sistema de diseno, tokens CSS globales, temas y componentes
-+-- components/   <- Modulos JS reutilizables (wheel.js, ...)
++-- components/   <- Modulos JS y Web Components reutilizables (synthNavBar, aboutDialog, liveSysExInspector, ...)
 +-- assets/       <- Assets binarios compartidos (bender.png, ...)
 +-- demo/         <- Demo interactiva para QA visual de componentes
 +-- docs/         <- Guias oficiales de integracion, estilos e iconografia
 ```
+
+### Componentes UI Transversales (`components/`)
+
+Los componentes web de este paquete son agnósticos y utilizables tanto en builds nativos (WebView2) como en aplicaciones web independientes (WASM). Consultar [COMPONENTS.md](./COMPONENTS.md) para la API completa:
+
+* **`SynthNavBar` (`components/synthNavBar.js`)**: Barra de navegación superior con menú DAW/JUCE (`File`, `Edit`, `Mode`, `View`, `Help`), submenús, checkmarks reactivos y atajos de teclado `<kbd>`.
+* **`AboutDialog` (`components/aboutDialog.js`)**: Diálogo modal accesible con identidad del sinte y puente reactivo con `ABDShared::AutoUpdater` (o GitHub Releases).
+* **`LiveSysExInspector` (`components/liveSysExInspector.js`)**: Inspector reactivo desacoplable/flotante del Edit Buffer con resaltado de mutaciones, modo Diff A/B y exportación `.syx`.
+* **Familia de Controles (`knob.js`, `slider.js`, `toggle.js`, `wheel.js`, `xypad.js`, `segmented.js`, `select.js`)**: Controles con la misma API de eventos, gestos de automatización y soporte de skins intercambiables.
 
 ### Curvas de calibracion del S950 (GENERADO, y vacio a proposito)
 

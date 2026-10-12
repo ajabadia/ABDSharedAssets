@@ -103,3 +103,18 @@ export {
   toHexByte,
   decodeSysExHeader,
 } from './liveSysExInspector.js';
+
+// Diálogo "About..." universal y reactivo con AutoUpdater C++ / GitHub Releases
+export {
+  AboutDialog,
+  createAboutDialog,
+} from './aboutDialog.js';
+
+// Barra de navegación superior universal con menús declarativos y atajos
+export {
+  SynthNavBar,
+  createSynthNavBar,
+  DEFAULT_NAVBAR_MENUS,
+  isItemChecked,
+  renderMenuItemHtml,
+} from './synthNavBar.js';

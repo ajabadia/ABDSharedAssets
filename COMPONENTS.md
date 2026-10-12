@@ -1012,6 +1012,60 @@ condición del nombre se probó y se retiró: todos los módulos del audit que a
 la raíz, así que no tendría ni un caso, y el código que no se puede activar es peor que el
 código que no está.
 
+## AboutDialog — Diálogo transversal "About..." con AutoUpdater
+
+Modal universal para identidad del instrumento, versión, build y sincronización con el
+backend C++ `ABDShared::AutoUpdater` (o fallback a GitHub Releases en modo web/WASM).
+
+```js
+import { AboutDialog, createAboutDialog } from '@abdsynths/shared/components';
+
+const about = createAboutDialog({
+  appName: 'ABD CZ-101',
+  subtitle: 'Phase Distortion Synthesizer — Native / Web',
+  description: 'Authentic DSP hardware emulator and modern expanded engine.',
+  version: '1.0.0',
+  buildNumber: '20261012',
+  repo: 'ajabadia/ABDSynths',
+  getJuceBackend: () => window.getJuceBackend?.(),
+});
+
+about.open(triggerButton); // Foco atrapado, inert en fondo, restaura foco al cerrar
+about.close();
+about.checkForUpdates();    // Dispara verificación activa
+```
+
+## SynthNavBar — Barra de Navegación y Menús Universal
+
+Barra superior con menús declarativos estilo DAW (File, Edit, Mode, View, Help),
+submenús en cascada (`▸`), checkmarks reactivos (`✓`), chips de atajos (`<kbd>`) y slots
+para marca, selectores centrales y acciones a la derecha.
+
+```js
+import { SynthNavBar, createSynthNavBar, DEFAULT_NAVBAR_MENUS } from '@abdsynths/shared/components';
+
+const navBar = createSynthNavBar({
+  container: document.getElementById('navbar-container'),
+  brand: {
+    title: 'ABD CZ-101',
+    subtitle: 'PHASE DISTORTION SYNTHESIZER',
+  },
+  menus: DEFAULT_NAVBAR_MENUS,
+  actions: {
+    loadBank: () => bankFileInput.click(),
+    saveBank: () => engine.saveBank(),
+    undo: () => undoManager.undo(),
+    redo: () => undoManager.redo(),
+  },
+  activeValues: {
+    theme: 'dark',
+    operationMode: 1,
+  },
+  // Auto-conexión: 'about' y 'checkForUpdates' abren AboutDialog de forma transparente
+  aboutDialog: about,
+});
+```
+
 ## Añadir un control nuevo
 
 1. Crear `components/<nombre>.js` con el contrato de arriba (menos de 300 líneas).

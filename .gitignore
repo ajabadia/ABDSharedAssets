@@ -45,3 +45,4 @@ __pycache__/
 # Local Node recovery/install directories
 node_modules_ok/
 node_modules_roto_v10/
+*.tgz

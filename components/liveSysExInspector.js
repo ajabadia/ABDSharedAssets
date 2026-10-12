@@ -76,15 +76,18 @@ export class LiveSysExInspector {
    * @param {object} options
    * @param {HTMLElement} [options.container]    Contenedor donde incrustarse.
    * @param {string}      [options.title]        Título superior.
+   * @param {string}      [options.subtitle]     Subtítulo descriptivo opcional.
    * @param {boolean}     [options.floating]     Si se monta como ventana flotante.
    * @param {number}      [options.bytesPerRow]  Bytes por fila en la vista hex (8 o 16, default 16).
    * @param {Uint8Array}  [options.initialBuffer] Buffer inicial.
    * @param {Function}    [options.onExport]     Callback al exportar (blob, filename).
-   * @param {Function}    [options.onClose]      Callback al cerrar.
+   * @param {Function}    [options.onClose]      Callback al cerrar u ocultar.
+   * @param {Function}    [options.onOpen]       Callback al abrir o mostrar.
    */
   constructor(options = {}) {
     this.options = {
       title: 'Live SysEx Inspector',
+      subtitle: '',
       floating: false,
       bytesPerRow: 16,
       ...options,
@@ -116,6 +119,7 @@ export class LiveSysExInspector {
     this._onPointerDown = this._onPointerDown.bind(this);
     this._onPointerMove = this._onPointerMove.bind(this);
     this._onPointerUp = this._onPointerUp.bind(this);
+    this._onKeyDown = this._onKeyDown.bind(this);
     this._dragState = null;
 
     this._buildDOM();
@@ -124,6 +128,10 @@ export class LiveSysExInspector {
       this.mount(this.container);
     } else if (this.options.floating && typeof document !== 'undefined') {
       this.mount(document.body);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', this._onKeyDown);
     }
   }
 
@@ -135,6 +143,8 @@ export class LiveSysExInspector {
 
     this.rootEl = document.createElement('div');
     this.rootEl.className = 'sysex-inspector';
+    this.rootEl.setAttribute('role', 'region');
+    this.rootEl.setAttribute('aria-label', this.options.title || 'Live SysEx Inspector');
     if (this.options.floating) {
       this.rootEl.classList.add('sysex-inspector--floating');
     }
@@ -145,6 +155,10 @@ export class LiveSysExInspector {
 
     const titleArea = document.createElement('div');
     titleArea.className = 'sysex-inspector__title-area';
+
+    const iconBadge = document.createElement('span');
+    iconBadge.className = 'sysex-inspector__tag';
+    iconBadge.textContent = 'SYS/EX';
 
     const titleText = document.createElement('span');
     titleText.className = 'sysex-inspector__title';
@@ -162,6 +176,7 @@ export class LiveSysExInspector {
     this.diffBadgeEl.className = 'sysex-inspector__badge sysex-inspector__badge--diff';
     this.diffBadgeEl.style.display = 'none';
 
+    titleArea.appendChild(iconBadge);
     titleArea.appendChild(titleText);
     titleArea.appendChild(liveBadge);
     titleArea.appendChild(this.sizeBadgeEl);
@@ -219,12 +234,11 @@ export class LiveSysExInspector {
 
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
-      closeBtn.className = 'sysex-inspector__btn sysex-inspector__btn--icon';
+      closeBtn.className = 'sysex-inspector__btn sysex-inspector__btn--icon sysex-inspector__btn--close';
       closeBtn.innerHTML = '&times;';
-      closeBtn.title = 'Cerrar';
+      closeBtn.title = 'Cerrar (Esc)';
       closeBtn.addEventListener('click', () => {
-        if (this.options.onClose) this.options.onClose();
-        this.destroy();
+        this.hide();
       });
 
       actions.appendChild(minBtn);
@@ -266,15 +280,16 @@ export class LiveSysExInspector {
   }
 
   /**
-   * Arrastre flotante
+   * Arrastre flotante acotado al viewport
    */
   _onPointerDown(e) {
     if (e.target.closest('button')) return;
+    const rect = this.rootEl.getBoundingClientRect();
     this._dragState = {
       startX: e.clientX,
       startY: e.clientY,
-      initialLeft: this.rootEl.offsetLeft,
-      initialTop: this.rootEl.offsetTop,
+      initialLeft: rect.left,
+      initialTop: rect.top,
     };
     window.addEventListener('pointermove', this._onPointerMove);
     window.addEventListener('pointerup', this._onPointerUp);
@@ -284,9 +299,15 @@ export class LiveSysExInspector {
     if (!this._dragState) return;
     const dx = e.clientX - this._dragState.startX;
     const dy = e.clientY - this._dragState.startY;
-    this.rootEl.style.left = `${Math.max(10, this._dragState.initialLeft + dx)}px`;
-    this.rootEl.style.top = `${Math.max(10, this._dragState.initialTop + dy)}px`;
+    const winWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const winHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const newLeft = Math.max(10, Math.min(winWidth - 120, this._dragState.initialLeft + dx));
+    const newTop = Math.max(10, Math.min(winHeight - 60, this._dragState.initialTop + dy));
+    this.rootEl.style.left = `${newLeft}px`;
+    this.rootEl.style.top = `${newTop}px`;
     this.rootEl.style.right = 'auto';
+    this.rootEl.style.bottom = 'auto';
+    this.rootEl.style.transform = 'none';
   }
 
   _onPointerUp() {
@@ -296,13 +317,88 @@ export class LiveSysExInspector {
   }
 
   /**
+   * Listener de teclado para cierre rápido con tecla Escape
+   */
+  _onKeyDown(e) {
+    if (e.key === 'Escape' && this.isOpen()) {
+      e.stopPropagation();
+      this.hide();
+    }
+  }
+
+  /**
+   * Muestra el inspector y dispara el evento onOpen si está configurado.
+   * @returns {this}
+   */
+  show() {
+    if (this.isDestroyed || !this.rootEl) return this;
+    this.rootEl.style.display = 'flex';
+    this.rootEl.classList.remove('is-hidden');
+    if (typeof this.options.onOpen === 'function') {
+      this.options.onOpen();
+    }
+    return this;
+  }
+
+  /**
+   * Oculta el inspector sin destruirlo y dispara onClose si está configurado.
+   * @returns {this}
+   */
+  hide() {
+    if (this.isDestroyed || !this.rootEl) return this;
+    this.rootEl.style.display = 'none';
+    this.rootEl.classList.add('is-hidden');
+    if (typeof this.options.onClose === 'function') {
+      this.options.onClose();
+    }
+    return this;
+  }
+
+  /**
+   * Alterna entre visible y oculto.
+   * @returns {this}
+   */
+  toggle() {
+    return this.isOpen() ? this.hide() : this.show();
+  }
+
+  /**
+   * Retorna true si el inspector está actualmente visible en pantalla.
+   * @returns {boolean}
+   */
+  isOpen() {
+    if (this.isDestroyed || !this.rootEl) return false;
+    return this.rootEl.style.display !== 'none' && !this.rootEl.classList.contains('is-hidden');
+  }
+
+  /**
+   * Alias de conveniencia para updateBuffer.
+   * @param {Uint8Array|Array<number>} newBuffer
+   * @returns {this}
+   */
+  setBuffer(newBuffer) {
+    this.updateBuffer(newBuffer);
+    return this;
+  }
+
+  /**
+   * Retorna una copia del buffer de bytes actual.
+   * @returns {Uint8Array}
+   */
+  getBuffer() {
+    return new Uint8Array(this.buffer);
+  }
+
+  /**
    * Monta el inspector en un contenedor del DOM.
    * @param {HTMLElement} target
+   * @returns {this}
    */
   mount(target) {
-    if (!target || !this.rootEl) return;
+    if (!target || !this.rootEl) return this;
     this.container = target;
     target.appendChild(this.rootEl);
+    return this;
   }
 
   /**
@@ -608,8 +704,11 @@ export class LiveSysExInspector {
     this.isDestroyed = true;
     clearTimeout(this.mutationTimeout);
     clearTimeout(this.feedbackTimeout);
-    window.removeEventListener('pointermove', this._onPointerMove);
-    window.removeEventListener('pointerup', this._onPointerUp);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', this._onPointerMove);
+      window.removeEventListener('pointerup', this._onPointerUp);
+      window.removeEventListener('keydown', this._onKeyDown);
+    }
     if (this.rootEl && this.rootEl.parentNode) {
       this.rootEl.parentNode.removeChild(this.rootEl);
     }

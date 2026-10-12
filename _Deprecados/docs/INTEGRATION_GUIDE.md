@@ -120,12 +120,60 @@ como primer stylesheet; `themes.css` del host gana la cascada. El prototipo Vite
 
 ---
 
+## 5 ter. Componentes Transversales de UI (`@abdsynths/shared/components`)
+
+Los módulos JavaScript interactivos se importan directamente desde el barrel de componentes:
+
+```js
+import { 
+  SynthNavBar, 
+  createSynthNavBar, 
+  AboutDialog, 
+  createAboutDialog,
+  LiveSysExInspector,
+  createLiveSysExInspector
+} from '@abdsynths/shared/components';
+```
+
+### 1. Barra de Navegación (`SynthNavBar`)
+* **Propósito:** Barra superior estándar de menús con soporte para menús declarativos (File / Edit / Mode / View / Help), submenús en cascada (`▸`), checkmarks (`✓`), atajos `<kbd>` y slots personalizables.
+* **Auto-conexión:** Se vincula automáticamente con `AboutDialog` al invocar `about` o `checkForUpdates`.
+* **Estilos:** `styles/components/navbar.css` (incluido en `styles/index.css`).
+
+### 2. Diálogo About y Actualizador (`AboutDialog`)
+* **Propósito:** Ventana modal de información del sintetizador, versión, build y sincronización reactiva con `ABDShared::AutoUpdater` (eventos `checkForUpdates`, `getUpdateStatus`, `openBrowserUrl`, `updateCheckResult`).
+* **Fallback Web:** Consulta automática a GitHub Releases API si se ejecuta fuera de JUCE.
+* **Accesibilidad:** Trampa de foco accesible y aislamiento `inert` vía `overlayFocus.js`.
+* **Estilos:** `styles/components/about-dialog.css` (incluido en `styles/index.css`).
+
+### 3. Monitor de Tramas en Vivo (`LiveSysExInspector`)
+* **Propósito:** Inspector reactivo desacoplable y flotante para diagnosticar y auditar en tiempo real las mutaciones del Edit Buffer MIDI SysEx.
+* **Características:**
+  - Resaltado micro-animado de mutaciones byte a byte (`sysex-pulse`).
+  - Comparativa diferencial Diff A/B con conteo reactivo de discrepancias (`Δ N B`).
+  - Decodificación semántica automática de fabricante (`Casio 0x44`, `Korg 0x42`, `Roland 0x41`, `Yamaha 0x43`, `Behringer 0x00 0x20 0x32`), Device ID y validación `EOX (0xF7)`.
+  - Exportación directa de archivos binarios `.syx` y copia rápida al portapapeles (`Copy Hex` y `Copy Array`).
+  - Ventana flotante desacoplable con cabecera arrastrable (`draggable`), minimizable y cierre limpio mediante tecla `Escape` o botón `✕` sin destruir la instancia.
+* **Interface Pública:**
+  - `show(): this` — Muestra el inspector (dispara `onOpen`).
+  - `hide(): this` — Oculta el inspector conservando buffers y estado (dispara `onClose`).
+  - `toggle(): this` — Alterna visibilidad.
+  - `isOpen(): boolean` — Estado de visibilidad actual.
+  - `updateBuffer(buf: Uint8Array | number[]): this` — Actualiza la trama e ilumina las mutaciones reactivas.
+  - `setBuffer(buf)` — Alias de conveniencia para `updateBuffer`.
+  - `getBuffer(): Uint8Array` — Devuelve copia del buffer actual.
+  - `destroy(): void` — Desmonta del DOM y libera event listeners y timers.
+* **Estilos:** `styles/components/live-sysex-inspector.css` (o importado en la primera línea de `overlays.css`).
+
+---
+
 ## 6. Checklist de Integracion
 
 - Junction shared/ -> ABDSharedAssets/styles/ creado **o** `@abdsynths/shared` en package.json (vía preferida con bundler)
 - tokens.css importado
 - Tema seleccionado aplicado (data-theme o @import)
-- Componentes importados (panels.css, buttons.css, etc.)
-- QA visual con demo/demo.html como referencia (familia JS de controles incluida, sección 8)
+- Componentes importados (panels.css, buttons.css, navbar.css, about-dialog.css, etc.)
+- Componentes transversales (`SynthNavBar`, `AboutDialog`, `LiveSysExInspector`) montados según aplique
+- QA visual con demo/demo.html como referencia
 - Cascada host verificada: los overrides del proyecto ganan a los tokens compartidos
 - Verificar que _review/ NO esta en el proyecto

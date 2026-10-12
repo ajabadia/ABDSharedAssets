@@ -189,4 +189,79 @@ describe('LiveSysExInspector - DOM & Reactividad', () => {
 
     inspector.destroy();
   });
+
+  it('proporciona interface formal show, hide, toggle, isOpen, setBuffer y getBuffer', () => {
+    const buf = new Uint8Array([0xf0, 0x44, 0x01, 0xf7]);
+    let opened = false;
+    let closed = false;
+
+    const inspector = createLiveSysExInspector({
+      container: slot,
+      initialBuffer: buf,
+      onOpen: () => { opened = true; },
+      onClose: () => { closed = true; },
+    });
+
+    expect(inspector.isOpen()).toBe(true);
+
+    inspector.hide();
+    expect(inspector.isOpen()).toBe(false);
+    expect(closed).toBe(true);
+    expect(inspector.rootEl.style.display).toBe('none');
+
+    inspector.show();
+    expect(inspector.isOpen()).toBe(true);
+    expect(opened).toBe(true);
+    expect(inspector.rootEl.style.display).toBe('flex');
+
+    inspector.toggle();
+    expect(inspector.isOpen()).toBe(false);
+
+    inspector.toggle();
+    expect(inspector.isOpen()).toBe(true);
+
+    // Buffer access
+    const newBuf = new Uint8Array([0xf0, 0x44, 0x02, 0x10, 0xf7]);
+    inspector.setBuffer(newBuf);
+    expect(inspector.getBuffer()).toEqual(newBuf);
+
+    inspector.destroy();
+  });
+
+  it('el boton de cierre oculta la ventana sin destruirla', () => {
+    let closed = false;
+    const inspector = createLiveSysExInspector({
+      floating: true,
+      onClose: () => { closed = true; },
+    });
+
+    expect(inspector.isOpen()).toBe(true);
+
+    const closeBtn = inspector.rootEl.querySelector('.sysex-inspector__btn--close');
+    expect(closeBtn).not.toBeNull();
+    closeBtn.click();
+
+    expect(closed).toBe(true);
+    expect(inspector.isOpen()).toBe(false);
+    expect(inspector.isDestroyed).toBe(false);
+
+    // Puede reabrirse sin problemas
+    inspector.show();
+    expect(inspector.isOpen()).toBe(true);
+
+    inspector.destroy();
+  });
+
+  it('pulsar Escape oculta el inspector si esta abierto', () => {
+    const inspector = createLiveSysExInspector({
+      floating: true,
+    });
+    expect(inspector.isOpen()).toBe(true);
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(inspector.isOpen()).toBe(false);
+
+    inspector.destroy();
+  });
 });
+
