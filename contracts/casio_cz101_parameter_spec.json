@@ -21,7 +21,13 @@
       "domainMax": 3,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "Line 1",
+        "Line 2",
+        "Line 1+1'",
+        "Line 1+2"
+      ]
     },
     {
       "id": "OSC1_WAVEFORM",
@@ -40,7 +46,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "Sawtooth",
+        "Square",
+        "Pulse",
+        "Double Sine",
+        "Saw Pulse",
+        "Reso 1",
+        "Reso 2",
+        "Reso 3"
+      ]
     },
     {
       "id": "OSC1_WAVEFORM2",
@@ -59,7 +75,18 @@
       "domainMax": 8,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "None",
+        "Sawtooth",
+        "Square",
+        "Pulse",
+        "Double Sine",
+        "Saw Pulse",
+        "Reso 1",
+        "Reso 2",
+        "Reso 3"
+      ]
     },
     {
       "id": "OSC1_WINDOW",
@@ -78,7 +105,15 @@
       "domainMax": 5,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "None",
+        "Saw",
+        "Triangle",
+        "Trapezoid",
+        "Pulse",
+        "Dbl Saw"
+      ]
     },
     {
       "id": "OSC1_LEVEL",
@@ -97,7 +132,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 0.01
     },
     {
       "id": "OSC2_WAVEFORM",
@@ -116,7 +152,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "Sawtooth",
+        "Square",
+        "Pulse",
+        "Double Sine",
+        "Saw Pulse",
+        "Reso 1",
+        "Reso 2",
+        "Reso 3"
+      ]
     },
     {
       "id": "OSC2_WAVEFORM2",
@@ -135,7 +181,18 @@
       "domainMax": 8,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "None",
+        "Sawtooth",
+        "Square",
+        "Pulse",
+        "Double Sine",
+        "Saw Pulse",
+        "Reso 1",
+        "Reso 2",
+        "Reso 3"
+      ]
     },
     {
       "id": "OSC2_WINDOW",
@@ -154,7 +211,15 @@
       "domainMax": 5,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "None",
+        "Saw",
+        "Triangle",
+        "Trapezoid",
+        "Pulse",
+        "Dbl Saw"
+      ]
     },
     {
       "id": "OSC2_LEVEL",
@@ -173,7 +238,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 0.01
     },
     {
       "id": "OSC2_DETUNE",
@@ -192,7 +258,8 @@
       "domainMax": 12,
       "unit": "st",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 0.1
     },
     {
       "id": "DETUNE_OCT",
@@ -211,7 +278,8 @@
       "domainMax": 3,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 1
     },
     {
       "id": "DETUNE_COARSE",
@@ -230,7 +298,8 @@
       "domainMax": 12,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 1
     },
     {
       "id": "DETUNE_FINE",
@@ -249,7 +318,8 @@
       "domainMax": 50,
       "unit": "cents",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 1
     },
     {
       "id": "LINE_MIX",
@@ -268,7 +338,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 0.01
     },
     {
       "id": "HARD_SYNC",
@@ -306,7 +377,15 @@
       "domainMax": 5,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "choices": [
+        "Off",
+        "Ring 1",
+        "Noise 1",
+        "Ring 2",
+        "Ring 3",
+        "Noise 2"
+      ]
     },
     {
       "id": "MOD_SPECIAL",
@@ -342,9 +421,10 @@
       "curveP1": 0.8,
       "domainMin": 0,
       "domainMax": 1,
-      "unit": "normalized",
+      "unit": "s",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 0.01
     },
     {
       "id": "LFO_WAVE",
@@ -363,7 +443,13 @@
       "domainMax": 3,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "LFO"
+      "group": "LFO",
+      "choices": [
+        "Triangle",
+        "Saw Up",
+        "Saw Down",
+        "Square"
+      ]
     },
     {
       "id": "LFO_RATE",
@@ -382,7 +468,8 @@
       "domainMax": 30,
       "unit": "Hz",
       "smoothing": "Linear",
-      "group": "LFO"
+      "group": "LFO",
+      "step": 0.1
     },
     {
       "id": "LFO_DEPTH",
@@ -401,7 +488,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "LFO"
+      "group": "LFO",
+      "step": 0.01
     },
     {
       "id": "LFO_DELAY",
@@ -420,7 +508,8 @@
       "domainMax": 2,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "LFO"
+      "group": "LFO",
+      "step": 0.01
     },
     {
       "id": "DCA_ATTACK",
@@ -439,7 +528,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCA_DECAY",
@@ -458,7 +548,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCA_SUSTAIN",
@@ -475,9 +566,9 @@
       "curveP1": 0.8,
       "domainMin": 0,
       "domainMax": 10,
-      "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCA_RELEASE",
@@ -496,7 +587,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCW_ATTACK",
@@ -515,7 +607,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCW_DECAY",
@@ -534,7 +627,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCW_SUSTAIN",
@@ -551,9 +645,9 @@
       "curveP1": 0.8,
       "domainMin": 0,
       "domainMax": 10,
-      "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "DCW_RELEASE",
@@ -572,7 +666,8 @@
       "domainMax": 10,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Envelopes"
+      "group": "Envelopes",
+      "step": 0.01
     },
     {
       "id": "MOD_VELO_DCW",
@@ -591,7 +686,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_VELO_DCA",
@@ -610,7 +706,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_WHEEL_DCW",
@@ -629,7 +726,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_WHEEL_LFORATE",
@@ -648,7 +746,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_WHEEL_VIB",
@@ -667,7 +766,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_AT_DCW",
@@ -686,7 +786,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_AT_VIB",
@@ -705,7 +806,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "KEY_TRACK_DCW",
@@ -724,7 +826,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "KEY_TRACK_PITCH",
@@ -743,7 +846,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "KEY_FOLLOW_DCO",
@@ -762,7 +866,12 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "OFF",
+        "FIX",
+        "VAR"
+      ]
     },
     {
       "id": "KEY_FOLLOW_DCW",
@@ -781,7 +890,12 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "OFF",
+        "FIX",
+        "VAR"
+      ]
     },
     {
       "id": "KEY_FOLLOW_DCA",
@@ -800,7 +914,12 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "OFF",
+        "FIX",
+        "VAR"
+      ]
     },
     {
       "id": "LINE1_VELO_PITCH",
@@ -819,7 +938,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE1_VELO_DCW",
@@ -838,7 +958,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE1_VELO_DCA",
@@ -857,7 +978,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_VELO_PITCH",
@@ -876,7 +998,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_VELO_DCW",
@@ -895,7 +1018,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_VELO_DCA",
@@ -914,7 +1038,8 @@
       "domainMax": 15,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE1_KF_PITCH",
@@ -933,7 +1058,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE1_KF_DCW",
@@ -952,7 +1078,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE1_KF_DCA",
@@ -971,7 +1098,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_KF_PITCH",
@@ -990,7 +1118,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_KF_DCW",
@@ -1009,7 +1138,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "LINE2_KF_DCA",
@@ -1028,7 +1158,8 @@
       "domainMax": 9,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 1
     },
     {
       "id": "MOD_SLOT_1_SRC",
@@ -1047,7 +1178,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_1_DEST",
@@ -1066,7 +1211,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_1_DEPTH",
@@ -1085,7 +1240,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_2_SRC",
@@ -1104,7 +1260,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_2_DEST",
@@ -1123,7 +1293,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_2_DEPTH",
@@ -1142,7 +1322,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_3_SRC",
@@ -1161,7 +1342,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_3_DEST",
@@ -1180,7 +1375,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_3_DEPTH",
@@ -1199,7 +1404,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_4_SRC",
@@ -1218,7 +1424,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_4_DEST",
@@ -1237,7 +1457,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_4_DEPTH",
@@ -1256,7 +1486,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_5_SRC",
@@ -1275,7 +1506,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_5_DEST",
@@ -1294,7 +1539,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_5_DEPTH",
@@ -1313,7 +1568,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_6_SRC",
@@ -1332,7 +1588,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_6_DEST",
@@ -1351,7 +1621,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_6_DEPTH",
@@ -1370,7 +1650,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_7_SRC",
@@ -1389,7 +1670,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_7_DEST",
@@ -1408,7 +1703,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_7_DEPTH",
@@ -1427,7 +1732,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MOD_SLOT_8_SRC",
@@ -1446,7 +1752,21 @@
       "domainMax": 11,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "Velocity",
+        "Mod Wheel",
+        "Aftertouch",
+        "Key Track",
+        "LFO",
+        "Env DCW",
+        "Env DCA",
+        "Env Pitch",
+        "Pitch Bend",
+        "Noise",
+        "Authentic Key Track"
+      ]
     },
     {
       "id": "MOD_SLOT_8_DEST",
@@ -1465,7 +1785,17 @@
       "domainMax": 7,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "choices": [
+        "None",
+        "DCW",
+        "DCA",
+        "Pitch",
+        "Vibrato",
+        "LFO Rate",
+        "Osc2 Detune",
+        "Pan"
+      ]
     },
     {
       "id": "MOD_SLOT_8_DEPTH",
@@ -1484,7 +1814,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Modulation"
+      "group": "Modulation",
+      "step": 0.01
     },
     {
       "id": "MODERN_LPF_CUTOFF",
@@ -1503,7 +1834,9 @@
       "domainMax": 20000,
       "unit": "Hz",
       "smoothing": "Linear",
-      "group": "Filter"
+      "group": "Filter",
+      "step": 1,
+      "skew": 0.3
     },
     {
       "id": "MODERN_LPF_RESO",
@@ -1522,7 +1855,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Filter"
+      "group": "Filter",
+      "step": 0.01
     },
     {
       "id": "MODERN_HPF_CUTOFF",
@@ -1541,7 +1875,9 @@
       "domainMax": 10000,
       "unit": "Hz",
       "smoothing": "Linear",
-      "group": "Filter"
+      "group": "Filter",
+      "step": 1,
+      "skew": 0.3
     },
     {
       "id": "DRIVE_AMOUNT",
@@ -1560,7 +1896,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "DRIVE_COLOR",
@@ -1579,7 +1916,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "DRIVE_MIX",
@@ -1598,7 +1936,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "CHORUS_RATE",
@@ -1617,7 +1956,8 @@
       "domainMax": 10,
       "unit": "Hz",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "CHORUS_DEPTH",
@@ -1636,7 +1976,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "CHORUS_MIX",
@@ -1655,7 +1996,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "DELAY_TIME",
@@ -1674,7 +2016,8 @@
       "domainMax": 2,
       "unit": "s",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "DELAY_FEEDBACK",
@@ -1693,7 +2036,8 @@
       "domainMax": 0.95,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "DELAY_MIX",
@@ -1712,7 +2056,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "REVERB_SIZE",
@@ -1731,7 +2076,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "REVERB_MIX",
@@ -1750,7 +2096,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Effects"
+      "group": "Effects",
+      "step": 0.01
     },
     {
       "id": "MACRO_BRILLIANCE",
@@ -1769,7 +2116,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Macros"
+      "group": "Macros",
+      "step": 0.01
     },
     {
       "id": "MACRO_TONE",
@@ -1788,7 +2136,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Macros"
+      "group": "Macros",
+      "step": 0.01
     },
     {
       "id": "MACRO_SPACE",
@@ -1807,7 +2156,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Macros"
+      "group": "Macros",
+      "step": 0.01
     },
     {
       "id": "MASTER_VOLUME",
@@ -1826,7 +2176,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "step": 0.01
     },
     {
       "id": "MIDI_CH",
@@ -1845,7 +2196,8 @@
       "domainMax": 16,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "step": 1
     },
     {
       "id": "MASTER_TUNE",
@@ -1864,7 +2216,8 @@
       "domainMax": 50,
       "unit": "cents",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "step": 1
     },
     {
       "id": "PITCH_BEND_RANGE",
@@ -1883,7 +2236,8 @@
       "domainMax": 12,
       "unit": "st",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "step": 1
     },
     {
       "id": "KEY_TRANSPOSE",
@@ -1902,7 +2256,8 @@
       "domainMax": 12,
       "unit": "st",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "step": 1
     },
     {
       "id": "OPERATION_MODE",
@@ -1921,7 +2276,13 @@
       "domainMax": 3,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "choices": [
+        "Classic CZ-101",
+        "Classic CZ-1",
+        "Classic CZ-5000",
+        "Modern"
+      ]
     },
     {
       "id": "PROTECT_SWITCH",
@@ -1959,7 +2320,12 @@
       "domainMax": 2,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "System"
+      "group": "System",
+      "choices": [
+        "1x (Eco)",
+        "2x (High)",
+        "4x (Ultra)"
+      ]
     },
     {
       "id": "HARDWARE_NOISE",
@@ -2033,9 +2399,14 @@
       "curveP1": 0.8,
       "domainMin": 40,
       "domainMax": 240,
-      "unit": "BPM",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "choices": [
+        "1/4",
+        "1/8",
+        "1/16",
+        "1/32"
+      ]
     },
     {
       "id": "ARP_BPM",
@@ -2054,7 +2425,8 @@
       "domainMax": 240,
       "unit": "BPM",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "step": 1
     },
     {
       "id": "ARP_GATE",
@@ -2073,7 +2445,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "step": 0.01
     },
     {
       "id": "ARP_SWING",
@@ -2092,7 +2465,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "step": 0.01
     },
     {
       "id": "ARP_SWING_MODE",
@@ -2111,7 +2485,12 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "choices": [
+        "Off",
+        "1/8",
+        "1/16"
+      ]
     },
     {
       "id": "ARP_PATTERN",
@@ -2130,7 +2509,14 @@
       "domainMax": 4,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "choices": [
+        "Up",
+        "Down",
+        "Up/Down",
+        "Random",
+        "As Played"
+      ]
     },
     {
       "id": "ARP_OCTAVE",
@@ -2149,7 +2535,8 @@
       "domainMax": 4,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Arpeggiator"
+      "group": "Arpeggiator",
+      "step": 1
     },
     {
       "id": "OCTAVE",
@@ -2168,7 +2555,8 @@
       "domainMax": 1,
       "unit": "normalized",
       "smoothing": "Linear",
-      "group": "Oscillators"
+      "group": "Oscillators",
+      "step": 1
     },
     {
       "id": "BYPASS",
@@ -2185,7 +2573,6 @@
       "curveP1": 0.8,
       "domainMin": 0,
       "domainMax": 1,
-      "unit": "switch",
       "smoothing": "Linear",
       "group": "System"
     },
@@ -2196,17 +2583,16 @@
       "wireCodec": "None",
       "cc": -1,
       "min": 0,
-      "max": 0,
-      "default": 144,
-      "type": "continuous",
+      "max": 1,
+      "default": 0,
+      "type": "boolean",
       "curve": "Linear",
       "curveP0": 1,
       "curveP1": 0.8,
       "domainMin": 0,
       "domainMax": 144,
-      "unit": "count",
       "smoothing": "Linear",
-      "group": "Info"
+      "group": "System"
     }
   ]
 }
