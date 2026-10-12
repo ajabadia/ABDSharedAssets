@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+#
+# pre-commit hook for ABDSharedAssets
+#
+# Auto-formats staged JavaScript/TypeScript source files (.js, .mjs, .cjs,
+# .ts, .tsx) using prettier, resolved from the repository's own node_modules
+# (installed via `pnpm install`).
+#
+# The .prettierrc.json file at the repository root is the single source of
+# truth for the formatting style.
+#
+# To bypass the hook for a single commit, use:
+#   git commit --no-verify
+#
+# VERIFY_ONLY=1 runs in CI-check mode: scans ALL tracked JS/TS files (not just
+# staged ones) and reports formatting violations with --check, without
+# modifying any files.  Used by the CI workflow to confirm the hook catches
+# unformatted code.
+#
+
+set -euo pipefail
+
+# ── 1. Locate prettier (repo-local node_modules) ────────────────────────────
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PRETTIER="$REPO_ROOT/node_modules/.bin/prettier"
+
+if [ ! -x "$PRETTIER" ]; then
+    echo "✖  prettier not found in node_modules."
+    echo ""
+    echo "Install the repository dependencies first:"
+    echo "  pnpm install"
+    echo ""
+    echo "To bypass the hook for a single commit, use: git commit --no-verify"
+    exit 1
+fi
+
+PRETTIER_VER="$("$PRETTIER" --version 2>&1)"
+echo "Using $PRETTIER ($PRETTIER_VER)"
+echo ""
+
+# ── 2. Validate .prettierrc.json ────────────────────────────────────────────
+
+if [ ! -f "$REPO_ROOT/.prettierrc.json" ]; then
+    echo "✖  .prettierrc.json not found in the repository root."
+    echo "   The formatting configuration is required for this hook."
+    exit 1
+fi
+
+# LA VALIDACION DE LA CONFIG, Y POR QUE NO CON --check-config. Ese flag NO
+# EXISTE en prettier: 3.9.10 lo ignora con "Ignored unknown option" y ademas
+# se come el argumento como su valor, dejando a prettier SIN ficheros que
+# procesar, que significa leer stdin — y el hook se colgaba a la espera (medido:
+# 280s de timeout sin terminar). La forma real de validar la config es
+# pasarleela a un chequeo con stdin cerrado: una config rota hace fallar la
+# carga y el exit code es el veredicto.
+if ! printf '' | "$PRETTIER" --config "$REPO_ROOT/.prettierrc.json" --stdin-filepath _hook_config_check_.js >/dev/null 2>&1; then
+    echo "✖  .prettierrc.json contains errors or fails to load."
+    echo "   Run: $PRETTIER --config .prettierrc.json --stdin-filepath x.js </dev/null"
+    exit 1
+fi
+
+# ── 3. Collect JS/TS files to check ─────────────────────────────────────────
+
+# PATRONES POSICIONALES, y no flags --glob: prettier NO tiene un flag --glob
+# (lo ignora con "[warn] Ignored unknown option"), y un --check sin patrones
+# chequea todo lo que prettier sabe leer, md y yml incluidos.
+#
+# LA NEGACION `!**/node_modules/**` NO ES OPCIONAL. Con un patron glob
+# prettier NO excluye node_modules (solo lo excluye al recibir un DIRECTORIO),
+# y sin esta linea el check tarda minutos de mas en caminar el arbol de
+# mermaid/jsdom/vite. Medido: 500s de timeout sin terminar con solo '**/*.js'.
+JS_TS_PATTERNS=('**/*.js' '**/*.mjs' '**/*.cjs' '**/*.ts' '**/*.tsx' '!**/node_modules/**')
+
+if [ "${VERIFY_ONLY:-0}" = "1" ]; then
+    # CI / verify-only: check every tracked JS/TS source file.
+    cd "$REPO_ROOT"
+    echo "Verify-only mode: checking all tracked JS/TS files..."
+    echo "Using $PRETTIER ($PRETTIER_VER)"
+    echo ""
+
+    if ! "$PRETTIER" --check "${JS_TS_PATTERNS[@]}"; then
+        echo ""
+        echo "✖  Some files are not formatted according to .prettierrc.json."
+        echo "   Run: $PRETTIER --write <file> to fix, or bash .githooks/install.sh"
+        exit 1
+    fi
+
+    echo "✓  All JS/TS files are properly formatted."
+    exit 0
+fi
+
+STAGED_JS=$(git diff --cached --name-only --diff-filter=ACMR -- '*.js' '*.mjs' '*.cjs' '*.ts' '*.tsx' || true)
+
+if [ -z "$STAGED_JS" ]; then
+    echo "No staged JS/TS files to format."
+    exit 0
+fi
+
+# ── 4. Format and re-stage ──────────────────────────────────────────────────
+
+echo "Formatting staged JS/TS files with prettier..."
+
+EXIT_CODE=0
+while IFS= read -r file; do
+    if [ -f "$REPO_ROOT/$file" ]; then
+        if ! "$PRETTIER" --write "$REPO_ROOT/$file"; then
+            EXIT_CODE=1
+        else
+            # Re-add only if the file lives inside the repo (it does) and
+            # prettier did not fail; --write already updated it on disk.
+            git add "$file"
+            echo "  formatted: $file"
+        fi
+    fi
+done <<< "$STAGED_JS"
+
+if [ "$EXIT_CODE" -ne 0 ]; then
+    echo ""
+    echo "✖  prettier failed on some staged files."
+    exit 1
+fi
+
+echo "Done.  All formatted files have been re-added to the commit."

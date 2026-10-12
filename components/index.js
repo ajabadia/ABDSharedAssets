@@ -18,6 +18,7 @@ export { Segmented } from './segmented.js';
 export { Slider } from './slider.js';
 export { FilmstripFader } from './filmstripFader.js';
 export { Toggle } from './toggle.js';
+export { Switch } from './switch.js';
 export { Wheel } from './wheel.js';
 export { XYPad } from './xypad.js';
 export { ThemeSwitcher } from './themeSwitcher.js';
@@ -28,15 +29,15 @@ export { WAVEFORM_GLYPHS, WAVEFORM_NAMES, waveformName } from './waveforms.js';
 // pura: el consumidor pinta curvas sin montar DOM. El gesto vive aparte
 // (envelopeGestures) y solo lo consume el pad: no es API del barrel.
 export {
-    DEFAULT_ENVELOPE,
-    ENVELOPE_SEGMENTS,
-    ENVELOPE_VIEWBOX,
-    NEEDLE_FLOOR,
-    createEnvelopeCurve,
-    envelopeAreaPath,
-    envelopeLinePath,
-    envelopeNeedlePath,
-    envelopePoints,
+  DEFAULT_ENVELOPE,
+  ENVELOPE_SEGMENTS,
+  ENVELOPE_VIEWBOX,
+  NEEDLE_FLOOR,
+  createEnvelopeCurve,
+  envelopeAreaPath,
+  envelopeLinePath,
+  envelopeNeedlePath,
+  envelopePoints,
 } from './envelopeCurve.js';
 export { EnvelopePad } from './envelopePad.js';
 export { NumberBox } from './numberbox.js';
@@ -68,12 +69,7 @@ export {
 // scripts/generate_s950_calibration_contract.py), y comparte su argumento:
 // `valueAt()` devuelve SIEMPRE null porque nadie ha medido una sola curva en este
 // repo, y un panel tiene que poder ENSENAR eso en vez de inventar un 0.
-export {
-  buildS950Calibration,
-  s950AxisFor,
-  s950Coverage,
-  S950_UNITS,
-} from './s950Calibration.js';
+export { buildS950Calibration, s950AxisFor, s950Coverage, S950_UNITS } from './s950Calibration.js';
 export { enhanceRangeInputs, destroyEnhancedRangeInputs } from '../utils/index.js';
 export { WAVE_ICONS, FILTER_ICONS } from './icons.js';
 export { SevenSegmentDisplay } from './sevenSegmentDisplay.js';

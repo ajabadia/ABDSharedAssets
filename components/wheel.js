@@ -57,8 +57,8 @@ export class Wheel {
     this.onChange = options.onChange || (() => {});
     this.onSettled = options.onSettled || (() => {});
     this.isPitch = this.type === 'pitch';
-    this.min = options.min !== undefined ? options.min : (this.isPitch ? -8192 : 0);
-    this.max = options.max !== undefined ? options.max : (this.isPitch ? 8191 : 127);
+    this.min = options.min !== undefined ? options.min : this.isPitch ? -8192 : 0;
+    this.max = options.max !== undefined ? options.max : this.isPitch ? 8191 : 127;
     this.label = options.label || (this.isPitch ? 'PITCH' : 'MOD');
     this.valueFormatter = options.valueFormatter || this.defaultValueFormatter.bind(this);
     this._destroyed = false;
@@ -88,10 +88,10 @@ export class Wheel {
     this.container.innerHTML = `
       <label class="kbd-wheel-label">${this.label}</label>
       <div class="kbd-wheel-sprite"
-           style="position:relative;width:${this.frameWidth}px;height:${this.frameHeight}px;background-image:url('${this.spriteUrl}');background-position:0px ${this.isPitch ? -(this._initialFrame * this.frameHeight) : 0}px;background-repeat:no-repeat;border-radius:3px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8);">
+           style="position:relative;width:${this.frameWidth}px;height:${this.frameHeight}px;background-image:url('${this.spriteUrl}');background-position:0px ${this.isPitch ? -(this._initialFrame * this.frameHeight) : 0}px;background-repeat:no-repeat;border-radius:3px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8);cursor:pointer;user-select:none;touch-action:none;">
         <input type="range" class="kbd-wheel-slider" min="${this.min}" max="${this.max}" value="0" step="1"
           aria-label="${this.isPitch ? 'Pitch Bend Wheel' : 'Modulation Wheel'}"
-          style="position:absolute;top:0;left:0;width:${this.frameWidth}px;height:${this.frameHeight}px;writing-mode:vertical-lr;direction:rtl;margin:0;cursor:pointer;opacity:0;z-index:5;">
+          style="position:absolute;top:0;left:0;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);border:0;opacity:0;pointer-events:none;">
       </div>
       <div class="kbd-wheel-value">${this.valueFormatter(0)}</div>
     `;
@@ -124,7 +124,12 @@ export class Wheel {
     const clamped = Math.max(this.min, Math.min(this.max, val));
     this.slider.value = clamped;
     this.updateVisuals(clamped);
-    if (notify) this.onChange(clamped);
+    if (notify) {
+      const prev = this._rawPrev;
+      this._rawPrev = clamped;
+      this.notices.announceMovement(prev, clamped);
+      this.onChange(clamped);
+    }
   }
 
   reset() {
@@ -153,10 +158,69 @@ export class Wheel {
       this._rawPrev = val;
       this.updateVisuals(val);
       const moved = this.notices.announceMovement(prev, val);
-      if (moved && ! this.notices.isActive())
-        announceSettled(this.onSettled, prev, val);
+      if (moved && !this.notices.isActive()) announceSettled(this.onSettled, prev, val);
     };
     this.slider.addEventListener('input', onInput);
+
+    // Direct pointer drag on the wheel sprite surface
+    let isDragging = false;
+    let startY = 0;
+    let startVal = 0;
+    const totalRange = this.max - this.min;
+    const dragLanePx = 150;
+
+    const onPointerDown = (e) => {
+      isDragging = true;
+      startY = e.clientY;
+      startVal = getRaw();
+      this._rawPrev = startVal;
+      this.sprite.setPointerCapture?.(e.pointerId);
+      this.notices.begin(startVal);
+      e.preventDefault();
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      const dy = startY - e.clientY; // upward drag increases value
+      const speed = e.shiftKey ? 0.2 : 1.0;
+      const deltaVal = (dy / dragLanePx) * totalRange * speed;
+      const newVal = Math.max(this.min, Math.min(this.max, Math.round(startVal + deltaVal)));
+      if (newVal !== getRaw()) {
+        this.setValue(newVal, true);
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+      this.sprite.releasePointerCapture?.(e.pointerId);
+      if (this.isPitch) {
+        const prev = getRaw();
+        this.slider.value = 0;
+        this._rawPrev = 0;
+        this.updateVisuals(0);
+        this.notices.announceMovement(prev, 0);
+        this.onChange(0);
+      } else {
+        const cur = getRaw();
+        this.notices.end(cur);
+        this._rawPrev = cur;
+      }
+    };
+
+    this.sprite.addEventListener('pointerdown', onPointerDown);
+    this.sprite.addEventListener('pointermove', onPointerMove);
+    this.sprite.addEventListener('pointerup', onPointerUp);
+    this.sprite.addEventListener('pointercancel', onPointerUp);
+
+    // Mouse wheel adjustment on the sprite
+    this.sprite.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const step = -Math.sign(e.deltaY) * Math.max(1, Math.round(totalRange / 20));
+      const cur = getRaw();
+      this.setValue(Math.max(this.min, Math.min(this.max, cur + step)), true);
+    });
+
     if (this.isPitch) {
       const resetSpring = () => {
         const prev = this._rawPrev;
@@ -165,20 +229,26 @@ export class Wheel {
         this.updateVisuals(0);
         // spring movement is not a settled commit: it returns to rest
         this.notices.announceMovement(prev, 0);
+        this.onChange(0);
       };
       this.slider.addEventListener('mouseup', resetSpring);
       this.slider.addEventListener('touchend', resetSpring);
-      this.slider.addEventListener('mouseleave', (e) => { if (e.buttons === 1) resetSpring(); });
+      this.slider.addEventListener('mouseleave', (e) => {
+        if (e.buttons === 1) resetSpring();
+      });
     }
-    this.slider.addEventListener('dblclick', () => {
+
+    const onDblClick = () => {
       const prev = this._rawPrev;
       this.slider.value = 0;
       this._rawPrev = 0;
       this.updateVisuals(0);
       const moved = this.notices.announceMovement(prev, 0);
-      if (moved && ! this.notices.isActive())
-        announceSettled(this.onSettled, prev, 0);
-    });
+      if (moved && !this.notices.isActive()) announceSettled(this.onSettled, prev, 0);
+      this.onChange(0);
+    };
+    this.slider.addEventListener('dblclick', onDblClick);
+    this.sprite.addEventListener('dblclick', onDblClick);
   }
 
   /** Quita el marcado que pinto en el contenedor; idempotente. */

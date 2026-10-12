@@ -53,10 +53,11 @@
     "ci:list": "node scripts/ci-local.mjs --list"
   },
   "devDependencies": {
-    "vite": "^8.3.2",
-    "vitest": "^4.1.11",
     "jsdom": "^24.0.0",
-    "mermaid": "^12.0.0"
+    "mermaid": "^12.0.0",
+    "prettier": "^3.9.10",
+    "vite": "^8.3.2",
+    "vitest": "^4.1.11"
   },
   "publishConfig": {
     "access": "restricted"

@@ -16,40 +16,52 @@ import { Knob } from '../components/knob.js';
 import { Select } from '../components/select.js';
 import { Slider } from '../components/slider.js';
 import { Toggle } from '../components/toggle.js';
+import { Switch } from '../components/switch.js';
 import { attachDrag, clamp } from '../components/drag-core.js';
-import { registerSkin, getSkin, applySkin, skinNames, CONTROL_KIND } from '../components/skins/index.js';
+import {
+  registerSkin,
+  getSkin,
+  applySkin,
+  skinNames,
+  CONTROL_KIND,
+} from '../components/skins/index.js';
 
 /**
  * Fire a pointer drag on an element. `axis` picks the moving axis: 'y' (vertical,
  * the knob's natural drag) or 'x' (horizontal, the slider's). Coordinates start at
  * `from` and end at `to` along that axis; the other axis stays at 100.
  */
-function drag (element, { from = 100, to = 175, axis = 'y' } = {})
-{
+function drag(element, { from = 100, to = 175, axis = 'y' } = {}) {
   const point = (v) => (axis === 'y' ? { clientY: v, clientX: 100 } : { clientX: v, clientY: 100 });
 
-  element.dispatchEvent(new PointerEvent('pointerdown', {
-    ...point(from), bubbles: true, pointerId: 1,
-  }));
-  element.dispatchEvent(new PointerEvent('pointermove', {
-    ...point(to), bubbles: true, pointerId: 1,
-  }));
+  element.dispatchEvent(
+    new PointerEvent('pointerdown', {
+      ...point(from),
+      bubbles: true,
+      pointerId: 1,
+    }),
+  );
+  element.dispatchEvent(
+    new PointerEvent('pointermove', {
+      ...point(to),
+      bubbles: true,
+      pointerId: 1,
+    }),
+  );
   element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
 }
 
-describe('family contract parity', () =>
-{
+describe('family contract parity', () => {
   const cases = [
     ['Knob', Knob],
     ['Slider', Slider],
     ['Toggle', Toggle],
+    ['Switch', Switch],
     ['Select', Select],
   ];
 
-  for (const [name, Control] of cases)
-  {
-    it(`${name} exposes the family API`, () =>
-    {
+  for (const [name, Control] of cases) {
+    it(`${name} exposes the family API`, () => {
       const host = document.createElement('div');
       document.body.appendChild(host);
 
@@ -67,18 +79,15 @@ describe('family contract parity', () =>
   }
 });
 
-describe('Knob', () =>
-{
+describe('Knob', () => {
   let host;
 
-  beforeEach(() =>
-  {
+  beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
   });
 
-  it('clamps out-of-range values', () =>
-  {
+  it('clamps out-of-range values', () => {
     const knob = new Knob(host, { value: 0.5 });
     knob.setValue(2);
     expect(knob.getValue()).toBe(1);
@@ -87,12 +96,11 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('a user drag past the top clamps and fires onChange per move', () =>
-  {
+  it('a user drag past the top clamps and fires onChange per move', () => {
     const changes = [];
     const knob = new Knob(host, { value: 0.5, onChange: (v) => changes.push(v) });
 
-    drag(knob.dial, { from: 300, to: 0 });   // big upward drag
+    drag(knob.dial, { from: 300, to: 0 }); // big upward drag
 
     expect(knob.getValue()).toBe(1);
     expect(changes.length).toBeGreaterThan(0);
@@ -100,8 +108,7 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('setValue does NOT fire onChange (programmatic updates are silent)', () =>
-  {
+  it('setValue does NOT fire onChange (programmatic updates are silent)', () => {
     const onChange = vi.fn();
     const knob = new Knob(host, { value: 0.5, onChange });
 
@@ -111,8 +118,7 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('gesture callbacks fire once per drag, not per pixel', () =>
-  {
+  it('gesture callbacks fire once per drag, not per pixel', () => {
     const events = [];
     const knob = new Knob(host, {
       value: 0.5,
@@ -125,17 +131,20 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('drag tracks the pointer 1:1 across multiple moves (no acceleration)', () =>
-  {
+  it('drag tracks the pointer 1:1 across multiple moves (no acceleration)', () => {
     // Regression: deltas used to be measured from the drag START and ADDED to the
     // value each move, so the value compounded and the control accelerated. With
     // N moves of d px the total travel must be N*d, not sum(k*d) for k=1..N.
     const knob = new Knob(host, { value: 0 });
 
-    knob.dial.dispatchEvent(new PointerEvent('pointerdown', { clientY: 300, bubbles: true, pointerId: 1 }));
+    knob.dial.dispatchEvent(
+      new PointerEvent('pointerdown', { clientY: 300, bubbles: true, pointerId: 1 }),
+    );
 
     for (let i = 1; i <= 4; ++i)
-      knob.dial.dispatchEvent(new PointerEvent('pointermove', { clientY: 300 - i * 10, bubbles: true, pointerId: 1 }));
+      knob.dial.dispatchEvent(
+        new PointerEvent('pointermove', { clientY: 300 - i * 10, bubbles: true, pointerId: 1 }),
+      );
 
     knob.dial.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }));
 
@@ -144,8 +153,7 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('renders aria slider semantics and updates them', () =>
-  {
+  it('renders aria slider semantics and updates them', () => {
     const knob = new Knob(host, { value: 0.1 });
     expect(knob.dial.getAttribute('role')).toBe('slider');
     expect(knob.dial.getAttribute('aria-valuemin')).toBe('0');
@@ -156,8 +164,7 @@ describe('Knob', () =>
     knob.destroy();
   });
 
-  it('the slider dial carries an accessible name', () =>
-  {
+  it('the slider dial carries an accessible name', () => {
     // The visible label doubles as the name (how NEURONiK drawer knobs are
     // built: they gain the accessible name for free).
     const named = new Knob(host, { label: 'Cutoff' });
@@ -183,31 +190,27 @@ describe('Knob', () =>
   });
 });
 
-describe('Slider', () =>
-{
+describe('Slider', () => {
   let host;
 
-  beforeEach(() =>
-  {
+  beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
   });
 
-  it('drag right increases, drag left decreases (horizontal)', () =>
-  {
+  it('drag right increases, drag left decreases (horizontal)', () => {
     const slider = new Slider(host, { value: 0.5 });
 
-    drag(slider.track, { from: 100, to: 160, axis: 'x' });   // to the right
+    drag(slider.track, { from: 100, to: 160, axis: 'x' }); // to the right
     const afterRight = slider.getValue();
     expect(afterRight).toBeGreaterThan(0.5);
 
-    drag(slider.track, { from: 100, to: 40, axis: 'x' });    // to the left
+    drag(slider.track, { from: 100, to: 40, axis: 'x' }); // to the left
     expect(slider.getValue()).toBeLessThan(afterRight);
     slider.destroy();
   });
 
-  it('vertical orientation moves the thumb by bottom, not left', () =>
-  {
+  it('vertical orientation moves the thumb by bottom, not left', () => {
     const slider = new Slider(host, { orientation: 'vertical', value: 0.25 });
     slider.setValue(0.8);
 
@@ -216,8 +219,7 @@ describe('Slider', () =>
     slider.destroy();
   });
 
-  it('respects the family setValue/onChange contract', () =>
-  {
+  it('respects the family setValue/onChange contract', () => {
     const onChange = vi.fn();
     const slider = new Slider(host, { value: 0.5, onChange });
 
@@ -230,18 +232,15 @@ describe('Slider', () =>
   });
 });
 
-describe('Toggle', () =>
-{
+describe('Toggle', () => {
   let host;
 
-  beforeEach(() =>
-  {
+  beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
   });
 
-  it('clicks toggle the latched value and fire onChange', () =>
-  {
+  it('clicks toggle the latched value and fire onChange', () => {
     const changes = [];
     const toggle = new Toggle(host, { label: 'SYNC', onChange: (v) => changes.push(v) });
 
@@ -253,8 +252,7 @@ describe('Toggle', () =>
     toggle.destroy();
   });
 
-  it('momentary mode reports press and release instead of latching', () =>
-  {
+  it('momentary mode reports press and release instead of latching', () => {
     const changes = [];
     const toggle = new Toggle(host, { momentary: true, onChange: (v) => changes.push(v) });
 
@@ -266,8 +264,7 @@ describe('Toggle', () =>
     toggle.destroy();
   });
 
-  it('el aviso es de TRANSICION: un release repetido (o sin press) no re-notifica', () =>
-  {
+  it('el aviso es de TRANSICION: un release repetido (o sin press) no re-notifica', () => {
     const changes = [];
     const toggle = new Toggle(host, { momentary: true, onChange: (v) => changes.push(v) });
 
@@ -277,15 +274,14 @@ describe('Toggle', () =>
 
     toggle.button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-    toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));   // repetido
+    toggle.button.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); // repetido
     toggle.button.dispatchEvent(new PointerEvent('pointerleave', { bubbles: true })); // release de mas
-    expect(changes).toEqual([true, false]);   // una vez por transicion, no por evento
+    expect(changes).toEqual([true, false]); // una vez por transicion, no por evento
 
     toggle.destroy();
   });
 
-  it('state is carried by aria-pressed, not by JS-only classes', () =>
-  {
+  it('state is carried by aria-pressed, not by JS-only classes', () => {
     const toggle = new Toggle(host, { value: false });
     expect(toggle.button.getAttribute('aria-pressed')).toBe('false');
 
@@ -295,14 +291,12 @@ describe('Toggle', () =>
   });
 });
 
-describe('Select', () =>
-{
+describe('Select', () => {
   let host;
 
   const ENTRIES = ['Off', 'LFO 1', 'LFO 2', 'Amp Env'];
 
-  const build = (options = {}) =>
-  {
+  const build = (options = {}) => {
     const select = new Select(host, { options: ENTRIES, ...options });
 
     document.body.appendChild(select.wrapper);
@@ -310,20 +304,17 @@ describe('Select', () =>
   };
 
   /** Pick an index like a user would (a real select's change event). */
-  const pick = (select, index) =>
-  {
+  const pick = (select, index) => {
     select.field.value = `${index}`;
     select.field.dispatchEvent(new Event('change'));
   };
 
-  beforeEach(() =>
-  {
+  beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
   });
 
-  it('carries the option index as its value', () =>
-  {
+  it('carries the option index as its value', () => {
     const select = build({ value: 2 });
 
     expect(select.getValue()).toBe(2);
@@ -331,8 +322,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('clamps out-of-range values to the list', () =>
-  {
+  it('clamps out-of-range values to the list', () => {
     const select = build({ value: 99 });
 
     expect(select.getValue()).toBe(3);
@@ -341,8 +331,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('a user pick fires onChange with the index; setValue stays silent', () =>
-  {
+  it('a user pick fires onChange with the index; setValue stays silent', () => {
     const onChange = vi.fn();
     const select = build({ value: 0, onChange });
 
@@ -355,14 +344,16 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('takes { label, disabled, note } entries and makes the note the option description', () =>
-  {
+  it('takes { label, disabled, note } entries and makes the note the option description', () => {
     // El motivo del veto NO va en un title (solo lo ve el ratón): va como
     // descripción accesible del option, y el nodo con el texto vive FUERA de él
     // (dentro se tragaría en el nombre accesible de la opción).
     // Y el veto lo aplica el flag `disabled` de la entrada: sin lista ni spec.
     const select = new Select(host, {
-      options: ['Off', { label: 'Pitch Quantize', disabled: true, note: 'Requires the Neurotik engine' }],
+      options: [
+        'Off',
+        { label: 'Pitch Quantize', disabled: true, note: 'Requires the Neurotik engine' },
+      ],
     });
 
     const option = select.field.options[1];
@@ -373,13 +364,12 @@ describe('Select', () =>
     expect(option.hasAttribute('title')).toBe(false);
     expect(option.disabled).toBe(true);
     expect(note.textContent).toBe('Requires the Neurotik engine');
-    expect(option.contains(note)).toBe(false);          // fuera del option
+    expect(option.contains(note)).toBe(false); // fuera del option
     expect(select.field.options[0].hasAttribute('aria-describedby')).toBe(false);
     select.destroy();
   });
 
-  it('el motivo del veto llega al campo cuando la opcion vetada es el valor actual', () =>
-  {
+  it('el motivo del veto llega al campo cuando la opcion vetada es el valor actual', () => {
     // Paridad con el estado divergente de Segmented: nadie enfoca un <option>, asi
     // que con el valor en una opcion vetada quien anuncia el motivo es el campo.
     // Medido en Chromium: antes el combobox soltaba description="" y la nota solo
@@ -412,8 +402,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('setNote cambia el motivo en caliente y el campo sigue al valor actual', () =>
-  {
+  it('setNote cambia el motivo en caliente y el campo sigue al valor actual', () => {
     // setDisabled dice QUE esta vetado; setNote, POR QUE. Y como un <option> no
     // recibe foco, el campo tiene que seguir al valor actual cuando el motivo cambia.
     const select = new Select(host, {
@@ -429,8 +418,10 @@ describe('Select', () =>
 
     select.setNote(1, 'Requires the Neurotik engine (running)');
 
-    expect(option.getAttribute('aria-describedby')).toBe(firstId);      // misma nota
-    expect(document.getElementById(firstId).textContent).toBe('Requires the Neurotik engine (running)');
+    expect(option.getAttribute('aria-describedby')).toBe(firstId); // misma nota
+    expect(document.getElementById(firstId).textContent).toBe(
+      'Requires the Neurotik engine (running)',
+    );
     expect(select.field.getAttribute('aria-describedby')).toBe(firstId);
 
     // Retirar el motivo lo retira de las dos via: option y campo.
@@ -446,10 +437,12 @@ describe('Select', () =>
 
     expect(select.field.getAttribute('aria-describedby')).toBe(newId);
     expect(document.getElementById(newId).textContent).toBe('Solo con Neurotik');
-    expect(option.textContent).toBe('Pitch Quantize');    // el motivo no entra en el nombre
+    expect(option.textContent).toBe('Pitch Quantize'); // el motivo no entra en el nombre
     // El contenedor de notas vive DETRAS del control: fuera del orden de lectura.
-    expect([...select.wrapper.children].map((el) => el.className))
-      .toEqual(['abd-select__field', 'abd-select__notes']);
+    expect([...select.wrapper.children].map((el) => el.className)).toEqual([
+      'abd-select__field',
+      'abd-select__notes',
+    ]);
 
     // Indices imposibles y notas vacias no rompen nada.
     select.setNote(99, 'fantasma');
@@ -460,8 +453,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('una entrada marcada disabled veta por si misma, sin repetir el indice en la lista', () =>
-  {
+  it('una entrada marcada disabled veta por si misma, sin repetir el indice en la lista', () => {
     // El flag se documentaba ({ label, disabled, note }) pero isIndexDisabled solo
     // miraba la lista: se anotaba el veto y no vetaba nada.
     const select = new Select(host, {
@@ -494,8 +486,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('marks disabled entries and refuses to pick them', () =>
-  {
+  it('marks disabled entries and refuses to pick them', () => {
     const onChange = vi.fn();
     const select = build({ value: 0, disabled: [2, 3], onChange });
 
@@ -505,13 +496,12 @@ describe('Select', () =>
     pick(select, 2);
 
     expect(onChange).not.toHaveBeenCalled();
-    expect(select.getValue()).toBe(0);        // unchanged
-    expect(select.field.value).toBe('0');     // and the field is put back
+    expect(select.getValue()).toBe(0); // unchanged
+    expect(select.field.value).toBe('0'); // and the field is put back
     select.destroy();
   });
 
-  it('takes a predicate as the disabled spec', () =>
-  {
+  it('takes a predicate as the disabled spec', () => {
     const select = build({ disabled: (entry) => entry.label.startsWith('LFO') });
 
     expect(select.field.options[1].disabled).toBe(true);
@@ -519,8 +509,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('KEEPS a value that lands on a disabled entry and flags it', () =>
-  {
+  it('KEEPS a value that lands on a disabled entry and flags it', () => {
     // The host can restore a preset aiming at an option this UI cannot offer.
     // Rewriting it would be silent state corruption: it is shown and flagged.
     const select = build({ value: 2, disabled: [2] });
@@ -532,14 +521,13 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('setDisabled recomputes availability without touching the value', () =>
-  {
+  it('setDisabled recomputes availability without touching the value', () => {
     const onChange = vi.fn();
     const select = build({ value: 3, disabled: [], onChange });
 
     expect(select.isDivergent()).toBe(false);
 
-    select.setDisabled([3]);                       // engine changed under it
+    select.setDisabled([3]); // engine changed under it
     expect(select.isDivergent()).toBe(true);
     expect(select.getValue()).toBe(3);
     expect(onChange).not.toHaveBeenCalled();
@@ -550,8 +538,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('is the one family member with no drag behaviour (a drag must not pick)', () =>
-  {
+  it('is the one family member with no drag behaviour (a drag must not pick)', () => {
     const onChange = vi.fn();
     const select = build({ value: 0, onChange });
 
@@ -564,8 +551,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('associates its label with the field when given an id', () =>
-  {
+  it('associates its label with the field when given an id', () => {
     const select = build({ id: 'control-lfo1Waveform', label: 'WAVE' });
 
     expect(select.field.id).toBe('control-lfo1Waveform');
@@ -575,8 +561,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('stacks only when labelled (the bare .abd-select of the CSS library stays valid)', () =>
-  {
+  it('stacks only when labelled (the bare .abd-select of the CSS library stays valid)', () => {
     // `controls.css` styles a raw <select class="abd-select"> and pages load both
     // sheets: the block must not impose the flex column on it.
     const bare = new Select(host, { options: ['a', 'b'] });
@@ -585,8 +570,7 @@ describe('Select', () =>
     bare.destroy();
   });
 
-  it('handles an empty list without crashing', () =>
-  {
+  it('handles an empty list without crashing', () => {
     const select = new Select(host, { options: [] });
 
     expect(select.getValue()).toBe(0);
@@ -594,8 +578,7 @@ describe('Select', () =>
     select.destroy();
   });
 
-  it('destroy removes the DOM and detaches the listener', () =>
-  {
+  it('destroy removes the DOM and detaches the listener', () => {
     const onChange = vi.fn();
     const select = build({ onChange });
     const field = select.field;
@@ -609,51 +592,44 @@ describe('Select', () =>
   });
 });
 
-describe('skins', () =>
-{
+describe('skins', () => {
   let host;
 
-  beforeEach(() =>
-  {
+  beforeEach(() => {
     host = document.createElement('div');
     document.body.appendChild(host);
   });
 
-  it('known skins are registered as renderer maps', () =>
-  {
-    for (const name of ['vector', 'ms2000', 'junio'])
-    {
+  it('known skins are registered as renderer maps', () => {
+    for (const name of ['vector', 'ms2000', 'junio']) {
       const map = getSkin(name);
 
       expect(map).toBeTypeOf('object');
-      expect(map.knob).toBeTypeOf('function');   // at least the knob renderer
+      expect(map.knob).toBeTypeOf('function'); // at least the knob renderer
     }
     expect(skinNames()).toContain('ms2000');
   });
 
-  it('unknown skin falls back to vector instead of crashing', () =>
-  {
+  it('unknown skin falls back to vector instead of crashing', () => {
     const knob = new Knob(host, { skin: 'no-existe' });
     expect(knob.skin).toBeDefined();
     expect(knob.dial.querySelector('.abd-skin--vector')).not.toBeNull();
     knob.destroy();
   });
 
-  it('ms2000 skin rotates its indicator with the value', () =>
-  {
+  it('ms2000 skin rotates its indicator with the value', () => {
     const knob = new Knob(host, { skin: 'ms2000', value: 0.5 });
     const group = knob.dial.querySelector('.abd-ms2000-knob__indicator-group');
 
     expect(group).not.toBeNull();
-    expect(group.style.transform).toContain('0deg');   // -135 + 0.5*270
+    expect(group.style.transform).toContain('0deg'); // -135 + 0.5*270
 
     knob.setValue(1);
     expect(group.style.transform).toContain('135deg'); // -135 + 270
     knob.destroy();
   });
 
-  it('junio skin paints the filmstrip and rotates it', () =>
-  {
+  it('junio skin paints the filmstrip and rotates it', () => {
     const knob = new Knob(host, { skin: 'junio', value: 0 });
     const ring = knob.dial.querySelector('.abd-knob-ring');
     const marker = ring?.querySelector('.knob');
@@ -661,17 +637,15 @@ describe('skins', () =>
     // Junio exacto: el filmstrip es el ARO (grafico + marcas radiales de fondo)
     // y la aguja es la linea que rota dentro de el.
     expect(ring.style.backgroundImage).toContain('knob.png');
-    expect(marker.style.transform).toContain('-135deg');   // 0*270 - 135
+    expect(marker.style.transform).toContain('-135deg'); // 0*270 - 135
 
     knob.setValue(1);
-    expect(marker.style.transform).toContain('135deg');    // 270 - 135
+    expect(marker.style.transform).toContain('135deg'); // 270 - 135
     knob.destroy();
   });
 
-  it('behaviour is skin-independent: drag works the same on every skin', () =>
-  {
-    for (const skin of ['vector', 'ms2000', 'junio'])
-    {
+  it('behaviour is skin-independent: drag works the same on every skin', () => {
+    for (const skin of ['vector', 'ms2000', 'junio']) {
       const changes = [];
       const knob = new Knob(host, { skin, value: 0.5, onChange: (v) => changes.push(v) });
 
@@ -682,18 +656,22 @@ describe('skins', () =>
     }
   });
 
-  it('custom skins can be registered by a project', () =>
-  {
+  it('custom skins can be registered by a project', () => {
     let destroyed = false;
 
     registerSkin('test-custom', {
-      knob (el)
-      {
+      knob(el) {
         const root = document.createElement('div');
 
         root.className = 'abd-skin--test-custom';
         el.appendChild(root);
-        return { root, update () {}, destroy () { destroyed = true; } };
+        return {
+          root,
+          update() {},
+          destroy() {
+            destroyed = true;
+          },
+        };
       },
     });
 
@@ -702,25 +680,24 @@ describe('skins', () =>
     expect(knob.dial.querySelector('.abd-skin--test-custom')).not.toBeNull();
 
     knob.destroy();
-    expect(destroyed).toBe(true);   // skin destroy() is honoured
+    expect(destroyed).toBe(true); // skin destroy() is honoured
   });
 
-  it('a kind with no renderer anywhere fails with a descriptive error', () =>
-  {
+  it('a kind with no renderer anywhere fails with a descriptive error', () => {
     // Regression: a new control type used to fail as "fn is not a function",
     // which reads as a typo in the caller instead of a missing renderer.
     const alien = { options: {}, getValue: () => 0 };
 
     alien[CONTROL_KIND] = 'no-such-kind';
-    expect(() => applySkin('vector', host, alien))
-      .toThrow(/no renderer for control kind 'no-such-kind'/);
+    expect(() => applySkin('vector', host, alien)).toThrow(
+      /no renderer for control kind 'no-such-kind'/,
+    );
   });
 
-  it('the select kind is skinnable: skins restyle the field, they do not replace it', () =>
-  {
+  it('the select kind is skinnable: skins restyle the field, they do not replace it', () => {
     const select = new Select(host, { options: ['Off', 'LFO 1'], skin: 'ms2000' });
 
-    expect(select.field.tagName).toBe('SELECT');   // still the native list
+    expect(select.field.tagName).toBe('SELECT'); // still the native list
     expect(select.field.classList.contains('abd-select__field--ms2000')).toBe(true);
     select.destroy();
 
@@ -731,8 +708,7 @@ describe('skins', () =>
     plain.destroy();
   });
 
-  it('partial skins fall back per-kind to the vector renderer', () =>
-  {
+  it('partial skins fall back per-kind to the vector renderer', () => {
     const boxHost = document.createElement('div');
 
     document.body.appendChild(boxHost);
@@ -750,12 +726,11 @@ describe('skins', () =>
     boxHost.remove();
   });
 
-  it('applySkin dispatches by control kind and falls back when unknown', () =>
-  {
+  it('applySkin dispatches by control kind and falls back when unknown', () => {
     const knobFake = { getValue: () => 0.5, options: {} };
     const knobApplied = applySkin('no-existe', host, knobFake);
 
-    expect(knobApplied.root.className).toContain('vector');   // knob renderer
+    expect(knobApplied.root.className).toContain('vector'); // knob renderer
     knobApplied.destroy();
 
     const toggleHost = document.createElement('div');
@@ -770,17 +745,14 @@ describe('skins', () =>
   });
 });
 
-describe('shared drag-core', () =>
-{
-  it('clamp behaves like the family expects', () =>
-  {
+describe('shared drag-core', () => {
+  it('clamp behaves like the family expects', () => {
     expect(clamp(2, 0, 1)).toBe(1);
     expect(clamp(-1, 0, 1)).toBe(0);
     expect(clamp(0.5, 0, 1)).toBe(0.5);
   });
 
-  it('detach removes listeners: no drag after destroy', () =>
-  {
+  it('detach removes listeners: no drag after destroy', () => {
     const host = document.createElement('div');
     document.body.appendChild(host);
 
@@ -798,6 +770,6 @@ describe('shared drag-core', () =>
 
     host.dispatchEvent(new PointerEvent('pointerdown', { clientY: 100, bubbles: true }));
     host.dispatchEvent(new PointerEvent('pointermove', { clientY: 20, bubbles: true }));
-    expect(moved).toBe(1);   // unchanged: listeners gone
+    expect(moved).toBe(1); // unchanged: listeners gone
   });
 });

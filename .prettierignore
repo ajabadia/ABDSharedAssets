@@ -1,0 +1,8 @@
+# Dependencias y caché
+node_modules/
+__pycache__/
+
+# Contratos y assets generados por los scripts de Python del repo: se regeneran
+# desde el generador, no se editan a mano, y formatearlos crearia un diff
+# permanente contra su fuente.
+contracts/
