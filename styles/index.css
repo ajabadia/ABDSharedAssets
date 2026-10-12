@@ -45,3 +45,4 @@
 @import './components/fx.css';   /* modulos de efecto del rack, temas por familia */
 @import './components/envelope.css';  /* EnvelopePad: curva ADSR compartida */
 @import './components/bank.css';      /* BankManagerModal: contenedor modal universal */
+@import './components/live-sysex-inspector.css'; /* LiveSysExInspector: inspector reactivo */

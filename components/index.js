@@ -95,3 +95,11 @@ export {
   fxThemeStyle,
   buildFxThemeIndex,
 } from './fxTheme.js';
+
+// Inspector de tramas SysEx en vivo (reactivo, diff A/B, exportador .syx)
+export {
+  LiveSysExInspector,
+  createLiveSysExInspector,
+  toHexByte,
+  decodeSysExHeader,
+} from './liveSysExInspector.js';
